@@ -85,6 +85,23 @@ Candidate flows:
 
 Do not block the hackathon on brittle automation of Chrome side-panel internals; keep a reliable manual smoke checklist.
 
+Implemented smoke coverage uses Playwright's bundled Chromium in a persistent
+context, following the official extension-testing pattern. Run:
+
+```bash
+corepack pnpm exec playwright install chromium
+corepack pnpm test:e2e
+```
+
+The smoke test loads the production MV3 bundle, opens the real side-panel page,
+records with a fake microphone, receives a transcript from the running mock API,
+injects AURA into the article fixture, switches between two deterministic
+profiles, and verifies Undo without reloading. The temporary e2e build alone
+adds `http://localhost:4173/*` so injection does not depend on automating Chrome
+toolbar UI; normal production output retains the least-privilege manifest.
+
+Official reference: https://playwright.dev/docs/chrome-extensions
+
 ## Accessibility testing
 
 For side panel and onboarding:
@@ -95,6 +112,10 @@ For side panel and onboarding:
 - reduced-motion check,
 - automated axe-core scan where practical,
 - screen-reader manual smoke test if available.
+
+The default Vitest suite runs axe-core against the rendered profile and
+onboarding routes. Color contrast remains a visual/manual check because the
+happy-dom test environment does not calculate layout colors reliably.
 
 ## AI testing
 

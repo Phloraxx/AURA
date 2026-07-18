@@ -11,7 +11,7 @@ import {
   type SemanticPageAnalysis,
   type SimplifyTextResponse,
 } from '@aura/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Onboarding } from '../../components/onboarding/Onboarding';
 import { createAuraApiClient } from '../../lib/api/client';
@@ -67,6 +67,8 @@ export function App() {
   const [pageStatus, setPageStatus] = useState<PageStatus>();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [semanticAnalysis, setSemanticAnalysis] = useState<SemanticPageAnalysis>();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const analysisRunRef = useRef(0);
 
   function adoptState(nextState: ProfileState, message: string) {
     setProfileState(nextState);
@@ -80,7 +82,10 @@ export function App() {
     void store
       .getState()
       .then((state) => {
-        if (active) adoptState(state, 'Profile loaded from this browser.');
+        if (active) {
+          adoptState(state, 'Profile loaded from this browser.');
+          if (state.needsOnboarding) setShowOnboarding(true);
+        }
       })
       .catch(() => {
         if (active) setStatus('AURA could not load profiles. Please try again.');
@@ -130,6 +135,9 @@ export function App() {
   }
 
   async function selectProfile(profileId: string) {
+    analysisRunRef.current += 1;
+    setIsAnalyzing(false);
+    setSemanticAnalysis(undefined);
     setIsBusy(true);
     try {
       const state = await store.setActiveProfile(profileId);
@@ -178,7 +186,10 @@ export function App() {
     adoptState(state, 'Accessible setup completed and saved locally.');
     setShowOnboarding(false);
   }
-  async function sendRawPageMessage(message: ExtensionMessage): Promise<unknown> {
+  async function sendRawPageMessage(
+    message: ExtensionMessage,
+    injectIfMissing = true,
+  ): Promise<unknown> {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (tab?.id === undefined) throw new Error('No active tab is available.');
 
@@ -186,6 +197,7 @@ export function App() {
     try {
       response = await browser.tabs.sendMessage(tab.id, message);
     } catch {
+      if (!injectIfMissing) throw new Error('The analyzed page is no longer available.');
       await browser.scripting.executeScript({
         target: { tabId: tab.id },
         files: ['content-scripts/adaptive.js'],
@@ -195,18 +207,24 @@ export function App() {
     return response;
   }
 
-  async function sendPageMessage(message: ExtensionMessage): Promise<PageStatus> {
-    return pageStatusSchema.parse(await sendRawPageMessage(message));
+  async function sendPageMessage(
+    message: ExtensionMessage,
+    injectIfMissing = true,
+  ): Promise<PageStatus> {
+    return pageStatusSchema.parse(await sendRawPageMessage(message, injectIfMissing));
   }
 
   async function getPageSnapshot(): Promise<PageRepresentation> {
     return pageRepresentationSchema.parse(
-      await sendRawPageMessage({ type: 'PAGE_SNAPSHOT_GET' }),
+      await sendRawPageMessage({ type: 'PAGE_SNAPSHOT_GET' }, false),
     );
   }
 
   async function adaptPage() {
     if (!draft) return;
+    const runId = analysisRunRef.current + 1;
+    analysisRunRef.current = runId;
+    setIsAnalyzing(false);
     setIsBusy(true);
     setStatus('Applying local adaptations…');
     try {
@@ -227,12 +245,14 @@ export function App() {
         return;
       }
       setStatus('Local adaptations applied. Checking optional semantic support…');
+      setIsAnalyzing(true);
+      setIsBusy(false);
       try {
         const page = await getPageSnapshot();
-        const analysis = validateSemanticAnalysisForPage(
-          await apiClient.analyzePage(page),
-          page,
-        );
+        if (analysisRunRef.current !== runId) return;
+        const response = await apiClient.analyzePage(page);
+        if (analysisRunRef.current !== runId) return;
+        const analysis = validateSemanticAnalysisForPage(response, page);
         setSemanticAnalysis(analysis);
         const simplifications: Record<string, SimplifyTextResponse> = {};
         if (draft.preferences.simplifyLanguage) {
@@ -252,11 +272,13 @@ export function App() {
             }),
           );
         }
+        if (analysisRunRef.current !== runId) return;
         const semanticPlan = createSemanticPolicy(draft, analysis, simplifications);
         const semanticStatus = await sendPageMessage({
           type: 'PAGE_SEMANTIC_APPLY',
           plan: semanticPlan,
-        });
+        }, false);
+        if (analysisRunRef.current !== runId) return;
         setPageStatus(semanticStatus);
         setStatus(
           semanticStatus.errors.length > 0
@@ -266,12 +288,15 @@ export function App() {
               : 'Local adaptations are active. No optional semantic changes were needed.',
         );
       } catch {
+        if (analysisRunRef.current !== runId) return;
         setSemanticAnalysis(undefined);
         setStatus(
           next.errors.length > 0
             ? 'The page adapted locally with some non-blocking limitations.'
             : 'Local adaptations are active. Optional semantic analysis was unavailable.',
         );
+      } finally {
+        if (analysisRunRef.current === runId) setIsAnalyzing(false);
       }
     } catch {
       setStatus(
@@ -283,6 +308,9 @@ export function App() {
   }
 
   async function undoPage() {
+    analysisRunRef.current += 1;
+    setIsAnalyzing(false);
+    setSemanticAnalysis(undefined);
     setIsBusy(true);
     try {
       const next = await sendPageMessage({ type: 'PAGE_REVERT' });
@@ -529,7 +557,7 @@ export function App() {
               <button
                 className="primary"
                 type="button"
-                disabled={isBusy}
+                disabled={isBusy || isAnalyzing}
                 onClick={() => void adaptPage()}
               >
                 Adapt this page

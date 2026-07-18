@@ -7,6 +7,7 @@ import {
 
 const STORAGE_KEYS = {
   activeProfileId: 'aura.activeProfileId',
+  hasLaunched: 'aura.hasLaunched',
   profiles: 'aura.profiles',
 } as const;
 
@@ -17,6 +18,7 @@ export interface StorageAreaAdapter {
 
 export interface ProfileState {
   activeProfileId: string;
+  needsOnboarding: boolean;
   profiles: CapabilityProfile[];
 }
 
@@ -42,6 +44,7 @@ async function writeState(
 ): Promise<void> {
   await storageArea.set({
     [STORAGE_KEYS.activeProfileId]: state.activeProfileId,
+    [STORAGE_KEYS.hasLaunched]: true,
     [STORAGE_KEYS.profiles]: state.profiles,
   });
 }
@@ -53,6 +56,7 @@ export function createProfileStore(
     const stored = await storageArea.get([
       STORAGE_KEYS.profiles,
       STORAGE_KEYS.activeProfileId,
+      STORAGE_KEYS.hasLaunched,
     ]);
     const profiles = parseStoredProfiles(stored[STORAGE_KEYS.profiles]);
     const storedActiveId = stored[STORAGE_KEYS.activeProfileId];
@@ -65,15 +69,22 @@ export function createProfileStore(
           : profiles[0]?.id;
 
       if (activeProfileId) {
-        const state = { activeProfileId, profiles };
-        if (activeProfileId !== storedActiveId) {
+        const state = {
+          activeProfileId,
+          needsOnboarding: stored[STORAGE_KEYS.hasLaunched] !== true,
+          profiles,
+        };
+        if (
+          activeProfileId !== storedActiveId ||
+          stored[STORAGE_KEYS.hasLaunched] !== true
+        ) {
           await writeState(storageArea, state);
         }
         return state;
       }
     }
 
-    return resetDemoProfiles();
+    return seedDemoProfiles(true);
   }
 
   async function saveProfile(profile: CapabilityProfile): Promise<ProfileState> {
@@ -90,6 +101,7 @@ export function createProfileStore(
 
     const state = {
       activeProfileId: validated.id,
+      needsOnboarding: false,
       profiles,
     };
     await writeState(storageArea, state);
@@ -102,21 +114,25 @@ export function createProfileStore(
       throw new Error('The selected AURA profile does not exist.');
     }
 
-    const state = { ...current, activeProfileId: profileId };
+    const state = { ...current, activeProfileId: profileId, needsOnboarding: false };
     await writeState(storageArea, state);
     return state;
   }
 
-  async function resetDemoProfiles(): Promise<ProfileState> {
+  async function seedDemoProfiles(needsOnboarding: boolean): Promise<ProfileState> {
     const profiles = freshDemoProfiles();
     const activeProfileId = profiles[0]?.id;
     if (!activeProfileId) {
       throw new Error('AURA demo profiles are unavailable.');
     }
 
-    const state = { activeProfileId, profiles };
+    const state = { activeProfileId, needsOnboarding, profiles };
     await writeState(storageArea, state);
     return state;
+  }
+
+  async function resetDemoProfiles(): Promise<ProfileState> {
+    return seedDemoProfiles(false);
   }
 
   return {

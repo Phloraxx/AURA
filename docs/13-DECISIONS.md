@@ -180,3 +180,21 @@ the profile requests no semantic feature.
 removing offline adaptations. Local target resolution keeps model output away
 from direct DOM authority, while explicit restore affordances make structural
 changes understandable and reversible.
+
+---
+
+## ADR-015 — Bundled-Chromium MV3 smoke test supplements DOM tests
+
+**Status:** Accepted
+
+**Decision:** Keep DOM/unit/API tests as the fast default gate and add one
+Playwright persistent-context smoke using the bundled Chromium channel. The
+smoke loads the built extension, exercises the actual side-panel voice path,
+injects the packaged runtime content script, switches profiles, and undoes.
+An `AURA_E2E=1` build may add the local fixture origin only for this test.
+
+**Reason:** A real extension runtime catches lifecycle and messaging defects
+that happy-dom cannot represent. This test discovered that WXT already calls
+`stopOldScripts()` during context construction; the redundant call in AURA
+was invalidating each newly injected script. Keeping a single focused smoke
+limits brittleness while protecting the vertical slice.

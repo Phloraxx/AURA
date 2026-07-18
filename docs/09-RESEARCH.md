@@ -188,6 +188,10 @@ Implementation consequence:
   `content-scripts/adaptive.js` into the active tab after the user gesture,
 - the generated production manifest must not contain a static
   `content_scripts` entry or broad all-sites host permission.
+- WXT 0.20.10's `ContentScriptContext` constructor already signals older
+  instances to stop. Do not call `context.stopOldScripts()` again inside
+  `main`; the second signal invalidates the newly injected instance. This was
+  verified with the bundled-Chromium extension smoke test on 2026-07-18.
 
 ## 15. OpenAI Responses structured output is suitable for constrained onboarding
 

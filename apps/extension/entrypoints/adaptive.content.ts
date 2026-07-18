@@ -16,9 +16,10 @@ import { extractPageRepresentation } from '../lib/page/semantic-extractor';
 export default defineContentScript({
   registration: 'runtime',
   main(context) {
-    context.stopOldScripts();
     const registry = new ElementRegistry();
     const engine = new TransformEngine(document, registry);
+    const originalRuntimeMarker = document.documentElement.getAttribute('data-aura-runtime');
+    document.documentElement.setAttribute('data-aura-runtime', 'ready');
     let activeProfile: CapabilityProfile | undefined;
     let deterministicPlan: AdaptationPlan | undefined;
 
@@ -26,7 +27,7 @@ export default defineContentScript({
       if (activeProfile) engine.refreshDynamicContent();
     });
 
-    const onMessage = (value: unknown): PageRepresentation | PageStatus | undefined => {
+    const handleMessage = (value: unknown): PageRepresentation | PageStatus | undefined => {
       const parsed = extensionMessageSchema.safeParse(value);
       if (!parsed.success) return undefined;
 
@@ -56,11 +57,27 @@ export default defineContentScript({
       }
     };
 
+    const onMessage: Parameters<typeof browser.runtime.onMessage.addListener>[0] = (
+      value,
+      _sender,
+      sendResponse,
+    ) => {
+      const response = handleMessage(value);
+      if (response === undefined) return false;
+      sendResponse(response);
+      return false;
+    };
+
     browser.runtime.onMessage.addListener(onMessage);
     context.onInvalidated(() => {
       browser.runtime.onMessage.removeListener(onMessage);
       observer.disconnect();
       engine.revertAll();
+      if (originalRuntimeMarker === null) {
+        document.documentElement.removeAttribute('data-aura-runtime');
+      } else {
+        document.documentElement.setAttribute('data-aura-runtime', originalRuntimeMarker);
+      }
     });
   },
 });

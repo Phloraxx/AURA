@@ -67,6 +67,14 @@ corepack pnpm test
 corepack pnpm build
 ```
 
+Install Playwright's bundled Chromium once, then run the real Manifest V3 smoke
+test (side panel, mock voice transcription, two profiles, and Undo):
+
+```bash
+corepack pnpm exec playwright install chromium
+corepack pnpm test:e2e
+```
+
 Start the extension development server and local API together:
 
 ```bash
@@ -102,7 +110,8 @@ is unavailable or returns invalid data.
 
 The generated manifest is Manifest V3 and currently requests `storage`,
 `activeTab`, `scripting`, and `sidePanel`, plus localhost API access for
-development.
+development. The e2e build temporarily adds the fixture-server origin; a normal
+production build does not.
 
 ### Run the repeatable demo
 

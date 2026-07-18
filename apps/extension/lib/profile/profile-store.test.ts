@@ -29,12 +29,14 @@ describe('profile store', () => {
     const initial = await store.getState();
     expect(initial.profiles).toHaveLength(3);
     expect(initial.activeProfileId).toBe('demo-low-vision');
+    expect(initial.needsOnboarding).toBe(true);
 
     const selected = await store.setActiveProfile('demo-attention-language');
     expect(selected.activeProfileId).toBe('demo-attention-language');
 
     const reloaded = await createProfileStore(storage).getState();
     expect(reloaded.activeProfileId).toBe('demo-attention-language');
+    expect(reloaded.needsOnboarding).toBe(false);
   });
 
   it('validates and saves a profile as active', async () => {
