@@ -19,11 +19,14 @@ Read, in order:
 7. `docs/06-AI-CONTRACTS.md`
 8. `docs/07-API-CONTRACTS.md`
 9. `docs/08-SECURITY-PRIVACY.md`
-10. `docs/10-IMPLEMENTATION-PLAN.md`
-11. `docs/11-TESTING.md`
-12. `docs/DEFINITION-OF-DONE.md`
+10. `docs/15-PREFLIGHT-REVIEW.md`
+11. `docs/10-IMPLEMENTATION-PLAN.md`
+12. `docs/11-TESTING.md`
+13. `docs/DEFINITION-OF-DONE.md`
 
 Then inspect `docs/09-RESEARCH.md` for verified platform constraints and `docs/13-DECISIONS.md` for architectural decisions that must not be silently reversed.
+
+`docs/15-PREFLIGHT-REVIEW.md` contains corrections and implementation guardrails from the final architecture review. Where it is more specific than an earlier document, follow the preflight review.
 
 ## Execution rules
 
@@ -38,7 +41,11 @@ Then inspect `docs/09-RESEARCH.md` for verified platform constraints and `docs/1
 - Never put LLM or STT secrets in the extension bundle.
 - Never infer or present a medical diagnosis.
 - Capability scores are product signals, not clinical measurements.
+- Explicit user preferences must override inferred or capability-derived recommendations.
 - Deterministic adaptations must continue to work when the backend is unavailable.
+- Semantic AI page analysis must be user-triggered in the MVP and use a minimized network payload.
+- Never pass raw audio `Blob` objects through Chrome runtime messaging; upload voice recordings directly from the side-panel extension page to the fixed AURA API endpoint.
+- Content scripts must not perform arbitrary cross-origin fetches. Route semantic page-analysis requests through a fixed/configured background API client.
 - Every DOM adaptation must be reversible.
 - Avoid permanent deletion of host-page elements.
 - Avoid replacing the entire `document.body` or regenerating arbitrary pages.
