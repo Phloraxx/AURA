@@ -4,11 +4,15 @@ import {
   onboardingResponseSchema,
   pageAnalysisRequestSchema,
   semanticPageAnalysisSchema,
+  simplifyTextRequestSchema,
+  simplifyTextResponseSchema,
   transcriptionResponseSchema,
   type OnboardingRequest,
   type OnboardingResponse,
   type PageRepresentation,
   type SemanticPageAnalysis,
+  type SimplifyTextRequest,
+  type SimplifyTextResponse,
   type TranscriptionResponse,
 } from '@aura/shared';
 
@@ -147,6 +151,12 @@ export function createAuraApiClient({
       const request = pageAnalysisRequestSchema.parse({ page });
       return semanticPageAnalysisSchema.parse(
         await postJson('/v1/page/analyze', request),
+      );
+    },
+    async simplifyText(input: SimplifyTextRequest): Promise<SimplifyTextResponse> {
+      const request = simplifyTextRequestSchema.parse(input);
+      return simplifyTextResponseSchema.parse(
+        await postJson('/v1/text/simplify', request),
       );
     },
   };

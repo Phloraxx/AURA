@@ -9,11 +9,13 @@ import {
   type PageRepresentation,
   type PageStatus,
   type SemanticPageAnalysis,
+  type SimplifyTextResponse,
 } from '@aura/shared';
 import { useEffect, useState } from 'react';
 
 import { Onboarding } from '../../components/onboarding/Onboarding';
 import { createAuraApiClient } from '../../lib/api/client';
+import { createSemanticPolicy } from '../../lib/adaptation/policy-engine';
 import { validateSemanticAnalysisForPage } from '../../lib/page/semantic-validation';
 import {
   createProfileStore,
@@ -199,6 +201,20 @@ export function App() {
     try {
       const next = await sendPageMessage({ type: 'PAGE_ADAPT', profile: draft });
       setPageStatus(next);
+      const wantsSemanticSupport =
+        draft.preferences.focusMode ||
+        draft.preferences.simplifyLanguage ||
+        draft.preferences.hideDistractions ||
+        draft.preferences.clarifyControls;
+      if (!wantsSemanticSupport) {
+        setSemanticAnalysis(undefined);
+        setStatus(
+          next.errors.length > 0
+            ? 'The page adapted locally with some non-blocking limitations.'
+            : 'Local adaptations applied. No backend was required.',
+        );
+        return;
+      }
       setStatus('Local adaptations applied. Checking optional semantic support…');
       try {
         const page = await getPageSnapshot();
@@ -207,10 +223,36 @@ export function App() {
           page,
         );
         setSemanticAnalysis(analysis);
+        const simplifications: Record<string, SimplifyTextResponse> = {};
+        if (draft.preferences.simplifyLanguage) {
+          await Promise.all(
+            analysis.complexTextBlocks.slice(0, 3).map(async ({ id }) => {
+              const element = page.elements.find((candidate) => candidate.id === id);
+              if (!element?.text || element.critical) return;
+              try {
+                simplifications[id] = await apiClient.simplifyText({
+                  text: element.text,
+                  ...(page.language ? { language: page.language } : {}),
+                  desiredLevel: 'simple',
+                });
+              } catch {
+                // The original text remains untouched when optional simplification fails.
+              }
+            }),
+          );
+        }
+        const semanticPlan = createSemanticPolicy(draft, analysis, simplifications);
+        const semanticStatus = await sendPageMessage({
+          type: 'PAGE_SEMANTIC_APPLY',
+          plan: semanticPlan,
+        });
+        setPageStatus(semanticStatus);
         setStatus(
-          next.errors.length > 0
+          semanticStatus.errors.length > 0
             ? 'The page adapted with some non-blocking limitations.'
-            : 'Local adaptations are active and semantic page analysis is ready.',
+            : semanticPlan.instructions.length > 0
+              ? 'Local and semantic adaptations are active. Every change can be undone.'
+              : 'Local adaptations are active. No optional semantic changes were needed.',
         );
       } catch {
         setSemanticAnalysis(undefined);

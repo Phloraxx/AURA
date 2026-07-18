@@ -1,5 +1,6 @@
 import {
   extensionMessageSchema,
+  type AdaptationPlan,
   type CapabilityProfile,
   type PageRepresentation,
   type PageStatus,
@@ -19,6 +20,7 @@ export default defineContentScript({
     const registry = new ElementRegistry();
     const engine = new TransformEngine(document, registry);
     let activeProfile: CapabilityProfile | undefined;
+    let deterministicPlan: AdaptationPlan | undefined;
 
     const observer = observeDynamicPage(document, () => {
       if (activeProfile) engine.refreshDynamicContent();
@@ -32,17 +34,25 @@ export default defineContentScript({
         case 'PAGE_ADAPT': {
           activeProfile = parsed.data.profile;
           const signals = extractLocalPageSignals(document, registry);
-          return engine.applyPlan(
-            createDeterministicPolicy(parsed.data.profile, signals),
-          );
+          deterministicPlan = createDeterministicPolicy(parsed.data.profile, signals);
+          return engine.applyPlan(deterministicPlan);
         }
         case 'PAGE_REVERT':
           activeProfile = undefined;
+          deterministicPlan = undefined;
           return engine.revertAll();
         case 'PAGE_STATUS_GET':
           return engine.getStatus();
         case 'PAGE_SNAPSHOT_GET':
           return extractPageRepresentation(document, registry);
+        case 'PAGE_SEMANTIC_APPLY':
+          return engine.reconcilePlan({
+            version: 1,
+            instructions: [
+              ...(deterministicPlan?.instructions ?? []),
+              ...parsed.data.plan.instructions,
+            ],
+          });
       }
     };
 

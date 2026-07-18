@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { adaptationPlanSchema } from './adaptation.js';
+import { semanticAdaptationPlanSchema } from './adaptation.js';
 import { capabilityProfileSchema } from './profile.js';
 
 export const extensionMessageSchema = z.discriminatedUnion('type', [
@@ -8,6 +9,10 @@ export const extensionMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('PAGE_REVERT') }),
   z.object({ type: z.literal('PAGE_STATUS_GET') }),
   z.object({ type: z.literal('PAGE_SNAPSHOT_GET') }),
+  z.object({
+    type: z.literal('PAGE_SEMANTIC_APPLY'),
+    plan: semanticAdaptationPlanSchema,
+  }),
 ]);
 
 export const pageStatusSchema = z.object({

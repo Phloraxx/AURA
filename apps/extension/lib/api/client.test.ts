@@ -108,4 +108,26 @@ describe('AURA API client', () => {
       'http://localhost:8787/v1/page/analyze',
     );
   });
+
+  it('validates simplified text responses', async () => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          simplifiedText: 'Use the main button.',
+          requiresOriginal: false,
+          warnings: [],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const client = createAuraApiClient({ fetchImplementation });
+
+    await expect(client.simplifyText({ text: 'Utilize the primary control.' })).resolves.toEqual(
+      {
+        simplifiedText: 'Use the main button.',
+        requiresOriginal: false,
+        warnings: [],
+      },
+    );
+  });
 });

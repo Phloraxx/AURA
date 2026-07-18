@@ -235,6 +235,209 @@ export function focusMainContent(context: PrimitiveContext): AdaptationPrimitive
   };
 }
 
+function registeredTargets({ instruction, registry }: PrimitiveContext): Element[] {
+  return (instruction.targetIds ?? [])
+    .map((id) => registry.getElement(id))
+    .filter((element): element is Element => element !== undefined);
+}
+
+const CRITICAL_CONTENT_PATTERN =
+  /\b(pay|payment|purchase|checkout|sign[ -]?in|log[ -]?in|password|security|warning|error|required|consent|agree|legal|terms|privacy|medical|financial)\b/iu;
+
+function isSafetyCritical(element: Element): boolean {
+  if (
+    element.matches(
+      '[required], [aria-invalid="true"], [role="alert"], input[type="password"]',
+    ) ||
+    element.querySelector(
+      '[required], [aria-invalid="true"], [role="alert"], input[type="password"]',
+    )
+  ) {
+    return true;
+  }
+  return CRITICAL_CONTENT_PATTERN.test(
+    (element.textContent ?? '').replace(/\s+/gu, ' ').trim().slice(0, 600),
+  );
+}
+
+export function collapseDistractions(context: PrimitiveContext): AdaptationPrimitive {
+  const { document, instruction } = context;
+  const originals = new Map<Element, string | null>();
+  const controls = new Map<Element, HTMLButtonElement>();
+  const style = stylePrimitive(
+    document,
+    instruction.id,
+    'html[data-aura-active] [data-aura-distraction="collapsed"] { display: none !important; } html[data-aura-active] [data-aura-distraction-control] { display: block !important; min-height: 44px !important; margin: 0.5rem 0 !important; padding: 0.55rem 0.8rem !important; border: 2px solid #315a3e !important; border-radius: 0.45rem !important; color: #173622 !important; background: #fff !important; font: 700 1rem/1.3 system-ui, sans-serif !important; }',
+  );
+
+  return {
+    apply() {
+      style.apply();
+      for (const target of registeredTargets(context)) {
+        if (originals.has(target) || isSafetyCritical(target)) continue;
+        originals.set(target, target.getAttribute('data-aura-distraction'));
+        target.setAttribute('data-aura-distraction', 'collapsed');
+        const control = document.createElement('button');
+        control.type = 'button';
+        control.dataset.auraOwned = 'true';
+        control.dataset.auraDistractionControl = 'true';
+        control.setAttribute('aria-expanded', 'false');
+        control.textContent = 'Show secondary content';
+        control.addEventListener('click', () => {
+          const collapsed = target.getAttribute('data-aura-distraction') === 'collapsed';
+          target.setAttribute('data-aura-distraction', collapsed ? 'shown' : 'collapsed');
+          control.setAttribute('aria-expanded', String(collapsed));
+          control.textContent = collapsed ? 'Hide secondary content' : 'Show secondary content';
+        });
+        target.before(control);
+        controls.set(target, control);
+      }
+    },
+    revert() {
+      controls.forEach((control) => control.remove());
+      controls.clear();
+      for (const [target, original] of originals) {
+        restoreAttribute(target, 'data-aura-distraction', original);
+      }
+      originals.clear();
+      style.revert();
+    },
+  };
+}
+
+export function highlightPrimaryAction(context: PrimitiveContext): AdaptationPrimitive {
+  const { document, instruction } = context;
+  const originals = new Map<Element, string | null>();
+  const style = stylePrimitive(
+    document,
+    instruction.id,
+    'html[data-aura-active] [data-aura-primary-action] { position: relative !important; outline: 4px solid #9b4d00 !important; outline-offset: 4px !important; box-shadow: 0 0 0 2px #fff, 0 0 0 6px #9b4d00 !important; }',
+  );
+  return {
+    apply() {
+      style.apply();
+      for (const target of registeredTargets(context)) {
+        if (!originals.has(target)) {
+          originals.set(target, target.getAttribute('data-aura-primary-action'));
+        }
+        target.setAttribute('data-aura-primary-action', 'true');
+      }
+    },
+    revert() {
+      for (const [target, original] of originals) {
+        restoreAttribute(target, 'data-aura-primary-action', original);
+      }
+      originals.clear();
+      style.revert();
+    },
+  };
+}
+
+function hasAccessibleName(element: Element): boolean {
+  if (
+    element.getAttribute('aria-label')?.trim() ||
+    element.getAttribute('title')?.trim() ||
+    element.getAttribute('alt')?.trim() ||
+    (element.textContent ?? '').trim()
+  ) {
+    return true;
+  }
+  return element instanceof HTMLInputElement && (element.labels?.length ?? 0) > 0;
+}
+
+export function clarifyAmbiguousControls(context: PrimitiveContext): AdaptationPrimitive {
+  const label = context.instruction.params?.suggestedLabel;
+  const originals = new Map<Element, string | null>();
+  return {
+    apply() {
+      if (typeof label !== 'string' || !label.trim() || label.length > 120) return;
+      for (const target of registeredTargets(context)) {
+        if (originals.has(target) || hasAccessibleName(target) || isSafetyCritical(target)) {
+          continue;
+        }
+        originals.set(target, target.getAttribute('aria-label'));
+        target.setAttribute('aria-label', label.trim());
+      }
+    },
+    revert() {
+      for (const [target, original] of originals) {
+        restoreAttribute(target, 'aria-label', original);
+      }
+      originals.clear();
+    },
+  };
+}
+
+interface SimplifiedRecord {
+  originalNodes: Node[];
+  control: HTMLButtonElement;
+  originalMarker: string | null;
+  showingOriginal: boolean;
+}
+
+export function simplifyText(context: PrimitiveContext): AdaptationPrimitive {
+  const { document, instruction } = context;
+  const value = instruction.params?.simplifiedText;
+  const records = new Map<Element, SimplifiedRecord>();
+  const style = stylePrimitive(
+    document,
+    `${instruction.id}:control`,
+    'html[data-aura-active] [data-aura-simplify-control] { display: inline-block !important; min-height: 44px !important; margin: 0.5rem 0 !important; padding: 0.55rem 0.8rem !important; border: 2px solid #315a3e !important; border-radius: 0.45rem !important; color: #173622 !important; background: #fff !important; font: 700 1rem/1.3 system-ui, sans-serif !important; }',
+  );
+  return {
+    apply() {
+      if (typeof value !== 'string' || !value.trim() || value.length > 4_000) return;
+      style.apply();
+      for (const target of registeredTargets(context)) {
+        if (
+          records.has(target) ||
+          target.children.length > 0 ||
+          isSafetyCritical(target) ||
+          (target.textContent ?? '').trim() === value.trim()
+        ) {
+          continue;
+        }
+        const originalNodes = Array.from(target.childNodes);
+        const control = document.createElement('button');
+        const record: SimplifiedRecord = {
+          originalNodes,
+          control,
+          originalMarker: target.getAttribute('data-aura-simplified'),
+          showingOriginal: false,
+        };
+        control.type = 'button';
+        control.dataset.auraOwned = 'true';
+        control.dataset.auraSimplifyControl = 'true';
+        control.textContent = 'Show original wording';
+        control.addEventListener('click', () => {
+          record.showingOriginal = !record.showingOriginal;
+          target.replaceChildren(
+            ...(record.showingOriginal ? record.originalNodes : [document.createTextNode(value)]),
+          );
+          control.textContent = record.showingOriginal
+            ? 'Show simpler wording'
+            : 'Show original wording';
+          control.setAttribute('aria-pressed', String(record.showingOriginal));
+        });
+        control.setAttribute('aria-pressed', 'false');
+        target.replaceChildren(document.createTextNode(value.trim()));
+        target.setAttribute('data-aura-simplified', 'true');
+        target.after(control);
+        records.set(target, record);
+      }
+    },
+    revert() {
+      for (const [target, record] of records) {
+        target.replaceChildren(...record.originalNodes);
+        restoreAttribute(target, 'data-aura-simplified', record.originalMarker);
+        record.control.remove();
+      }
+      records.clear();
+      style.revert();
+    },
+  };
+}
+
 export const deterministicPrimitiveFactories = {
   increaseTextScale,
   increaseLineSpacing,
@@ -244,4 +447,11 @@ export const deterministicPrimitiveFactories = {
   enlargeTargets,
   enhanceFocusIndicators,
   focusMainContent,
+} as const;
+
+export const semanticPrimitiveFactories = {
+  collapseDistractions,
+  highlightPrimaryAction,
+  clarifyAmbiguousControls,
+  simplifyText,
 } as const;

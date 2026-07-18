@@ -161,3 +161,22 @@ substantially reducing privacy exposure and payload size. Server-side schema
 validation plus independent page-local business validation prevents model
 output from becoming executable authority. Failure leaves deterministic
 adaptations intact.
+
+---
+
+## ADR-014 — Semantic plans compose locally with the deterministic plan
+
+**Status:** Accepted
+
+**Decision:** Convert validated semantic analysis into a constrained semantic
+adaptation plan in the extension. Compose that plan with the already-active
+deterministic plan before reconciliation. Each of the four semantic primitives
+uses only registered IDs, performs a final local safety check, preserves host
+nodes, and implements revert. Text simplification accepts plain text only and
+always includes an original/simplified toggle. Skip page analysis entirely when
+the profile requests no semantic feature.
+
+**Reason:** Composition prevents optional network or model failures from
+removing offline adaptations. Local target resolution keeps model output away
+from direct DOM authority, while explicit restore affordances make structural
+changes understandable and reversible.

@@ -49,7 +49,8 @@ describe('POST /v1/page/analyze', () => {
   it('rejects malformed snapshots before calling the provider', async () => {
     const analyzePage = vi.fn<LLMProvider['analyzePage']>();
     const onboarding = vi.fn<LLMProvider['onboarding']>();
-    const app = createApp({ llmProvider: { onboarding, analyzePage } });
+    const simplifyText = vi.fn<LLMProvider['simplifyText']>();
+    const app = createApp({ llmProvider: { onboarding, analyzePage, simplifyText } });
 
     const response = await app.request('/v1/page/analyze', {
       method: 'POST',

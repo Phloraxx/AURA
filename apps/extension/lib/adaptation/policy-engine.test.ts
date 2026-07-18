@@ -5,7 +5,7 @@ import {
 } from '@aura/shared';
 import { describe, expect, it } from 'vitest';
 
-import { createDeterministicPolicy } from './policy-engine';
+import { createDeterministicPolicy, createSemanticPolicy } from './policy-engine';
 
 function kindsFor(profileIndex: number) {
   const profile = DEMO_PROFILES[profileIndex];
@@ -70,5 +70,46 @@ describe('createDeterministicPolicy', () => {
     expect(
       plan.instructions.find(({ kind }) => kind === 'focusMainContent')?.targetIds,
     ).toEqual(['aura:n4']);
+  });
+});
+
+describe('createSemanticPolicy', () => {
+  it('composes four constrained semantic primitives from explicit preferences', () => {
+    const profile = DEMO_PROFILES[2];
+    if (!profile) throw new Error('Demo profile is missing.');
+    const plan = createSemanticPolicy(
+      profile,
+      {
+        mainContent: [],
+        primaryActions: [{ id: 'aura:n1', confidence: 0.9, reason: 'Primary' }],
+        navigation: [],
+        distractions: [{ id: 'aura:n2', confidence: 0.9, reason: 'Secondary' }],
+        ambiguousControls: [
+          {
+            id: 'aura:n3',
+            confidence: 0.9,
+            reason: 'Missing name',
+            suggestedLabel: 'Open options',
+          },
+        ],
+        complexTextBlocks: [{ id: 'aura:n4', confidence: 0.9, reason: 'Complex' }],
+        formGroups: [],
+        warnings: [],
+      },
+      {
+        'aura:n4': {
+          simplifiedText: 'Shorter instructions.',
+          requiresOriginal: false,
+          warnings: [],
+        },
+      },
+    );
+
+    expect(plan.instructions.map(({ kind }) => kind)).toEqual([
+      'collapseDistractions',
+      'highlightPrimaryAction',
+      'clarifyAmbiguousControls',
+      'simplifyText',
+    ]);
   });
 });

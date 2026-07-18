@@ -158,23 +158,99 @@ describe('TransformEngine deterministic primitives', () => {
     expect(document.querySelectorAll('[data-aura-focus-control]')).toHaveLength(2);
   });
 
-  it('ignores later semantic instructions in the deterministic engine', () => {
-    const { engine, plan } = createEngine();
-    const invalidPlan: AdaptationPlan = {
-      ...plan,
+  it('applies and fully reverts all four semantic primitives without replacing controls', () => {
+    document.body.innerHTML = `
+      <main>
+        <p id="complex">Utilize the primary control subsequent to setup.</p>
+        <button id="primary">Continue</button>
+        <button id="ambiguous"></button>
+      </main>
+      <aside id="secondary">Related recommendations</aside>
+      <section id="critical"><label>Payment <input required></label></section>`;
+    const registry = new ElementRegistry();
+    registry.registerSubtree(document);
+    const targetId = (selector: string) => {
+      const element = document.querySelector(selector);
+      if (!element) throw new Error(`Missing fixture target: ${selector}`);
+      return registry.getId(element) ?? registry.register(element);
+    };
+    const primary = document.querySelector<HTMLButtonElement>('#primary');
+    const clicked = vi.fn();
+    primary?.addEventListener('click', clicked);
+    const plan: AdaptationPlan = {
+      version: 1,
       instructions: [
-        ...plan.instructions,
         {
-          id: 'semantic:later',
+          id: 'semantic:collapse',
           kind: 'collapseDistractions',
           source: 'semantic_ai',
-          reason: 'A later-phase instruction is ignored by the deterministic engine.',
+          targetIds: [targetId('#secondary'), targetId('#critical')],
+          reason: 'Fixture distraction',
+        },
+        {
+          id: 'semantic:highlight',
+          kind: 'highlightPrimaryAction',
+          source: 'semantic_ai',
+          targetIds: [targetId('#primary')],
+          reason: 'Fixture action',
+        },
+        {
+          id: 'semantic:clarify',
+          kind: 'clarifyAmbiguousControls',
+          source: 'semantic_ai',
+          targetIds: [targetId('#ambiguous')],
+          params: { suggestedLabel: 'Open options' },
+          reason: 'Fixture label',
+        },
+        {
+          id: 'semantic:simplify',
+          kind: 'simplifyText',
+          source: 'semantic_ai',
+          targetIds: [targetId('#complex')],
+          params: { simplifiedText: 'Use the main button after setup.' },
+          reason: 'Fixture simplification',
         },
       ],
     };
 
-    const status = engine.applyPlan(invalidPlan);
-    expect(status.appliedKinds).toHaveLength(8);
-    expect(status.errors).toEqual([]);
+    const engine = new TransformEngine(document, registry);
+    expect(engine.applyPlan(plan).appliedKinds).toHaveLength(4);
+    expect(engine.applyPlan(plan).appliedKinds).toHaveLength(4);
+    expect(document.querySelector('#secondary')?.getAttribute('data-aura-distraction')).toBe(
+      'collapsed',
+    );
+    expect(document.querySelector('#critical')?.hasAttribute('data-aura-distraction')).toBe(
+      false,
+    );
+    expect(document.querySelector('#primary')?.getAttribute('data-aura-primary-action')).toBe(
+      'true',
+    );
+    expect(document.querySelector('#ambiguous')?.getAttribute('aria-label')).toBe(
+      'Open options',
+    );
+    expect(document.querySelector('#complex')?.textContent).toBe(
+      'Use the main button after setup.',
+    );
+    const wordingToggle = document.querySelector<HTMLButtonElement>(
+      '[data-aura-simplify-control]',
+    );
+    wordingToggle?.click();
+    expect(document.querySelector('#complex')?.textContent).toBe(
+      'Utilize the primary control subsequent to setup.',
+    );
+    wordingToggle?.click();
+    expect(document.querySelectorAll('[data-aura-distraction-control]')).toHaveLength(1);
+    primary?.click();
+    expect(clicked).toHaveBeenCalledOnce();
+
+    engine.revertAll();
+    expect(document.querySelector('#secondary')?.hasAttribute('data-aura-distraction')).toBe(
+      false,
+    );
+    expect(document.querySelector('#ambiguous')?.hasAttribute('aria-label')).toBe(false);
+    expect(document.querySelector('#complex')?.textContent).toBe(
+      'Utilize the primary control subsequent to setup.',
+    );
+    expect(document.querySelectorAll('[data-aura-owned]')).toHaveLength(0);
   });
 });

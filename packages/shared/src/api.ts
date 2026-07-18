@@ -49,6 +49,22 @@ export const transcriptionResponseSchema = z.object({
   confidence: z.number().min(0).max(1).optional(),
 });
 
+export const simplifyTextRequestSchema = z
+  .object({
+    text: z.string().trim().min(1).max(4_000),
+    language: z.string().trim().min(2).max(35).optional(),
+    desiredLevel: z.enum(['simple', 'very_simple']).optional(),
+  })
+  .strict();
+
+export const simplifyTextResponseSchema = z
+  .object({
+    simplifiedText: z.string().trim().min(1).max(4_000),
+    requiresOriginal: z.boolean(),
+    warnings: z.array(z.string().trim().min(1).max(240)).max(10),
+  })
+  .strict();
+
 export type CapabilityProfilePatch = z.infer<
   typeof capabilityProfilePatchSchema
 >;
@@ -56,3 +72,5 @@ export type OnboardingRequest = z.infer<typeof onboardingRequestSchema>;
 export type OnboardingResponse = z.infer<typeof onboardingResponseSchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;
 export type TranscriptionResponse = z.infer<typeof transcriptionResponseSchema>;
+export type SimplifyTextRequest = z.infer<typeof simplifyTextRequestSchema>;
+export type SimplifyTextResponse = z.infer<typeof simplifyTextResponseSchema>;

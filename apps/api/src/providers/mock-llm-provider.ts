@@ -2,6 +2,7 @@ import type {
   OnboardingResponse,
   PageElementRepresentation,
   SemanticPageAnalysis,
+  SimplifyTextResponse,
 } from '@aura/shared';
 
 import type { LLMProvider } from './llm-provider.js';
@@ -89,6 +90,33 @@ export class MockLLMProvider implements LLMProvider {
         .slice(0, 10)
         .map((element) => scored(element, 'Form grouping', 0.9)),
       warnings: truncated ? ['The compact page representation was truncated.'] : [],
+    });
+  }
+
+  simplifyText(
+    input: Parameters<LLMProvider['simplifyText']>[0],
+  ): Promise<SimplifyTextResponse> {
+    const highStakes =
+      /\b(legal|medical|financial|payment|security|consent|warning|terms|obligation)\b/iu.test(
+        input.text,
+      );
+    const sentences = input.text.match(/[^.!?]+[.!?]?/gu) ?? [input.text];
+    const simplifiedText = sentences
+      .map((sentence) => sentence.trim().replace(/\b(utilize|commence|subsequent to)\b/giu, (word) => {
+        const replacements: Record<string, string> = {
+          utilize: 'use',
+          commence: 'start',
+          'subsequent to': 'after',
+        };
+        return replacements[word.toLowerCase()] ?? word;
+      }))
+      .filter(Boolean)
+      .join(' ')
+      .slice(0, 4_000);
+    return Promise.resolve({
+      simplifiedText,
+      requiresOriginal: highStakes,
+      warnings: highStakes ? ['Keep the original available because this text may be high stakes.'] : [],
     });
   }
 }

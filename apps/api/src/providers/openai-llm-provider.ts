@@ -4,8 +4,10 @@ import {
   capabilityProfilePatchSchema,
   onboardingResponseSchema,
   semanticPageAnalysisSchema,
+  simplifyTextResponseSchema,
   type OnboardingRequest,
   type PageAnalysisRequest,
+  type SimplifyTextRequest,
 } from '@aura/shared';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
@@ -13,6 +15,7 @@ import { z } from 'zod';
 
 import { ONBOARDING_SYSTEM_PROMPT } from '../prompts/onboarding.js';
 import { PAGE_ANALYZER_SYSTEM_PROMPT } from '../prompts/page-analyzer.js';
+import { TEXT_SIMPLIFIER_SYSTEM_PROMPT } from '../prompts/text-simplifier.js';
 import type { LLMProvider } from './llm-provider.js';
 import { ProviderError } from './llm-provider.js';
 
@@ -156,6 +159,33 @@ export class OpenAILLMProvider implements LLMProvider {
         throw new ProviderError('The page analyzer is temporarily unavailable.', true);
       }
       throw new ProviderError('The page analyzer returned an invalid response.', false);
+    }
+  }
+
+  async simplifyText(input: SimplifyTextRequest) {
+    try {
+      const response = await this.#client.responses.parse({
+        model: this.#model,
+        instructions: TEXT_SIMPLIFIER_SYSTEM_PROMPT,
+        input: JSON.stringify(input),
+        max_output_tokens: 1_200,
+        text: {
+          format: zodTextFormat(simplifyTextResponseSchema, 'aura_text_simplification'),
+        },
+      });
+      if (!response.output_parsed) {
+        throw new ProviderError('The text simplifier returned no structured output.', false);
+      }
+      return simplifyTextResponseSchema.parse(response.output_parsed);
+    } catch (error) {
+      if (error instanceof ProviderError) throw error;
+      if (error instanceof OpenAI.APIConnectionTimeoutError) {
+        throw new ProviderError('The text simplifier timed out.', true);
+      }
+      if (error instanceof OpenAI.RateLimitError || error instanceof OpenAI.APIConnectionError) {
+        throw new ProviderError('The text simplifier is temporarily unavailable.', true);
+      }
+      throw new ProviderError('The text simplifier returned an invalid response.', false);
     }
   }
 }

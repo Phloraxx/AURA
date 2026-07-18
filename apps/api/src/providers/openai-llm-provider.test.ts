@@ -1,4 +1,7 @@
-import { semanticPageAnalysisSchema } from '@aura/shared';
+import {
+  semanticPageAnalysisSchema,
+  simplifyTextResponseSchema,
+} from '@aura/shared';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { describe, expect, it } from 'vitest';
 
@@ -22,6 +25,9 @@ describe('OpenAI onboarding structured output', () => {
     ).not.toThrow();
     expect(() =>
       zodTextFormat(semanticPageAnalysisSchema, 'aura_page_analysis'),
+    ).not.toThrow();
+    expect(() =>
+      zodTextFormat(simplifyTextResponseSchema, 'aura_text_simplification'),
     ).not.toThrow();
   });
 

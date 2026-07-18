@@ -1,28 +1,28 @@
 import {
   adaptationPlanSchema,
-  type AdaptationInstruction,
+  type AdaptationKind,
   type AdaptationPlan,
-  type DeterministicAdaptationKind,
   type PageStatus,
 } from '@aura/shared';
 
 import type { ElementRegistry } from '../page/element-registry';
 import {
   deterministicPrimitiveFactories,
+  semanticPrimitiveFactories,
   type AdaptationPrimitive,
+  type PrimitiveContext,
 } from './primitives/primitives';
 
 interface AppliedRecord {
-  kind: DeterministicAdaptationKind;
+  kind: AdaptationKind;
   primitive: AdaptationPrimitive;
   signature: string;
 }
 
-function isDeterministicKind(
-  kind: AdaptationInstruction['kind'],
-): kind is DeterministicAdaptationKind {
-  return kind in deterministicPrimitiveFactories;
-}
+const primitiveFactories: Record<
+  AdaptationKind,
+  (context: PrimitiveContext) => AdaptationPrimitive
+> = { ...deterministicPrimitiveFactories, ...semanticPrimitiveFactories };
 
 export class TransformEngine {
   readonly #applied = new Map<string, AppliedRecord>();
@@ -56,9 +56,7 @@ export class TransformEngine {
 
     for (const instruction of plan.instructions) {
       if (this.#applied.has(instruction.id)) continue;
-      if (!isDeterministicKind(instruction.kind)) continue;
-
-      const factory = deterministicPrimitiveFactories[instruction.kind];
+      const factory = primitiveFactories[instruction.kind];
       const primitive = factory({
         document: this.document,
         instruction,

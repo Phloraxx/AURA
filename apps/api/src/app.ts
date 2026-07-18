@@ -3,6 +3,8 @@ import {
   onboardingResponseSchema,
   pageAnalysisRequestSchema,
   semanticPageAnalysisSchema,
+  simplifyTextRequestSchema,
+  simplifyTextResponseSchema,
   transcriptionResponseSchema,
   type ApiError,
 } from '@aura/shared';
@@ -111,6 +113,22 @@ export function createApp({
         ),
     }),
   );
+  app.use(
+    '/v1/text/*',
+    bodyLimit({
+      maxSize: 16 * 1024,
+      onError: (context) =>
+        context.json(
+          errorEnvelope(
+            'payload_too_large',
+            'This request is too large for AURA to process.',
+            false,
+            safeRequestId(context.get('requestId')),
+          ),
+          413,
+        ),
+    }),
+  );
 
   app.get('/health', (context) =>
     context.json({
@@ -198,6 +216,49 @@ export function createApp({
         errorEnvelope(
           'page_analysis_failed',
           'Semantic page analysis is unavailable. Local adaptations remain active.',
+          retryable,
+          requestId,
+        ),
+        502,
+      );
+    }
+  });
+
+  app.post('/v1/text/simplify', async (context) => {
+    const requestId = context.get('requestId');
+    let body: unknown;
+    try {
+      body = await context.req.json();
+    } catch {
+      return context.json(
+        errorEnvelope('invalid_json', 'Send a valid JSON request.', false, requestId),
+        400,
+      );
+    }
+    const parsed = simplifyTextRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return context.json(
+        errorEnvelope(
+          'invalid_text',
+          'Choose a shorter text passage and try again.',
+          false,
+          requestId,
+        ),
+        400,
+      );
+    }
+    try {
+      return context.json(
+        simplifyTextResponseSchema.parse(
+          await llmProvider.simplifyText(parsed.data),
+        ),
+      );
+    } catch (error) {
+      const retryable = error instanceof ProviderError ? error.retryable : false;
+      return context.json(
+        errorEnvelope(
+          'text_simplification_failed',
+          'Simpler wording is unavailable. The original text remains unchanged.',
           retryable,
           requestId,
         ),

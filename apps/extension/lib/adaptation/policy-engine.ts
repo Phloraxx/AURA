@@ -3,6 +3,9 @@ import type {
   AdaptationPlan,
   CapabilityProfile,
   LocalPageSignals,
+  SemanticAdaptationPlan,
+  SemanticPageAnalysis,
+  SimplifyTextResponse,
 } from '@aura/shared';
 
 function instruction(
@@ -79,6 +82,64 @@ export function createDeterministicPolicy(
         targetIds: page.mainContentIds,
       }),
     );
+  }
+
+  return { version: 1, instructions };
+}
+
+export function createSemanticPolicy(
+  profile: CapabilityProfile,
+  analysis: SemanticPageAnalysis,
+  simplifications: Readonly<Record<string, SimplifyTextResponse>> = {},
+): SemanticAdaptationPlan {
+  const instructions: SemanticAdaptationPlan['instructions'] = [];
+
+  if (profile.preferences.hideDistractions && analysis.distractions.length > 0) {
+    instructions.push({
+      id: 'semantic:collapse-distractions',
+      kind: 'collapseDistractions',
+      source: 'semantic_ai',
+      targetIds: analysis.distractions.map(({ id }) => id),
+      reason: 'Collapse high-confidence secondary content with a visible restore control.',
+    });
+  }
+  if (profile.preferences.focusMode && analysis.primaryActions.length > 0) {
+    instructions.push({
+      id: 'semantic:highlight-primary-actions',
+      kind: 'highlightPrimaryAction',
+      source: 'semantic_ai',
+      targetIds: analysis.primaryActions.map(({ id }) => id),
+      reason: 'Emphasize high-confidence primary actions without replacing controls.',
+    });
+  }
+  if (profile.preferences.clarifyControls) {
+    for (const target of analysis.ambiguousControls) {
+      instructions.push({
+        id: `semantic:clarify:${target.id}`,
+        kind: 'clarifyAmbiguousControls',
+        source: 'semantic_ai',
+        targetIds: [target.id],
+        params: { suggestedLabel: target.suggestedLabel },
+        reason: 'Add a conservative accessible name to an unlabeled control.',
+      });
+    }
+  }
+  if (profile.preferences.simplifyLanguage) {
+    for (const target of analysis.complexTextBlocks) {
+      const result = simplifications[target.id];
+      if (!result) continue;
+      instructions.push({
+        id: `semantic:simplify:${target.id}`,
+        kind: 'simplifyText',
+        source: 'semantic_ai',
+        targetIds: [target.id],
+        params: {
+          simplifiedText: result.simplifiedText,
+          requiresOriginal: result.requiresOriginal,
+        },
+        reason: 'Offer validated simpler wording while keeping the original available.',
+      });
+    }
   }
 
   return { version: 1, instructions };

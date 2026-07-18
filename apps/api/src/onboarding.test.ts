@@ -31,6 +31,7 @@ function providerWith(
   return {
     onboarding,
     analyzePage: () => Promise.reject(new Error('not called')),
+    simplifyText: () => Promise.reject(new Error('not called')),
   };
 }
 
