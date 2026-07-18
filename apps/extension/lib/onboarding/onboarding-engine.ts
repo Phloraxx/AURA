@@ -8,7 +8,7 @@ import {
   type OnboardingResponse,
 } from '@aura/shared';
 
-export type OnboardingMode = 'text' | 'choices' | 'quick';
+export type OnboardingMode = 'text' | 'choices' | 'voice' | 'quick';
 export type QuestionAnswer = string;
 export type CalibrationTask =
   | 'text_presentation'

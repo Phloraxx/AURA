@@ -123,3 +123,21 @@ configurable and default live configuration to `gpt-5.6-luna` as researched on
 **Reason:** The provider boundary keeps business contracts independent of an
 SDK, the live adapter supports schema-constrained profile patches, and the mock
 keeps the complete repository testable without secrets or network access.
+
+---
+
+## ADR-012 — Side-panel-owned voice capture with direct API upload
+
+**Status:** Accepted
+
+**Decision:** Capture voice only in the visible side panel after an explicit
+user action. Upload the bounded audio blob directly to the fixed AURA speech
+endpoint and return only normalized transcript text. Do not send raw audio
+through extension runtime messages or persist it in the capability profile.
+Use an abstract `STTProvider`, with a deterministic mock as the default and an
+OpenAI transcription adapter as an opt-in configuration.
+
+**Reason:** Keeping microphone ownership in the visible UI provides clear
+recording state and straightforward cleanup. Direct upload minimizes data
+copies and extension-context exposure, while the adapter preserves provider
+portability and offline testability.

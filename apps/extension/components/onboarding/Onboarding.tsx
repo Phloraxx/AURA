@@ -1,6 +1,7 @@
 import type { CapabilityProfile } from '@aura/shared';
 import { useEffect, useRef, useState } from 'react';
 
+import { createAuraApiClient } from '../../lib/api/client';
 import {
   CALIBRATION_TASKS,
   ONBOARDING_QUESTIONS,
@@ -12,7 +13,8 @@ import {
   type OnboardingMode,
   type OnboardingState,
 } from '../../lib/onboarding/onboarding-engine';
-import { createAuraApiClient } from '../../lib/api/client';
+import { createBrowserSpeechOutput } from '../../lib/voice/speech-output';
+import { VoiceAnswer } from './VoiceAnswer';
 
 const apiClient = createAuraApiClient();
 
@@ -56,10 +58,14 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
   >([]);
   const [adaptiveStatus, setAdaptiveStatus] = useState('');
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const speechOutputRef = useRef(createBrowserSpeechOutput());
 
   useEffect(() => {
+    speechOutputRef.current.stop();
     if (state) headingRef.current?.focus();
   }, [state?.phase, state?.questionIndex, state?.calibrationIndex]);
+
+  useEffect(() => () => speechOutputRef.current.stop(), []);
 
   function chooseMode(mode: OnboardingMode) {
     setState(startOnboarding(mode));
@@ -118,16 +124,11 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
           <button
             className="route-button"
             type="button"
-            disabled
-            aria-describedby="voice-phase-note"
+            onClick={() => chooseMode('voice')}
           >
             <strong>Talk with me</strong>
             <span>Answer by voice</span>
           </button>
-          <p id="voice-phase-note" className="route-note">
-            Voice recording is being added in the voice phase. All current setup steps
-            work without voice.
-          </p>
           <button className="route-button" type="button" onClick={() => chooseMode('text')}>
             <strong>Chat with me</strong>
             <span>Type answers in your own words</span>
@@ -165,7 +166,34 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
         </h2>
         <p className="help-text">{question.help}</p>
 
-        {state.mode === 'text' ? (
+        <div className="inline-actions speech-actions">
+          <button
+            className="text-button"
+            type="button"
+            disabled={!speechOutputRef.current.supported}
+            onClick={() => speechOutputRef.current.speak(remotePrompt ?? question.prompt)}
+          >
+            Read question aloud
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            disabled={!speechOutputRef.current.supported}
+            onClick={() => speechOutputRef.current.stop()}
+          >
+            Stop reading
+          </button>
+        </div>
+
+        {state.mode === 'voice' ? (
+          <VoiceAnswer
+            onTranscript={(text) => {
+              setTextAnswer(text);
+              setState({ ...state, mode: 'text' });
+              setAdaptiveStatus('Transcript ready. Review it, then continue.');
+            }}
+          />
+        ) : state.mode === 'text' ? (
           <form
             className="answer-form"
             onSubmit={(event) => {
@@ -218,13 +246,33 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
         )}
 
         <div className="inline-actions">
-          <button
-            className="text-button"
-            type="button"
-            onClick={() => setState({ ...state, mode: state.mode === 'text' ? 'choices' : 'text' })}
-          >
-            {state.mode === 'text' ? 'Use simple answers' : 'Type my answer'}
-          </button>
+          {state.mode !== 'text' ? (
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => setState({ ...state, mode: 'text' })}
+            >
+              Type my answer
+            </button>
+          ) : null}
+          {state.mode !== 'choices' ? (
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => setState({ ...state, mode: 'choices' })}
+            >
+              Use simple answers
+            </button>
+          ) : null}
+          {state.mode !== 'voice' ? (
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => setState({ ...state, mode: 'voice' })}
+            >
+              Answer by voice
+            </button>
+          ) : null}
           <button
             className="text-button"
             type="button"

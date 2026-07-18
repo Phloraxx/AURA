@@ -57,4 +57,22 @@ describe('AURA API client', () => {
       retryable: true,
     });
   });
+
+  it('uploads audio directly as multipart data without credentials', async () => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ text: 'Larger controls would help.' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const client = createAuraApiClient({ fetchImplementation });
+
+    await expect(
+      client.transcribeAudio(new Blob(['voice'], { type: 'audio/webm' }), 'en'),
+    ).resolves.toEqual({ text: 'Larger controls would help.' });
+    const options = fetchImplementation.mock.calls[0]?.[1];
+    expect(options?.body).toBeInstanceOf(FormData);
+    expect(options?.credentials).toBe('omit');
+    expect(new Headers(options?.headers).has('content-type')).toBe(false);
+  });
 });

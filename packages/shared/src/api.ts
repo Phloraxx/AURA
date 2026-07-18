@@ -44,9 +44,15 @@ export const apiErrorSchema = z.object({
   }),
 });
 
+export const transcriptionResponseSchema = z.object({
+  text: z.string().trim().min(1).max(4_000),
+  confidence: z.number().min(0).max(1).optional(),
+});
+
 export type CapabilityProfilePatch = z.infer<
   typeof capabilityProfilePatchSchema
 >;
 export type OnboardingRequest = z.infer<typeof onboardingRequestSchema>;
 export type OnboardingResponse = z.infer<typeof onboardingResponseSchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;
+export type TranscriptionResponse = z.infer<typeof transcriptionResponseSchema>;

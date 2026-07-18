@@ -1,6 +1,7 @@
 import {
   onboardingRequestSchema,
   onboardingResponseSchema,
+  transcriptionResponseSchema,
   type ApiError,
 } from '@aura/shared';
 import { Hono } from 'hono';
@@ -9,8 +10,10 @@ import { cors } from 'hono/cors';
 
 import {
   createLLMProviderFromEnv,
+  createSTTProviderFromEnv,
   ProviderError,
   type LLMProvider,
+  type STTProvider,
 } from './providers/index.js';
 
 type AppEnv = {
@@ -21,7 +24,16 @@ type AppEnv = {
 
 export interface CreateAppOptions {
   llmProvider?: LLMProvider;
+  sttProvider?: STTProvider;
 }
+
+const AUDIO_MIME_TYPES = new Set([
+  'audio/webm',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/ogg',
+]);
 
 function errorEnvelope(
   code: string,
@@ -45,6 +57,7 @@ function allowedOrigins(): string[] {
 
 export function createApp({
   llmProvider = createLLMProviderFromEnv(),
+  sttProvider = createSTTProviderFromEnv(),
 }: CreateAppOptions = {}) {
   const app = new Hono<AppEnv>();
   const origins = allowedOrigins();
@@ -65,7 +78,7 @@ export function createApp({
     }),
   );
   app.use(
-    '/v1/*',
+    '/v1/onboarding/*',
     bodyLimit({
       maxSize: 64 * 1024,
       onError: (context) =>
@@ -125,6 +138,95 @@ export function createApp({
           retryable
             ? 'Adaptive onboarding is temporarily unavailable. You can continue with local setup.'
             : 'AURA could not use adaptive onboarding. You can continue with local setup.',
+          retryable,
+          requestId,
+        ),
+        502,
+      );
+    }
+  });
+
+  app.use(
+    '/v1/speech/*',
+    bodyLimit({
+      maxSize: 10 * 1024 * 1024,
+      onError: (context) =>
+        context.json(
+          errorEnvelope(
+            'audio_too_large',
+            'Voice answers must be smaller than 10 MB.',
+            false,
+            safeRequestId(context.get('requestId')),
+          ),
+          413,
+        ),
+    }),
+  );
+
+  app.post('/v1/speech/transcribe', async (context) => {
+    const requestId = context.get('requestId');
+    let form: FormData;
+    try {
+      form = await context.req.formData();
+    } catch {
+      return context.json(
+        errorEnvelope('invalid_audio', 'Send a valid audio recording.', false, requestId),
+        400,
+      );
+    }
+    const audio = form.get('audio');
+    if (audio === null || typeof audio === 'string') {
+      return context.json(
+        errorEnvelope('audio_required', 'Record a voice answer first.', false, requestId),
+        400,
+      );
+    }
+    const mimeType = audio.type.split(';', 1)[0]?.toLowerCase() ?? '';
+    if (!AUDIO_MIME_TYPES.has(mimeType)) {
+      return context.json(
+        errorEnvelope(
+          'unsupported_audio',
+          'This browser audio format is not supported.',
+          false,
+          requestId,
+        ),
+        415,
+      );
+    }
+    if (audio.size === 0 || audio.size > 10 * 1024 * 1024) {
+      return context.json(
+        errorEnvelope(
+          'invalid_audio_size',
+          'Record a shorter voice answer and try again.',
+          false,
+          requestId,
+        ),
+        400,
+      );
+    }
+    const languageValue = form.get('languageHint');
+    const languageHint =
+      typeof languageValue === 'string' &&
+      /^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/iu.test(languageValue)
+        ? languageValue
+        : undefined;
+
+    try {
+      const result = transcriptionResponseSchema.parse(
+        await sttProvider.transcribe({
+          bytes: new Uint8Array(await audio.arrayBuffer()),
+          fileName: audio.name || `voice-answer.${mimeType.split('/')[1] ?? 'webm'}`,
+          mimeType,
+          ...(languageHint ? { languageHint } : {}),
+        }),
+      );
+      return context.json(result);
+    } catch (error) {
+      const retryable = error instanceof ProviderError ? error.retryable : false;
+      return context.json(
+        errorEnvelope(
+          'transcription_failed',
+          'AURA could not transcribe that recording. You can type or try again.',
           retryable,
           requestId,
         ),

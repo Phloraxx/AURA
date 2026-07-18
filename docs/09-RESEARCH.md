@@ -220,6 +220,30 @@ Implementation consequence:
 - keep `LLM_PROVIDER=mock` as the default so install, tests, and deterministic
   adaptation remain offline.
 
+## 16. Voice answers can use MediaRecorder with backend transcription
+
+Checked: 2026-07-18
+
+The browser `MediaRecorder` API records a user-authorized `MediaStream` into
+audio blobs. OpenAI's transcription API accepts audio files, and the current
+model catalog lists `gpt-4o-mini-transcribe` as a speech-to-text model available
+through the transcription endpoint.
+
+Official sources:
+- https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder
+- https://developers.openai.com/api/docs/guides/speech-to-text
+- https://developers.openai.com/api/docs/models/gpt-4o-mini-transcribe
+
+Implementation consequence:
+- microphone capture begins only after an explicit side-panel action,
+- the side panel uploads a bounded recording directly to the fixed AURA API;
+  raw audio never crosses extension runtime messaging and is not stored in the
+  capability profile,
+- the API validates multipart size and MIME type before invoking an `STTProvider`,
+- `STT_PROVIDER=mock` remains the offline default and the live model is
+  configurable, defaulting to `gpt-4o-mini-transcribe`,
+- every voice step retains a type-answer fallback.
+
 ## Open research tasks before production
 
 Codex should research and document these only when needed for implementation:
