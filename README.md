@@ -56,13 +56,14 @@ The MVP proves one vertical slice:
 8. `docs/06-AI-CONTRACTS.md`
 9. `docs/07-API-CONTRACTS.md`
 10. `docs/08-SECURITY-PRIVACY.md`
-11. `docs/09-RESEARCH.md`
-12. `docs/10-IMPLEMENTATION-PLAN.md`
-13. `docs/11-TESTING.md`
-14. `docs/12-DEMO.md`
-15. `docs/13-DECISIONS.md`
-16. `docs/14-OPEN-QUESTIONS.md`
-17. `docs/DEFINITION-OF-DONE.md`
+11. `docs/15-PREFLIGHT-REVIEW.md`
+12. `docs/09-RESEARCH.md`
+13. `docs/10-IMPLEMENTATION-PLAN.md`
+14. `docs/11-TESTING.md`
+15. `docs/12-DEMO.md`
+16. `docs/13-DECISIONS.md`
+17. `docs/14-OPEN-QUESTIONS.md`
+18. `docs/DEFINITION-OF-DONE.md`
 
 Codex should start from `docs/CODEX-MASTER-PROMPT.md` after reading the documentation above.
 
