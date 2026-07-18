@@ -52,7 +52,9 @@ export class MockLLMProvider implements LLMProvider {
     const primary = elements.filter(
       (element) =>
         element.kind === 'control' &&
-        /\b(continue|submit|save|start|buy|checkout|apply|confirm)\b/iu.test(textFor(element)),
+        /\b(continue|submit|save|start|buy|add to cart|checkout|apply|confirm)\b/iu.test(
+          textFor(element),
+        ),
     );
     const distractions = elements.filter(
       (element) =>

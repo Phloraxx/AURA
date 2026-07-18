@@ -15,6 +15,19 @@ Prepare:
 - three seeded profiles,
 - one fresh onboarding profile.
 
+Start the app and repeatable fixture server in separate terminals:
+
+```bash
+corepack pnpm dev
+corepack pnpm demo:fixtures
+```
+
+Load the development or production extension, then open
+`http://127.0.0.1:4173/cluttered-article.html`. Keep the mock providers enabled
+for the default offline-stable path. Before each rehearsal, click **Undo all**
+if adaptations are active and use **Reset demo profiles** to restore the three
+seeded profiles.
+
 ## Script
 
 ### 0:00–0:15 — Problem
@@ -86,6 +99,10 @@ Say:
 Click **Undo all**.
 
 Show original site restored.
+
+The side panel's active-adaptation list labels local and semantic changes, so
+the audience can see that semantic analysis augments rather than replaces the
+offline engine.
 
 ### 1:50–2:00 — Close
 

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AURA fixture — Complex form</title>
+    <style>
+      body { margin: 0; color: #233; background: #f1f4f7; font: 16px/1.4 system-ui, sans-serif; }
+      header, main, aside { padding: 1rem; }
+      header { color: white; background: #263850; }
+      .layout { display: grid; grid-template-columns: minmax(0, 46rem) 18rem; gap: 1rem; max-width: 70rem; margin: auto; padding: 1rem; }
+      form, aside { padding: 1rem; background: white; }
+      fieldset { display: grid; gap: .55rem; margin-block: 0 1rem; border: 1px solid #9ba9b5; }
+      input, select, button { max-width: 24rem; padding: .35rem .45rem; }
+      .error { padding: .65rem; border-left: .35rem solid #a21d25; background: #fff0f0; }
+      @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header><h1>Community workshop registration</h1></header>
+    <div class="layout">
+      <main>
+        <form id="registration-form">
+          <p>Complete the required details, choose a session, review the attendance policy, and then confirm your registration.</p>
+          <fieldset>
+            <legend>Contact details</legend>
+            <label for="full-name">Full name</label>
+            <input id="full-name" name="fullName" autocomplete="name" required />
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </fieldset>
+          <fieldset>
+            <legend>Workshop choice</legend>
+            <label for="session">Session</label>
+            <select id="session" name="session">
+              <option>Accessible design basics</option>
+              <option>Testing with assistive technology</option>
+            </select>
+          </fieldset>
+          <p id="form-error" class="error" role="alert">Example required error: enter your name before continuing.</p>
+          <button type="submit">Confirm registration</button>
+        </form>
+      </main>
+      <aside aria-label="Related events">
+        <h2>Other events</h2>
+        <a href="#registration-form">Weekly newsletter</a>
+        <p>Sponsored community listings and related recommendations.</p>
+      </aside>
+    </div>
+  </body>
+</html>

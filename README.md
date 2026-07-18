@@ -104,6 +104,20 @@ The generated manifest is Manifest V3 and currently requests `storage`,
 `activeTab`, `scripting`, and `sidePanel`, plus localhost API access for
 development.
 
+### Run the repeatable demo
+
+In a second terminal, serve the three local test pages:
+
+```bash
+corepack pnpm demo:fixtures
+```
+
+Open `http://127.0.0.1:4173`, choose a fixture, and use **Adapt this page**.
+The seeded low-vision, motor-first, and attention/language profiles produce
+different plans. **Undo all** restores AURA-owned changes without reloading.
+The mock LLM and STT providers are the default, so the complete demo is stable
+without provider credentials.
+
 ## Read this repository in this order
 
 1. `AGENTS.md`

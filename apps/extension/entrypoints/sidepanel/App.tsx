@@ -23,7 +23,18 @@ import {
 } from '../../lib/profile/profile-store';
 
 const store = createProfileStore();
-const apiClient = createAuraApiClient();
+const apiClient = createAuraApiClient({ timeoutMs: 6_000 });
+
+const SEMANTIC_KINDS = new Set([
+  'collapseDistractions',
+  'highlightPrimaryAction',
+  'clarifyAmbiguousControls',
+  'simplifyText',
+]);
+
+function adaptationLabel(kind: string): string {
+  return kind.replace(/([a-z])([A-Z])/gu, '$1 $2').toLowerCase();
+}
 
 const BOOLEAN_PREFERENCES = [
   ['reduceMotion', 'Reduce animation and motion'],
@@ -494,10 +505,19 @@ export function App() {
               passwords, URLs, scripts, and storage data omitted.
             </p>
             {pageStatus?.adapted ? (
-              <p>
-                {pageStatus.appliedKinds.length} adaptations active:{' '}
-                {pageStatus.appliedKinds.join(', ')}
-              </p>
+              <div>
+                <p>{pageStatus.appliedKinds.length} adaptations active:</p>
+                <ul className="adaptation-status-list">
+                  {pageStatus.appliedKinds.map((kind) => (
+                    <li key={kind}>
+                      <span>{adaptationLabel(kind)}</span>
+                      <span className="adaptation-kind-badge">
+                        {SEMANTIC_KINDS.has(kind) ? 'Semantic' : 'Local'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
             {semanticAnalysis ? (
               <p className="help-text">

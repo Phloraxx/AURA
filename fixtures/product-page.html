@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AURA fixture — Product page</title>
+    <style>
+      body { margin: 0; color: #292c30; background: #f4f1ec; font: 16px/1.4 system-ui, sans-serif; }
+      header, nav, main, aside, footer { padding: 1rem; }
+      header { color: white; background: #3c3129; }
+      nav { display: flex; gap: .5rem; background: white; }
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 19rem; gap: 1rem; max-width: 74rem; margin: auto; padding: 1rem; }
+      main, aside { background: white; }
+      .price { font-size: 1.5rem; font-weight: 800; }
+      button { padding: .45rem .7rem; }
+      .recommendations { display: grid; gap: .5rem; }
+      .recommendations a { padding: .6rem; border: 1px solid #b7aea7; }
+      @media (max-width: 740px) { .layout { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header><h1>Example Market</h1></header>
+    <nav aria-label="Store navigation"><a href="#product">Products</a><a href="#support">Support</a></nav>
+    <div class="layout">
+      <main id="product">
+        <article>
+          <h2>Comfortable task light</h2>
+          <p class="price" aria-label="Price: 42 dollars">$42.00</p>
+          <p>This adjustable lamp has three brightness levels, a weighted base, and a two-year warranty.</p>
+          <label for="finish">Finish</label>
+          <select id="finish"><option>Forest green</option><option>Warm white</option></select>
+          <button id="add-to-cart" type="button">Add to cart</button>
+          <p>Secure checkout is provided after the item is added to your cart.</p>
+        </article>
+      </main>
+      <aside aria-label="Product recommendations">
+        <h2>You may also like</h2>
+        <div class="recommendations">
+          <a href="#product">Desk organizer</a>
+          <a href="#product">Animated color lamp</a>
+          <a href="#product">Cable set</a>
+        </div>
+      </aside>
+    </div>
+    <footer id="support">Returns and support information remain available.</footer>
+  </body>
+</html>

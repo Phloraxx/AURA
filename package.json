@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "corepack pnpm --filter @aura/shared build && corepack pnpm --parallel --filter @aura/extension --filter @aura/api dev",
+    "demo:fixtures": "node scripts/serve-fixtures.mjs",
     "build": "corepack pnpm -r --if-present build",
     "lint": "eslint .",
     "typecheck": "corepack pnpm -r --if-present typecheck",

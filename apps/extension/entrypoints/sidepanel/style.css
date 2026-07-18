@@ -309,6 +309,33 @@ button:disabled {
   outline-offset: 2px;
 }
 
+.adaptation-status-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.adaptation-status-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #c5d2c8;
+  border-radius: 0.4rem;
+  background: #f8fbf7;
+}
+
+.adaptation-kind-badge {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid #52705d;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
 .choice-button {
   min-height: 58px;
   align-content: center;
