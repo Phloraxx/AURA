@@ -9,6 +9,7 @@ import {
 } from '@aura/shared';
 import { useEffect, useState } from 'react';
 
+import { Onboarding } from '../../components/onboarding/Onboarding';
 import {
   createProfileStore,
   type ProfileState,
@@ -45,6 +46,7 @@ export function App() {
   const [status, setStatus] = useState('Loading local profiles…');
   const [isBusy, setIsBusy] = useState(true);
   const [pageStatus, setPageStatus] = useState<PageStatus>();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   function adoptState(nextState: ProfileState, message: string) {
     setProfileState(nextState);
@@ -148,6 +150,14 @@ export function App() {
     }
   }
 
+  async function completeOnboarding(profile: CapabilityProfile): Promise<void> {
+    const state = await store.saveProfile({
+      ...profile,
+      updatedAt: new Date().toISOString(),
+    });
+    adoptState(state, 'Accessible setup completed and saved locally.');
+    setShowOnboarding(false);
+  }
   async function sendPageMessage(message: ExtensionMessage): Promise<PageStatus> {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (tab?.id === undefined) throw new Error('No active tab is available.');
@@ -213,7 +223,12 @@ export function App() {
         {status}
       </p>
 
-      {profileState && draft ? (
+      {showOnboarding ? (
+        <Onboarding
+          onCancel={() => setShowOnboarding(false)}
+          onComplete={completeOnboarding}
+        />
+      ) : profileState && draft ? (
         <form
           className="profile-form"
           onSubmit={(event) => {
@@ -254,6 +269,13 @@ export function App() {
                 setDraft({ ...draft, name: event.currentTarget.value })
               }
             />
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => setShowOnboarding(true)}
+            >
+              Start new accessible setup
+            </button>
           </section>
 
           <section className="card" aria-labelledby="presentation-heading">
