@@ -1,7 +1,13 @@
-import type { OnboardingRequest, OnboardingResponse } from '@aura/shared';
+import type {
+  OnboardingRequest,
+  OnboardingResponse,
+  PageAnalysisRequest,
+  SemanticPageAnalysis,
+} from '@aura/shared';
 
 export interface LLMProvider {
   onboarding(input: OnboardingRequest): Promise<OnboardingResponse>;
+  analyzePage(input: PageAnalysisRequest): Promise<SemanticPageAnalysis>;
 }
 
 export class ProviderError extends Error {

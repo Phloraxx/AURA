@@ -1,4 +1,8 @@
-import type { OnboardingResponse } from '@aura/shared';
+import type {
+  OnboardingResponse,
+  PageElementRepresentation,
+  SemanticPageAnalysis,
+} from '@aura/shared';
 
 import type { LLMProvider } from './llm-provider.js';
 
@@ -28,6 +32,63 @@ export class MockLLMProvider implements LLMProvider {
       confidence: 0,
       suggestedCalibrationTask: onboardingComplete ? 'text_presentation' : null,
       onboardingComplete,
+    });
+  }
+
+  analyzePage(input: Parameters<LLMProvider['analyzePage']>[0]): Promise<SemanticPageAnalysis> {
+    const { elements, truncated } = input.page;
+    const scored = (element: PageElementRepresentation, reason: string, confidence = 0.9) => ({
+      id: element.id,
+      confidence,
+      reason,
+    });
+    const textFor = (element: PageElementRepresentation) =>
+      `${element.accessibleName ?? ''} ${element.text ?? ''}`.trim();
+    const main = elements.filter(
+      ({ kind, tag, role }) =>
+        kind === 'landmark' && (tag === 'main' || tag === 'article' || role === 'main'),
+    );
+    const primary = elements.filter(
+      (element) =>
+        element.kind === 'control' &&
+        /\b(continue|submit|save|start|buy|checkout|apply|confirm)\b/iu.test(textFor(element)),
+    );
+    const distractions = elements.filter(
+      (element) =>
+        !element.critical &&
+        (element.tag === 'aside' ||
+          /\b(advertisement|sponsored|recommendations?|related content)\b/iu.test(
+            textFor(element),
+          )),
+    );
+    return Promise.resolve({
+      mainContent: main.slice(0, 3).map((element) => scored(element, 'Main page landmark', 0.98)),
+      primaryActions: primary
+        .slice(0, 5)
+        .map((element) => scored(element, 'Action wording indicates a primary step', 0.85)),
+      navigation: elements
+        .filter(({ tag, role }) => tag === 'nav' || role === 'navigation')
+        .slice(0, 10)
+        .map((element) => scored(element, 'Navigation landmark', 0.98)),
+      distractions: distractions
+        .slice(0, 10)
+        .map((element) => scored(element, 'Secondary or recommendation content', 0.9)),
+      ambiguousControls: elements
+        .filter(({ kind, accessibleName }) => kind === 'control' && !accessibleName)
+        .slice(0, 10)
+        .map((element) => ({
+          ...scored(element, 'Control has no accessible name', 0.8),
+          suggestedLabel: 'Unlabeled control',
+        })),
+      complexTextBlocks: elements
+        .filter(({ kind, text }) => kind === 'text' && (text?.length ?? 0) > 250)
+        .slice(0, 10)
+        .map((element) => scored(element, 'Long text block may benefit from simplification', 0.75)),
+      formGroups: elements
+        .filter(({ kind }) => kind === 'form_group')
+        .slice(0, 10)
+        .map((element) => scored(element, 'Form grouping', 0.9)),
+      warnings: truncated ? ['The compact page representation was truncated.'] : [],
     });
   }
 }

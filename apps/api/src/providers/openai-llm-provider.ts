@@ -3,13 +3,16 @@ import {
   capabilityDimensionSchema,
   capabilityProfilePatchSchema,
   onboardingResponseSchema,
+  semanticPageAnalysisSchema,
   type OnboardingRequest,
+  type PageAnalysisRequest,
 } from '@aura/shared';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 
 import { ONBOARDING_SYSTEM_PROMPT } from '../prompts/onboarding.js';
+import { PAGE_ANALYZER_SYSTEM_PROMPT } from '../prompts/page-analyzer.js';
 import type { LLMProvider } from './llm-provider.js';
 import { ProviderError } from './llm-provider.js';
 
@@ -126,6 +129,33 @@ export class OpenAILLMProvider implements LLMProvider {
         throw new ProviderError('The onboarding provider is temporarily unavailable.', true);
       }
       throw new ProviderError('The onboarding provider returned an invalid response.', false);
+    }
+  }
+
+  async analyzePage(input: PageAnalysisRequest) {
+    try {
+      const response = await this.#client.responses.parse({
+        model: this.#model,
+        instructions: PAGE_ANALYZER_SYSTEM_PROMPT,
+        input: JSON.stringify(input),
+        max_output_tokens: 2_000,
+        text: {
+          format: zodTextFormat(semanticPageAnalysisSchema, 'aura_page_analysis'),
+        },
+      });
+      if (!response.output_parsed) {
+        throw new ProviderError('The page analyzer returned no structured output.', false);
+      }
+      return semanticPageAnalysisSchema.parse(response.output_parsed);
+    } catch (error) {
+      if (error instanceof ProviderError) throw error;
+      if (error instanceof OpenAI.APIConnectionTimeoutError) {
+        throw new ProviderError('The page analyzer timed out.', true);
+      }
+      if (error instanceof OpenAI.RateLimitError || error instanceof OpenAI.APIConnectionError) {
+        throw new ProviderError('The page analyzer is temporarily unavailable.', true);
+      }
+      throw new ProviderError('The page analyzer returned an invalid response.', false);
     }
   }
 }

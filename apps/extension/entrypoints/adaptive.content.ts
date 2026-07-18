@@ -1,6 +1,7 @@
 import {
   extensionMessageSchema,
   type CapabilityProfile,
+  type PageRepresentation,
   type PageStatus,
 } from '@aura/shared';
 
@@ -9,6 +10,7 @@ import { TransformEngine } from '../lib/adaptation/transform-engine';
 import { ElementRegistry } from '../lib/page/element-registry';
 import { extractLocalPageSignals } from '../lib/page/local-signals';
 import { observeDynamicPage } from '../lib/page/mutation-observer';
+import { extractPageRepresentation } from '../lib/page/semantic-extractor';
 
 export default defineContentScript({
   registration: 'runtime',
@@ -22,7 +24,7 @@ export default defineContentScript({
       if (activeProfile) engine.refreshDynamicContent();
     });
 
-    const onMessage = (value: unknown): PageStatus | undefined => {
+    const onMessage = (value: unknown): PageRepresentation | PageStatus | undefined => {
       const parsed = extensionMessageSchema.safeParse(value);
       if (!parsed.success) return undefined;
 
@@ -39,6 +41,8 @@ export default defineContentScript({
           return engine.revertAll();
         case 'PAGE_STATUS_GET':
           return engine.getStatus();
+        case 'PAGE_SNAPSHOT_GET':
+          return extractPageRepresentation(document, registry);
       }
     };
 

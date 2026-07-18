@@ -1,21 +1,27 @@
 import {
   CAPABILITY_DIMENSION_NAMES,
+  pageRepresentationSchema,
   pageStatusSchema,
   type AdaptationPreferences,
   type CapabilityDimensions,
   type CapabilityProfile,
   type ExtensionMessage,
+  type PageRepresentation,
   type PageStatus,
+  type SemanticPageAnalysis,
 } from '@aura/shared';
 import { useEffect, useState } from 'react';
 
 import { Onboarding } from '../../components/onboarding/Onboarding';
+import { createAuraApiClient } from '../../lib/api/client';
+import { validateSemanticAnalysisForPage } from '../../lib/page/semantic-validation';
 import {
   createProfileStore,
   type ProfileState,
 } from '../../lib/profile/profile-store';
 
 const store = createProfileStore();
+const apiClient = createAuraApiClient();
 
 const BOOLEAN_PREFERENCES = [
   ['reduceMotion', 'Reduce animation and motion'],
@@ -47,6 +53,7 @@ export function App() {
   const [isBusy, setIsBusy] = useState(true);
   const [pageStatus, setPageStatus] = useState<PageStatus>();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [semanticAnalysis, setSemanticAnalysis] = useState<SemanticPageAnalysis>();
 
   function adoptState(nextState: ProfileState, message: string) {
     setProfileState(nextState);
@@ -158,7 +165,7 @@ export function App() {
     adoptState(state, 'Accessible setup completed and saved locally.');
     setShowOnboarding(false);
   }
-  async function sendPageMessage(message: ExtensionMessage): Promise<PageStatus> {
+  async function sendRawPageMessage(message: ExtensionMessage): Promise<unknown> {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (tab?.id === undefined) throw new Error('No active tab is available.');
 
@@ -172,7 +179,17 @@ export function App() {
       });
       response = await browser.tabs.sendMessage(tab.id, message);
     }
-    return pageStatusSchema.parse(response);
+    return response;
+  }
+
+  async function sendPageMessage(message: ExtensionMessage): Promise<PageStatus> {
+    return pageStatusSchema.parse(await sendRawPageMessage(message));
+  }
+
+  async function getPageSnapshot(): Promise<PageRepresentation> {
+    return pageRepresentationSchema.parse(
+      await sendRawPageMessage({ type: 'PAGE_SNAPSHOT_GET' }),
+    );
   }
 
   async function adaptPage() {
@@ -182,11 +199,27 @@ export function App() {
     try {
       const next = await sendPageMessage({ type: 'PAGE_ADAPT', profile: draft });
       setPageStatus(next);
-      setStatus(
-        next.errors.length > 0
-          ? 'The page adapted with some non-blocking limitations.'
-          : 'Local adaptations applied. No backend was required.',
-      );
+      setStatus('Local adaptations applied. Checking optional semantic support…');
+      try {
+        const page = await getPageSnapshot();
+        const analysis = validateSemanticAnalysisForPage(
+          await apiClient.analyzePage(page),
+          page,
+        );
+        setSemanticAnalysis(analysis);
+        setStatus(
+          next.errors.length > 0
+            ? 'The page adapted with some non-blocking limitations.'
+            : 'Local adaptations are active and semantic page analysis is ready.',
+        );
+      } catch {
+        setSemanticAnalysis(undefined);
+        setStatus(
+          next.errors.length > 0
+            ? 'The page adapted locally with some non-blocking limitations.'
+            : 'Local adaptations are active. Optional semantic analysis was unavailable.',
+        );
+      }
     } catch {
       setStatus(
         'AURA cannot adapt this browser page. Try a normal website tab and try again.',
@@ -414,13 +447,20 @@ export function App() {
               <span className="local-badge">Works offline</span>
             </div>
             <p className="help-text">
-              AURA applies reversible local rules from the active profile. Page content
-              stays in this tab during this phase.
+              AURA first applies reversible local rules. If the optional analyzer is
+              available, it receives only a bounded semantic outline with form values,
+              passwords, URLs, scripts, and storage data omitted.
             </p>
             {pageStatus?.adapted ? (
               <p>
                 {pageStatus.appliedKinds.length} adaptations active:{' '}
                 {pageStatus.appliedKinds.join(', ')}
+              </p>
+            ) : null}
+            {semanticAnalysis ? (
+              <p className="help-text">
+                Optional analysis found {semanticAnalysis.mainContent.length} main region(s)
+                and {semanticAnalysis.primaryActions.length} likely primary action(s).
               </p>
             ) : null}
             <div className="actions compact-actions">

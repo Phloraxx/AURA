@@ -1,6 +1,8 @@
 import {
   onboardingRequestSchema,
   onboardingResponseSchema,
+  pageAnalysisRequestSchema,
+  semanticPageAnalysisSchema,
   transcriptionResponseSchema,
   type ApiError,
 } from '@aura/shared';
@@ -93,6 +95,22 @@ export function createApp({
         ),
     }),
   );
+  app.use(
+    '/v1/page/*',
+    bodyLimit({
+      maxSize: 64 * 1024,
+      onError: (context) =>
+        context.json(
+          errorEnvelope(
+            'payload_too_large',
+            'This request is too large for AURA to process.',
+            false,
+            safeRequestId(context.get('requestId')),
+          ),
+          413,
+        ),
+    }),
+  );
 
   app.get('/health', (context) =>
     context.json({
@@ -138,6 +156,48 @@ export function createApp({
           retryable
             ? 'Adaptive onboarding is temporarily unavailable. You can continue with local setup.'
             : 'AURA could not use adaptive onboarding. You can continue with local setup.',
+          retryable,
+          requestId,
+        ),
+        502,
+      );
+    }
+  });
+
+  app.post('/v1/page/analyze', async (context) => {
+    const requestId = context.get('requestId');
+    let body: unknown;
+    try {
+      body = await context.req.json();
+    } catch {
+      return context.json(
+        errorEnvelope('invalid_json', 'Send a valid JSON request.', false, requestId),
+        400,
+      );
+    }
+    const parsed = pageAnalysisRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return context.json(
+        errorEnvelope(
+          'invalid_page_snapshot',
+          'AURA could not safely analyze this page snapshot.',
+          false,
+          requestId,
+        ),
+        400,
+      );
+    }
+    try {
+      const result = semanticPageAnalysisSchema.parse(
+        await llmProvider.analyzePage(parsed.data),
+      );
+      return context.json(result);
+    } catch (error) {
+      const retryable = error instanceof ProviderError ? error.retryable : false;
+      return context.json(
+        errorEnvelope(
+          'page_analysis_failed',
+          'Semantic page analysis is unavailable. Local adaptations remain active.',
           retryable,
           requestId,
         ),

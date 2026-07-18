@@ -2,9 +2,13 @@ import {
   apiErrorSchema,
   onboardingRequestSchema,
   onboardingResponseSchema,
+  pageAnalysisRequestSchema,
+  semanticPageAnalysisSchema,
   transcriptionResponseSchema,
   type OnboardingRequest,
   type OnboardingResponse,
+  type PageRepresentation,
+  type SemanticPageAnalysis,
   type TranscriptionResponse,
 } from '@aura/shared';
 
@@ -137,6 +141,12 @@ export function createAuraApiClient({
       if (languageHint) form.append('languageHint', languageHint);
       return transcriptionResponseSchema.parse(
         await postForm('/v1/speech/transcribe', form),
+      );
+    },
+    async analyzePage(page: PageRepresentation): Promise<SemanticPageAnalysis> {
+      const request = pageAnalysisRequestSchema.parse({ page });
+      return semanticPageAnalysisSchema.parse(
+        await postJson('/v1/page/analyze', request),
       );
     },
   };

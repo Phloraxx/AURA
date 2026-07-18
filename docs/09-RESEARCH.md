@@ -208,6 +208,7 @@ schema-generation test guards this boundary.
 Official sources:
 - https://github.com/openai/openai-node
 - https://developers.openai.com/api/docs/models/gpt-5.6-luna
+- https://developers.openai.com/api/docs/guides/structured-outputs
 - https://developers.openai.com/resources
 
 Implementation consequence:

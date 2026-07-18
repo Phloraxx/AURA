@@ -7,6 +7,7 @@ export const extensionMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('PAGE_ADAPT'), profile: capabilityProfileSchema }),
   z.object({ type: z.literal('PAGE_REVERT') }),
   z.object({ type: z.literal('PAGE_STATUS_GET') }),
+  z.object({ type: z.literal('PAGE_SNAPSHOT_GET') }),
 ]);
 
 export const pageStatusSchema = z.object({

@@ -75,4 +75,37 @@ describe('AURA API client', () => {
     expect(options?.credentials).toBe('omit');
     expect(new Headers(options?.headers).has('content-type')).toBe(false);
   });
+
+  it('validates semantic page analysis responses', async () => {
+    const payload = {
+      mainContent: [{ id: 'aura:n1', confidence: 0.95, reason: 'Main landmark' }],
+      primaryActions: [],
+      navigation: [],
+      distractions: [],
+      ambiguousControls: [],
+      complexTextBlocks: [],
+      formGroups: [],
+      warnings: [],
+    };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const client = createAuraApiClient({ fetchImplementation });
+
+    await expect(
+      client.analyzePage({
+        title: 'Article',
+        truncated: false,
+        elements: [
+          { id: 'aura:n1', kind: 'landmark', tag: 'main', critical: false },
+        ],
+      }),
+    ).resolves.toEqual(payload);
+    expect(fetchImplementation.mock.calls[0]?.[0]).toBe(
+      'http://localhost:8787/v1/page/analyze',
+    );
+  });
 });

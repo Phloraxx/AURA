@@ -141,3 +141,23 @@ OpenAI transcription adapter as an opt-in configuration.
 recording state and straightforward cleanup. Direct upload minimizes data
 copies and extension-context exposure, while the adapter preserves provider
 portability and offline testability.
+
+---
+
+## ADR-013 — Bounded semantic outline with fail-closed local validation
+
+**Status:** Accepted
+
+**Decision:** Build page analysis from at most 80 visible semantic elements
+identified by session-local `aura:n*` IDs. Omit URLs, scripts, storage data,
+password fields, and every form value. Treat all included page text as
+untrusted data. Require strict structured model output, then reject the full
+analysis if it references any unknown ID. Apply feature-specific confidence
+thresholds locally and exclude locally flagged critical targets from
+distraction handling.
+
+**Reason:** A compact outline is sufficient for the MVP classifications while
+substantially reducing privacy exposure and payload size. Server-side schema
+validation plus independent page-local business validation prevents model
+output from becoming executable authority. Failure leaves deterministic
+adaptations intact.

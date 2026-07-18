@@ -28,7 +28,10 @@ function requestBody(): OnboardingRequest {
 function providerWith(
   onboarding: LLMProvider['onboarding'],
 ): LLMProvider {
-  return { onboarding };
+  return {
+    onboarding,
+    analyzePage: () => Promise.reject(new Error('not called')),
+  };
 }
 
 describe('POST /v1/onboarding/respond', () => {

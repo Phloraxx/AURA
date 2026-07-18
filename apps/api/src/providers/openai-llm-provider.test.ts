@@ -1,3 +1,4 @@
+import { semanticPageAnalysisSchema } from '@aura/shared';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { describe, expect, it } from 'vitest';
 
@@ -18,6 +19,9 @@ describe('OpenAI onboarding structured output', () => {
   it('generates an API-compatible strict JSON schema', () => {
     expect(() =>
       zodTextFormat(onboardingStructuredOutputSchema, 'aura_onboarding_response'),
+    ).not.toThrow();
+    expect(() =>
+      zodTextFormat(semanticPageAnalysisSchema, 'aura_page_analysis'),
     ).not.toThrow();
   });
 
