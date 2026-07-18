@@ -1,0 +1,160 @@
+# Research Notes
+
+Last reviewed: 2026-07-18
+
+This document records platform facts that influence implementation. Re-check official documentation before release because browser APIs and policies change.
+
+## 1. Browser extensions can inspect and modify webpage DOM
+
+Chrome content scripts run in the context of webpages and can read and modify the DOM. This is the foundation for the adaptation engine.
+
+Official source:
+- Chrome for Developers — Content scripts: https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts
+
+Implementation consequence:
+- keep DOM extraction and transformations in the content script,
+- use message passing for APIs unavailable directly to content scripts.
+
+## 2. Dynamic script/CSS injection is supported through chrome.scripting
+
+`chrome.scripting` supports runtime injection with the `scripting` permission and appropriate host access or `activeTab`.
+
+Official source:
+- https://developer.chrome.com/docs/extensions/reference/api/scripting
+
+Implementation consequence:
+- current-page adaptation can use an explicit user action and `activeTab` in a least-privilege design,
+- persistent automatic adaptation can request optional host permissions.
+
+## 3. Chrome side panel is suitable for persistent extension UI
+
+Chrome's Side Panel API hosts extension UI alongside webpage content and is available to Manifest V3 extensions on supported Chrome versions.
+
+Official source:
+- https://developer.chrome.com/docs/extensions/reference/api/sidePanel
+
+Implementation consequence:
+- onboarding, profile editing, voice controls, adaptation status, and undo should live in the side panel.
+
+## 4. chrome.storage is the correct persistence mechanism
+
+Chrome provides extension-specific storage accessible from extension contexts.
+
+Official source:
+- https://developer.chrome.com/docs/extensions/reference/api/storage
+
+Implementation consequence:
+- store the capability profile locally,
+- use session storage or memory for ephemeral analysis,
+- do not use host-page `localStorage` for profile persistence.
+
+## 5. Manifest V3 disallows remotely hosted executable code
+
+Manifest V3 requires executable extension logic to be bundled with the extension. Remote data such as JSON can be interpreted, but remote JavaScript/WASM must not be fetched and executed as extension code.
+
+Official sources:
+- https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3
+- https://developer.chrome.com/docs/extensions/develop/migrate/remote-hosted-code
+
+Implementation consequence:
+- model responses are structured data only,
+- transformation code ships locally,
+- no `eval`, `new Function`, or fetched remote scripts.
+
+## 6. activeTab can reduce permission scope
+
+`activeTab` grants temporary access to the current tab after a user gesture.
+
+Official source:
+- https://developer.chrome.com/docs/extensions/develop/concepts/activeTab
+
+Implementation consequence:
+- production design should support **Adapt this page** without permanent all-sites permission,
+- optional persistent permissions can be added later.
+
+## 7. W3C explicitly supports adaptation and personalization
+
+WAI-Adapt exists to enable users to personalize presentation according to individual needs and preferences. W3C materials explicitly describe browser extensions and assistive technologies as consumers that can adapt content.
+
+Official sources:
+- https://www.w3.org/WAI/adapt/
+- https://www.w3.org/WAI/WCAG2/supplemental/objectives/o8-personalization/
+- https://www.w3.org/WAI/WCAG2/supplemental/patterns/o8p02-apis/
+
+Product consequence:
+- the high-level concept is legitimate but not wholly novel,
+- novelty claims must focus on this product's capability-vector/composable-engine implementation.
+
+## 8. Individual needs do not map cleanly to one diagnosis label
+
+W3C cognitive accessibility material describes varied functional barriers and emphasizes that users may have different affected functions, may not have formal diagnoses, and may need different presentation or interaction strategies.
+
+Official source:
+- https://www.w3.org/WAI/people-use-web/abilities-barriers/cognitive/
+
+Product consequence:
+- capability-first onboarding is defensible,
+- avoid diagnosis detection claims.
+
+## 9. Prior art exists in adaptive reading/personalization
+
+W3C participated in the Easy Reading project, which explored adaptive personalized interfaces, user profiles, and matching users to simplification support.
+
+Official source:
+- https://www.w3.org/WAI/about/projects/easy-reading/
+
+Product consequence:
+- do not pitch "personalized accessibility" itself as invented here,
+- pitch the specific architecture and live cross-site extension implementation.
+
+## 10. Speech recognition/synthesis exist as Web Speech APIs, but recognition should not be a hard dependency
+
+The Web Speech API specification defines browser-facing speech recognition and speech synthesis.
+
+Specification:
+- https://dvcs.w3.org/hg/speech-api/raw-file/tip/webspeechapi
+
+Implementation consequence:
+- use speech synthesis behind an adapter,
+- for reliable MVP STT, record audio with `MediaRecorder` and send to a backend provider,
+- browser-native speech recognition may be added only after verifying target-browser support and extension context behavior.
+
+## 11. WXT can generate extension manifests and supports modern extension structure
+
+WXT generates manifests from project configuration and entrypoints.
+
+Official source:
+- https://wxt.dev/guide/essentials/config/manifest.html
+
+Implementation consequence:
+- use WXT to reduce Manifest V3 scaffolding time,
+- inspect generated manifest during build to ensure permissions are correct.
+
+## 12. Codex benefits from AGENTS.md instructions and reliable tests
+
+OpenAI states that Codex can be guided by `AGENTS.md` files and performs best with clear repository guidance and reliable test setups.
+
+Official source:
+- https://openai.com/index/introducing-codex/
+
+Repository consequence:
+- keep `AGENTS.md` current,
+- put authoritative build/test commands there once the workspace is scaffolded.
+
+## Open research tasks before production
+
+Codex should research and document these only when needed for implementation:
+
+- exact WXT side-panel entrypoint conventions for the selected version,
+- current Chrome Web Store privacy disclosure requirements,
+- optional host permission UX,
+- behavior across Shadow DOM boundaries,
+- cross-origin iframe limitations,
+- impact of React/Vue hydration when DOM structure is reordered,
+- target Chrome version and minimum `sidePanel` support,
+- STT provider retention/privacy policies,
+- whether on-device browser AI is available and appropriate as a future optional adapter.
+
+## Research quality rule
+
+For browser/runtime implementation details, prefer primary official documentation. For accessibility guidance, prefer W3C/WAI. For Codex behavior, prefer official OpenAI documentation. Record the date checked.
