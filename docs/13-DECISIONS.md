@@ -107,3 +107,19 @@ the MVP.
 page access, and still supports deterministic offline adaptation. The side
 panel retries message delivery after injection so an already-running content
 script is reused rather than duplicated.
+
+---
+
+## ADR-011 — OpenAI Responses adapter with an offline mock default
+
+**Status:** Accepted
+
+**Decision:** Implement `LLMProvider` with an OpenAI Responses API adapter using
+strict structured output. Select the adapter only when
+`LLM_PROVIDER=openai`; otherwise use a deterministic mock. Keep the model
+configurable and default live configuration to `gpt-5.6-luna` as researched on
+2026-07-18.
+
+**Reason:** The provider boundary keeps business contracts independent of an
+SDK, the live adapter supports schema-constrained profile patches, and the mock
+keeps the complete repository testable without secrets or network access.

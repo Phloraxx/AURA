@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { adaptationPlanSchema } from './adaptation';
-import { capabilityProfileSchema } from './profile';
+import { adaptationPlanSchema } from './adaptation.js';
+import { capabilityProfileSchema } from './profile.js';
 
 export const extensionMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('PAGE_ADAPT'), profile: capabilityProfileSchema }),

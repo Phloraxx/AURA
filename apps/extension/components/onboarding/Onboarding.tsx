@@ -6,11 +6,15 @@ import {
   ONBOARDING_QUESTIONS,
   answerCurrentQuestion,
   applyCalibrationChoice,
+  applyProviderResponse,
   profileSummary,
   startOnboarding,
   type OnboardingMode,
   type OnboardingState,
 } from '../../lib/onboarding/onboarding-engine';
+import { createAuraApiClient } from '../../lib/api/client';
+
+const apiClient = createAuraApiClient();
 
 interface OnboardingProps {
   onCancel: () => void;
@@ -45,6 +49,12 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
   const [textAnswer, setTextAnswer] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [isAnswering, setIsAnswering] = useState(false);
+  const [remotePrompt, setRemotePrompt] = useState<string>();
+  const [transcript, setTranscript] = useState<
+    Array<{ role: 'assistant' | 'user'; content: string }>
+  >([]);
+  const [adaptiveStatus, setAdaptiveStatus] = useState('');
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -55,10 +65,39 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
     setState(startOnboarding(mode));
   }
 
-  function answer(answer: string) {
+  async function answer(answer: string) {
     if (!state) return;
-    setState(answerCurrentQuestion(state, answer));
-    setTextAnswer('');
+    const question = ONBOARDING_QUESTIONS[state.questionIndex];
+    if (!question) return;
+    const prompt = remotePrompt ?? question.prompt;
+    const nextTranscript = [
+      ...transcript,
+      { role: 'assistant' as const, content: prompt },
+      { role: 'user' as const, content: answer },
+    ].slice(-16);
+    setIsAnswering(true);
+    try {
+      const response = await apiClient.respondToOnboarding({
+        profile: state.profile,
+        transcript: nextTranscript,
+        userResponse: answer,
+        askedAreas: ONBOARDING_QUESTIONS.slice(0, state.questionIndex + 1).map(
+          ({ area }) => area,
+        ),
+      });
+      setState(applyProviderResponse(state, response, answer));
+      setRemotePrompt(response.assistantMessage);
+      setTranscript(nextTranscript);
+      setAdaptiveStatus('Adaptive follow-up loaded.');
+    } catch {
+      setState(answerCurrentQuestion(state, answer));
+      setRemotePrompt(undefined);
+      setTranscript(nextTranscript);
+      setAdaptiveStatus('Adaptive follow-up is unavailable; local setup continues.');
+    } finally {
+      setTextAnswer('');
+      setIsAnswering(false);
+    }
   }
 
   function calibrate(choice: string) {
@@ -122,7 +161,7 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
           Question {state.questionIndex + 1} of {ONBOARDING_QUESTIONS.length}
         </p>
         <h2 id="question-title" ref={headingRef} tabIndex={-1}>
-          {question.prompt}
+          {remotePrompt ?? question.prompt}
         </h2>
         <p className="help-text">{question.help}</p>
 
@@ -131,7 +170,7 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
             className="answer-form"
             onSubmit={(event) => {
               event.preventDefault();
-              if (textAnswer.trim()) answer(textAnswer);
+              if (textAnswer.trim()) void answer(textAnswer);
             }}
           >
             <label htmlFor="onboarding-answer">Your answer</label>
@@ -141,19 +180,38 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
               value={textAnswer}
               onChange={(event) => setTextAnswer(event.currentTarget.value)}
             />
-            <button className="primary" type="submit" disabled={!textAnswer.trim()}>
+            <button
+              className="primary"
+              type="submit"
+              disabled={isAnswering || !textAnswer.trim()}
+            >
               Continue
             </button>
           </form>
         ) : (
           <div className="large-answers" aria-label="Answer choices">
-            <button className="choice-button" type="button" onClick={() => answer('yes')}>
+            <button
+              className="choice-button"
+              type="button"
+              disabled={isAnswering}
+              onClick={() => void answer('yes')}
+            >
               Yes
             </button>
-            <button className="choice-button" type="button" onClick={() => answer('no')}>
+            <button
+              className="choice-button"
+              type="button"
+              disabled={isAnswering}
+              onClick={() => void answer('no')}
+            >
               No
             </button>
-            <button className="choice-button" type="button" onClick={() => answer('unsure')}>
+            <button
+              className="choice-button"
+              type="button"
+              disabled={isAnswering}
+              onClick={() => void answer('unsure')}
+            >
               Not sure
             </button>
           </div>
@@ -167,13 +225,23 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
           >
             {state.mode === 'text' ? 'Use simple answers' : 'Type my answer'}
           </button>
-          <button className="text-button" type="button" onClick={() => answer('skip')}>
+          <button
+            className="text-button"
+            type="button"
+            disabled={isAnswering}
+            onClick={() => void answer('skip')}
+          >
             Skip this question
           </button>
           <button className="text-button" type="button" onClick={onCancel}>
             Exit setup
           </button>
         </div>
+        {adaptiveStatus ? (
+          <p className="route-note" role="status" aria-live="polite">
+            {adaptiveStatus}
+          </p>
+        ) : null}
       </section>
     );
   }

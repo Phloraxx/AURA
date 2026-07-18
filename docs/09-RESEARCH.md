@@ -189,6 +189,37 @@ Implementation consequence:
 - the generated production manifest must not contain a static
   `content_scripts` entry or broad all-sites host permission.
 
+## 15. OpenAI Responses structured output is suitable for constrained onboarding
+
+Checked: 2026-07-18
+
+The official OpenAI JavaScript SDK identifies the Responses API as its primary
+API and provides Zod-backed structured-output parsing. The current model catalog
+describes GPT-5.6 Luna as the cost-sensitive current frontier model and lists
+Structured Outputs support. AURA still validates the parsed value again with
+its shared Zod contract before accepting a profile patch.
+
+The SDK's strict-schema converter also enforces the Responses API rule that all
+object properties be required. AURA's public patch contract uses optional
+fields, so the provider adapter uses a separate required-but-nullable schema and
+removes nulls before validating against the public patch schema. A direct SDK
+schema-generation test guards this boundary.
+
+Official sources:
+- https://github.com/openai/openai-node
+- https://developers.openai.com/api/docs/models/gpt-5.6-luna
+- https://developers.openai.com/resources
+
+Implementation consequence:
+- use the backend-only OpenAI JavaScript SDK and Responses API,
+- default the configurable live model to `gpt-5.6-luna`,
+- use `responses.parse` with `zodTextFormat`, then parse again with the shared
+  response schema,
+- expose no OpenAI key, provider response body, or provider-specific format to
+  the extension,
+- keep `LLM_PROVIDER=mock` as the default so install, tests, and deterministic
+  adaptation remain offline.
+
 ## Open research tasks before production
 
 Codex should research and document these only when needed for implementation:

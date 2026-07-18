@@ -1,8 +1,11 @@
 import {
+  capabilityProfileSchema,
   createNeutralProfile,
   type AdaptationPreferences,
   type CapabilityDimensions,
   type CapabilityProfile,
+  type CapabilityProfilePatch,
+  type OnboardingResponse,
 } from '@aura/shared';
 
 export type OnboardingMode = 'text' | 'choices' | 'quick';
@@ -192,6 +195,46 @@ export function answerCurrentQuestion(
     phase: nextIndex >= ONBOARDING_QUESTIONS.length ? 'calibration' : 'questions',
     skippedQuestionIds:
       answer === 'skip'
+        ? [...state.skippedQuestionIds, question.id]
+        : state.skippedQuestionIds,
+  };
+}
+
+export function mergeProfilePatch(
+  profile: CapabilityProfile,
+  patch: CapabilityProfilePatch,
+): CapabilityProfile {
+  return capabilityProfileSchema.parse({
+    ...profile,
+    dimensions: { ...profile.dimensions, ...patch.dimensions },
+    modalities: { ...profile.modalities, ...patch.modalities },
+    preferences: { ...profile.preferences, ...patch.preferences },
+  });
+}
+
+export function applyProviderResponse(
+  state: OnboardingState,
+  response: OnboardingResponse,
+  answer: string,
+): OnboardingState {
+  if (state.phase !== 'questions') return state;
+  const question = ONBOARDING_QUESTIONS[state.questionIndex];
+  const nextIndex = state.questionIndex + 1;
+  const enoughQuestions = nextIndex >= 5;
+  const finished =
+    nextIndex >= ONBOARDING_QUESTIONS.length ||
+    (enoughQuestions && response.onboardingComplete);
+
+  return {
+    ...state,
+    profile: mergeProfilePatch(
+      question ? patchForQuestion(state.profile, question, answer) : state.profile,
+      response.profilePatch,
+    ),
+    questionIndex: nextIndex,
+    phase: finished ? 'calibration' : 'questions',
+    skippedQuestionIds:
+      answer === 'skip' && question
         ? [...state.skippedQuestionIds, question.id]
         : state.skippedQuestionIds,
   };

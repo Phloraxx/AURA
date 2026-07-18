@@ -77,6 +77,20 @@ The API listens on `http://localhost:8787` by default and exposes
 `GET /health`. Copy `.env.example` to `.env` when provider configuration is
 introduced; provider secrets must remain in the API process.
 
+The default `LLM_PROVIDER=mock` keeps onboarding offline and deterministic. To
+exercise live adaptive onboarding, configure the API process with:
+
+```dotenv
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_backend_only_key
+OPENAI_MODEL=gpt-5.6-luna
+AURA_ALLOWED_ORIGINS=chrome-extension://your-unpacked-extension-id
+```
+
+Never prefix provider keys with `WXT_PUBLIC_`; WXT public variables are bundled
+into the extension. The API client falls back to local onboarding if the server
+is unavailable or returns invalid data.
+
 ### Load the production build in Chrome
 
 1. Run `corepack pnpm build`.

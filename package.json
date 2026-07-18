@@ -8,7 +8,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "corepack pnpm --parallel --filter @aura/extension --filter @aura/api dev",
+    "dev": "corepack pnpm --filter @aura/shared build && corepack pnpm --parallel --filter @aura/extension --filter @aura/api dev",
     "build": "corepack pnpm -r --if-present build",
     "lint": "eslint .",
     "typecheck": "corepack pnpm -r --if-present typecheck",

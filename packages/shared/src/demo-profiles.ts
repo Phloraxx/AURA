@@ -2,11 +2,11 @@ import type {
   AdaptationPreferences,
   CapabilityDimensions,
   CapabilityProfile,
-} from './profile';
+} from './profile.js';
 import {
   capabilityProfileSchema,
   createNeutralProfile,
-} from './profile';
+} from './profile.js';
 
 const SEEDED_AT = '2026-07-18T00:00:00.000Z';
 
