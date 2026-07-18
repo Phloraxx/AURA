@@ -141,6 +141,28 @@ Repository consequence:
 - keep `AGENTS.md` current,
 - put authoritative build/test commands there once the workspace is scaffolded.
 
+## 13. The repository runtime requires a Node-20-compatible WXT release
+
+Checked: 2026-07-18
+
+The development environment currently provides Node 20.20.2. WXT 0.20.27
+declares Node 20 support itself, but its current publishing dependency resolves
+to `listr2` 10, which requires Node 22.13 or newer. WXT 0.20.10 resolves its
+publishing toolchain to the Node-20-compatible major while retaining the WXT
+0.20 extension APIs used by AURA.
+
+Primary package metadata checked:
+- https://www.npmjs.com/package/wxt/v/0.20.10
+- https://www.npmjs.com/package/publish-browser-extension/v/3.0.2
+
+Implementation consequence:
+- pin WXT exactly at 0.20.10 while the repository baseline remains Node 20,
+- pin `@wxt-dev/module-react` at 1.1.4; newer releases select a Vite React
+  plugin toolchain that does not prepare successfully with this WXT/Node pair,
+- do not accept an automated WXT upgrade without running install, build, and
+  generated-manifest verification on the supported Node runtime,
+- revisit the pin when the project moves to Node 22.13 or newer.
+
 ## Open research tasks before production
 
 Codex should research and document these only when needed for implementation:

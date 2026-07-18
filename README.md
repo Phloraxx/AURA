@@ -44,6 +44,52 @@ The MVP proves one vertical slice:
 - Vitest for unit tests
 - Playwright for browser/integration tests
 
+## Development
+
+### Prerequisites
+
+- Node.js 20.12 or newer (Node 20.20.2 is the current verified baseline)
+- Corepack, included with the supported Node.js distribution
+- Chrome 114 or newer
+
+Install the entire workspace from the repository root:
+
+```bash
+corepack pnpm install
+```
+
+Run the repository quality gates:
+
+```bash
+corepack pnpm lint
+corepack pnpm typecheck
+corepack pnpm test
+corepack pnpm build
+```
+
+Start the extension development server and local API together:
+
+```bash
+corepack pnpm dev
+```
+
+The API listens on `http://localhost:8787` by default and exposes
+`GET /health`. Copy `.env.example` to `.env` when provider configuration is
+introduced; provider secrets must remain in the API process.
+
+### Load the production build in Chrome
+
+1. Run `corepack pnpm build`.
+2. Open `chrome://extensions`.
+3. Enable **Developer mode**.
+4. Choose **Load unpacked**.
+5. Select `apps/extension/.output/chrome-mv3`.
+6. Click the AURA toolbar action to open `sidepanel.html`.
+
+The generated manifest is Manifest V3 and currently requests `storage`,
+`activeTab`, `scripting`, and `sidePanel`, plus localhost API access for
+development.
+
 ## Read this repository in this order
 
 1. `AGENTS.md`
