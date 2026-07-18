@@ -91,3 +91,19 @@ Change only if the deployment target creates a concrete blocker.
 **Decision:** Every adaptation primitive must implement or expose equivalent apply/revert behavior.
 
 **Reason:** User trust, safety, compatibility, and demo quality.
+
+---
+
+## ADR-010 — Inject adaptation logic only after an explicit current-tab action
+
+**Status:** Accepted
+
+**Decision:** Package the adaptation entrypoint as a WXT runtime content script.
+Use `activeTab` plus `scripting` to inject it when the user chooses **Adapt this
+page** from the side panel. Do not declare a static all-sites content script for
+the MVP.
+
+**Reason:** This preserves the explicit user gesture, avoids permanent broad
+page access, and still supports deterministic offline adaptation. The side
+panel retries message delivery after injection so an already-running content
+script is reused rather than duplicated.

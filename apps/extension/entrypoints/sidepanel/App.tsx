@@ -1,8 +1,11 @@
 import {
   CAPABILITY_DIMENSION_NAMES,
+  pageStatusSchema,
   type AdaptationPreferences,
   type CapabilityDimensions,
   type CapabilityProfile,
+  type ExtensionMessage,
+  type PageStatus,
 } from '@aura/shared';
 import { useEffect, useState } from 'react';
 
@@ -41,6 +44,7 @@ export function App() {
   const [draft, setDraft] = useState<CapabilityProfile>();
   const [status, setStatus] = useState('Loading local profiles…');
   const [isBusy, setIsBusy] = useState(true);
+  const [pageStatus, setPageStatus] = useState<PageStatus>();
 
   function adoptState(nextState: ProfileState, message: string) {
     setProfileState(nextState);
@@ -139,6 +143,57 @@ export function App() {
       adoptState(state, 'Demo profiles restored.');
     } catch {
       setStatus('AURA could not reset profiles. Please try again.');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function sendPageMessage(message: ExtensionMessage): Promise<PageStatus> {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id === undefined) throw new Error('No active tab is available.');
+
+    let response: unknown;
+    try {
+      response = await browser.tabs.sendMessage(tab.id, message);
+    } catch {
+      await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content-scripts/adaptive.js'],
+      });
+      response = await browser.tabs.sendMessage(tab.id, message);
+    }
+    return pageStatusSchema.parse(response);
+  }
+
+  async function adaptPage() {
+    if (!draft) return;
+    setIsBusy(true);
+    setStatus('Applying local adaptations…');
+    try {
+      const next = await sendPageMessage({ type: 'PAGE_ADAPT', profile: draft });
+      setPageStatus(next);
+      setStatus(
+        next.errors.length > 0
+          ? 'The page adapted with some non-blocking limitations.'
+          : 'Local adaptations applied. No backend was required.',
+      );
+    } catch {
+      setStatus(
+        'AURA cannot adapt this browser page. Try a normal website tab and try again.',
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function undoPage() {
+    setIsBusy(true);
+    try {
+      const next = await sendPageMessage({ type: 'PAGE_REVERT' });
+      setPageStatus(next);
+      setStatus('All AURA page adaptations were undone.');
+    } catch {
+      setStatus('AURA could not reach this page to undo adaptations.');
     } finally {
       setIsBusy(false);
     }
@@ -327,6 +382,44 @@ export function App() {
               </div>
             ))}
           </details>
+
+          <section className="card" aria-labelledby="page-heading">
+            <div className="section-heading">
+              <div>
+                <p className="section-kicker">Current tab</p>
+                <h2 id="page-heading">Adapt this page</h2>
+              </div>
+              <span className="local-badge">Works offline</span>
+            </div>
+            <p className="help-text">
+              AURA applies reversible local rules from the active profile. Page content
+              stays in this tab during this phase.
+            </p>
+            {pageStatus?.adapted ? (
+              <p>
+                {pageStatus.appliedKinds.length} adaptations active:{' '}
+                {pageStatus.appliedKinds.join(', ')}
+              </p>
+            ) : null}
+            <div className="actions compact-actions">
+              <button
+                className="primary"
+                type="button"
+                disabled={isBusy}
+                onClick={() => void adaptPage()}
+              >
+                Adapt this page
+              </button>
+              <button
+                className="secondary"
+                type="button"
+                disabled={isBusy || !pageStatus?.adapted}
+                onClick={() => void undoPage()}
+              >
+                Undo all
+              </button>
+            </div>
+          </section>
 
           <div className="actions">
             <button className="primary" type="submit" disabled={isBusy}>

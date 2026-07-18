@@ -163,6 +163,32 @@ Implementation consequence:
   generated-manifest verification on the supported Node runtime,
 - revisit the pin when the project moves to Node 22.13 or newer.
 
+## 14. Runtime content-script injection preserves the explicit user gesture
+
+Checked: 2026-07-18
+
+WXT supports content-script entrypoints with `registration: 'runtime'` and
+documents executing the emitted content-script file through
+`browser.scripting.executeScript`. Chrome's `activeTab` permission grants
+temporary current-tab access after the user invokes the extension.
+
+Even for runtime registration, declaring `matches: ['<all_urls>']` caused WXT
+0.20.10 to add `<all_urls>` to the generated `host_permissions`. The match list
+is unnecessary when the packaged file is injected directly with
+`scripting.executeScript`, so AURA deliberately omits it.
+
+Official sources:
+- https://wxt.dev/guide/essentials/scripting
+- https://developer.chrome.com/docs/extensions/develop/concepts/activeTab
+
+Implementation consequence:
+- AURA does not register its adaptation content script on every page at
+  install time,
+- the side-panel **Adapt this page** action injects
+  `content-scripts/adaptive.js` into the active tab after the user gesture,
+- the generated production manifest must not contain a static
+  `content_scripts` entry or broad all-sites host permission.
+
 ## Open research tasks before production
 
 Codex should research and document these only when needed for implementation:

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AURA fixture — Cluttered article</title>
+    <style>
+      body { margin: 0; color: #334; background: #eef0f5; font: 16px/1.35 system-ui, sans-serif; }
+      header, nav, main, aside, footer { padding: 1rem; }
+      header { background: #28324a; color: white; }
+      nav { display: flex; flex-wrap: wrap; gap: .4rem; background: white; }
+      nav a, button { padding: .3rem .45rem; }
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 1rem; max-width: 78rem; margin: auto; padding: 1rem; }
+      main, aside { background: white; }
+      .ticker { animation: pulse 1.4s infinite alternate; }
+      .cards { display: grid; gap: .5rem; }
+      .card { padding: .65rem; border: 1px solid #ccd; }
+      @keyframes pulse { to { opacity: .45; } }
+      @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="ticker">Breaking updates every minute</p>
+      <h1>The Daily Example</h1>
+    </header>
+    <nav aria-label="Primary navigation">
+      <a href="#article">News</a><a href="#article">Technology</a>
+      <a href="#article">Culture</a><a href="#article">Subscribe</a>
+    </nav>
+    <div class="layout">
+      <main id="article">
+        <article>
+          <p>Technology · 8 minute read</p>
+          <h2>Designing calmer interfaces for a busy web</h2>
+          <p>People approach the same page with different goals, capabilities, and preferred ways of interacting.</p>
+          <p>A useful adaptation layer preserves the original application while changing presentation in small, reversible steps.</p>
+          <h3>Start with the person</h3>
+          <p>Explicit choices should take priority over inferred recommendations. The person must remain in control.</p>
+          <button type="button">Save this article</button>
+        </article>
+      </main>
+      <aside aria-label="Recommended stories">
+        <h2>Trending now</h2>
+        <div class="cards">
+          <a class="card" href="#article">Ten animated dashboards to watch</a>
+          <a class="card" href="#article">A very long guide to productivity</a>
+          <button class="card" type="button">Enable all notifications</button>
+        </div>
+      </aside>
+    </div>
+    <footer>Fixture content for local AURA testing.</footer>
+  </body>
+</html>
