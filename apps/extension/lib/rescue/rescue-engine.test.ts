@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createNeutralProfile, capabilityProfileSchema } from '@aura/shared';
+import { capabilityProfileSchema, createNeutralProfile } from '@aura/shared';
 
 import { ElementRegistry } from '../page/element-registry';
 import { RescueEngine } from './rescue-engine';
@@ -13,7 +13,7 @@ describe('RescueEngine', () => {
   });
 
   function setup() {
-    vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+    const hasFocusSpy = vi.spyOn(document, 'hasFocus').mockReturnValue(true);
     document.body.innerHTML = '<button aria-label="Tiny">Tiny</button>';
     const target = document.querySelector('button');
     if (!target) throw new Error('Fixture target is missing.');
@@ -35,7 +35,7 @@ describe('RescueEngine', () => {
     rescue.setProfile(profile);
     rescue.setEnabled(true);
     const event = () => document.dispatchEvent(new PointerEvent('pointerup', { clientX: 120, clientY: 105, bubbles: true }));
-    return { event, rescue, suggestions };
+    return { event, hasFocusSpy, rescue, suggestions };
   }
 
   it('offers a consent-gated near-miss suggestion and suppresses its cooldown', () => {
@@ -69,8 +69,8 @@ describe('RescueEngine', () => {
   });
 
   it('ignores Rescue interaction telemetry when the page is not focused', () => {
-    const { event, rescue, suggestions } = setup();
-    vi.mocked(document.hasFocus).mockReturnValue(false);
+    const { event, hasFocusSpy, rescue, suggestions } = setup();
+    hasFocusSpy.mockReturnValue(false);
 
     event();
     event();
