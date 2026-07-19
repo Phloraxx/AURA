@@ -1,12 +1,18 @@
 import {
   capabilityProfileSchema,
   createNeutralProfile,
-  type AdaptationPreferences,
+  type AdaptationPreferencePatch,
   type CapabilityDimensions,
   type CapabilityProfile,
   type CapabilityProfilePatch,
   type OnboardingResponse,
 } from '@aura/shared';
+
+import {
+  materializeResolvedProfile,
+  resolveAdaptationPreferences,
+  withPreferenceLayer,
+} from '../profile/preference-resolver';
 
 export type OnboardingMode = 'text' | 'choices' | 'voice' | 'quick';
 export type QuestionAnswer = string;
@@ -122,37 +128,37 @@ function patchForQuestion(
 ): CapabilityProfile {
   const affirmative = resolveBinaryAnswer(answer);
   if (affirmative === undefined) return profile;
-  const preferences: AdaptationPreferences = { ...profile.preferences };
+  const preferencePatch: AdaptationPreferencePatch = {};
   let dimensions = profile.dimensions;
   let modalities = profile.modalities;
 
   switch (question.area) {
     case 'visual':
       dimensions = selfReportedDimension(profile, 'visual', affirmative);
-      preferences.textScale = affirmative ? 1.3 : 1;
-      preferences.contrast = affirmative ? 'enhanced' : 'default';
+      preferencePatch.textScale = affirmative ? 1.3 : 1;
+      preferencePatch.contrast = affirmative ? 'enhanced' : 'default';
       break;
     case 'motor':
       dimensions = selfReportedDimension(profile, 'motor', affirmative);
-      preferences.enlargeTargets = affirmative;
-      preferences.targetSizePx = affirmative ? 52 : 44;
+      preferencePatch.enlargeTargets = affirmative;
+      preferencePatch.targetSizePx = affirmative ? 52 : 44;
       break;
     case 'cognitive':
       dimensions = selfReportedDimension(profile, 'cognitive', affirmative);
-      preferences.stepByStepForms = affirmative;
+      preferencePatch.stepByStepForms = affirmative;
       break;
     case 'attention':
       dimensions = selfReportedDimension(profile, 'attention', affirmative);
-      preferences.focusMode = affirmative;
-      preferences.hideDistractions = affirmative;
+      preferencePatch.focusMode = affirmative;
+      preferencePatch.hideDistractions = affirmative;
       break;
     case 'language':
       dimensions = selfReportedDimension(profile, 'language', affirmative);
-      preferences.simplifyLanguage = affirmative;
-      preferences.clarifyControls = affirmative;
+      preferencePatch.simplifyLanguage = affirmative;
+      preferencePatch.clarifyControls = affirmative;
       break;
     case 'motion':
-      preferences.reduceMotion = affirmative;
+      preferencePatch.reduceMotion = affirmative;
       break;
     case 'screen_reader':
       modalities = { ...modalities, screenReader: affirmative };
@@ -165,7 +171,10 @@ function patchForQuestion(
       break;
   }
 
-  return { ...profile, dimensions, modalities, preferences };
+  const base = capabilityProfileSchema.parse({ ...profile, dimensions, modalities });
+  return Object.keys(preferencePatch).length > 0
+    ? withPreferenceLayer(base, 'onboarding', preferencePatch)
+    : materializeResolvedProfile(base);
 }
 
 export function startOnboarding(mode: OnboardingMode): OnboardingState {
@@ -204,12 +213,14 @@ export function mergeProfilePatch(
   profile: CapabilityProfile,
   patch: CapabilityProfilePatch,
 ): CapabilityProfile {
-  return capabilityProfileSchema.parse({
+  const base = capabilityProfileSchema.parse({
     ...profile,
     dimensions: { ...profile.dimensions, ...patch.dimensions },
     modalities: { ...profile.modalities, ...patch.modalities },
-    preferences: { ...profile.preferences, ...patch.preferences },
   });
+  return patch.preferences
+    ? withPreferenceLayer(base, 'onboarding', patch.preferences)
+    : materializeResolvedProfile(base);
 }
 
 export function applyProviderResponse(
@@ -263,6 +274,7 @@ export function applyCalibrationChoice(
   const task = CALIBRATION_TASKS[state.calibrationIndex];
   if (!task) return { ...state, phase: 'review' };
   let profile = state.profile;
+  let preferencePatch: AdaptationPreferencePatch = {};
 
   if (choice !== 'skip') {
     if (task === 'text_presentation') {
@@ -273,38 +285,42 @@ export function applyCalibrationChoice(
       } as const;
       const selected = presentation[choice as keyof typeof presentation];
       if (selected) {
-        profile = {
+        profile = capabilityProfileSchema.parse({
           ...profile,
           dimensions: addCalibrationEvidence(profile, 'visual'),
-          preferences: { ...profile.preferences, ...selected },
-        };
+        });
+        preferencePatch = selected;
       }
     } else if (task === 'control_size') {
       const sizes = { standard: 44, large: 52, largest: 60 } as const;
       const selected = sizes[choice as keyof typeof sizes];
       if (selected) {
-        profile = {
+        profile = capabilityProfileSchema.parse({
           ...profile,
           dimensions: addCalibrationEvidence(profile, 'motor'),
-          preferences: {
-            ...profile.preferences,
-            enlargeTargets: selected > 44,
-            targetSizePx: selected,
-          },
+        });
+        preferencePatch = {
+          enlargeTargets: selected > 44,
+          targetSizePx: selected,
         };
       }
     } else if (task === 'clutter_focus' && (choice === 'dense' || choice === 'focused')) {
       const focused = choice === 'focused';
-      profile = {
+      profile = capabilityProfileSchema.parse({
         ...profile,
         dimensions: addCalibrationEvidence(profile, 'attention'),
-        preferences: {
-          ...profile.preferences,
-          focusMode: focused,
-          hideDistractions: focused,
-        },
+      });
+      preferencePatch = {
+        focusMode: focused,
+        hideDistractions: focused,
       };
     }
+  }
+
+  if (Object.keys(preferencePatch).length > 0) {
+    profile = withPreferenceLayer(profile, 'calibration', preferencePatch);
+  } else {
+    profile = materializeResolvedProfile(profile);
   }
 
   const nextIndex = state.calibrationIndex + 1;
@@ -317,13 +333,15 @@ export function applyCalibrationChoice(
 }
 
 export function profileSummary(profile: CapabilityProfile): string[] {
+  const preferences = resolveAdaptationPreferences(profile).preferences;
   const items: string[] = [];
-  if (profile.preferences.textScale > 1) items.push('make text larger');
-  if (profile.preferences.enlargeTargets) items.push('make controls easier to select');
-  if (profile.preferences.reduceMotion) items.push('reduce animation and motion');
-  if (profile.preferences.focusMode) items.push('focus on primary content');
-  if (profile.preferences.hideDistractions) items.push('collapse distracting secondary content');
-  if (profile.preferences.simplifyLanguage) items.push('offer simpler wording');
-  if (profile.preferences.clarifyControls) items.push('clarify ambiguous controls');
+  if (preferences.textScale > 1) items.push('make text larger');
+  if (preferences.enlargeTargets) items.push('make controls easier to select');
+  if (preferences.reduceMotion) items.push('reduce animation and motion');
+  if (preferences.focusMode) items.push('focus on primary content');
+  if (preferences.hideDistractions) items.push('collapse distracting secondary content');
+  if (preferences.simplifyLanguage) items.push('offer simpler wording');
+  if (preferences.clarifyControls) items.push('clarify ambiguous controls');
+  if (preferences.stepByStepForms) items.push('guide complex forms in smaller steps');
   return items.length > 0 ? items : ['keep pages close to their original presentation'];
 }
