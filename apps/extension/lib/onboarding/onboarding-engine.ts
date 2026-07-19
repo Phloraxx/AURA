@@ -81,10 +81,10 @@ export const ONBOARDING_QUESTIONS: readonly OnboardingQuestion[] = [
     help: 'AURA will preserve semantic structure and avoid unnecessary visual-only questions.',
   },
   {
-    id: 'output-support',
-    area: 'speech_output',
-    prompt: 'Would hearing setup questions read aloud be useful?',
-    help: 'Speech is optional and visible text always remains on screen.',
+    id: 'auditory-information',
+    area: 'auditory',
+    prompt: 'When a page uses audio, do you need important information to also be available visually?',
+    help: 'AURA will never resolve to speech-only output for this profile. Captions and transcripts still depend on what the website provides.',
   },
 ] as const;
 
@@ -137,6 +137,12 @@ function patchForQuestion(
       dimensions = selfReportedDimension(profile, 'visual', affirmative);
       preferencePatch.textScale = affirmative ? 1.3 : 1;
       preferencePatch.contrast = affirmative ? 'enhanced' : 'default';
+      break;
+    case 'auditory':
+      dimensions = selfReportedDimension(profile, 'auditory', affirmative);
+      if (affirmative) {
+        modalities = { ...modalities, preferredOutput: ['visual'] };
+      }
       break;
     case 'motor':
       dimensions = selfReportedDimension(profile, 'motor', affirmative);
