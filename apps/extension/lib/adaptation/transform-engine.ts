@@ -12,6 +12,7 @@ import {
   type AdaptationPrimitive,
   type PrimitiveContext,
 } from './primitives/primitives';
+import { safeCollapseDistractions } from './primitives/safe-collapse-distractions';
 import { safeFocusMainContent } from './primitives/safe-focus-main-content';
 
 interface AppliedRecord {
@@ -27,6 +28,7 @@ const primitiveFactories: Record<
   ...deterministicPrimitiveFactories,
   ...semanticPrimitiveFactories,
   focusMainContent: safeFocusMainContent,
+  collapseDistractions: safeCollapseDistractions,
 };
 
 export class TransformEngine {
