@@ -11,7 +11,7 @@ describe('RescueEngine', () => {
     document.body.replaceChildren();
   });
 
-  it('offers a consent-gated near-miss suggestion and suppresses its cooldown', () => {
+  function setup() {
     document.body.innerHTML = '<button aria-label="Tiny">Tiny</button>';
     const target = document.querySelector('button');
     if (!target) throw new Error('Fixture target is missing.');
@@ -33,6 +33,11 @@ describe('RescueEngine', () => {
     rescue.setProfile(profile);
     rescue.setEnabled(true);
     const event = () => document.dispatchEvent(new PointerEvent('pointerup', { clientX: 120, clientY: 105, bubbles: true }));
+    return { event, rescue, suggestions };
+  }
+
+  it('offers a consent-gated near-miss suggestion and suppresses its cooldown', () => {
+    const { event, rescue, suggestions } = setup();
     event();
     event();
     expect(suggestions).toEqual(['rescue:near-miss:aura:n1']);
@@ -41,6 +46,19 @@ describe('RescueEngine', () => {
     event();
     event();
     expect(suggestions).toHaveLength(1);
+    rescue.destroy();
+  });
+
+  it('clears an accepted suggestion before a new adaptation run', () => {
+    const { event, rescue } = setup();
+    event();
+    event();
+    expect(rescue.status().suggestion).toBeDefined();
+
+    const status = rescue.clearSuggestion();
+
+    expect(status.suggestion).toBeUndefined();
+    expect(status.enabled).toBe(true);
     rescue.destroy();
   });
 });
