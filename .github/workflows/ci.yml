@@ -34,7 +34,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint 2>&1 | tee /tmp/aura-lint.log
+
+      - name: Upload lint failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-failure-log
+          path: /tmp/aura-lint.log
 
       - name: Typecheck
         run: pnpm typecheck
