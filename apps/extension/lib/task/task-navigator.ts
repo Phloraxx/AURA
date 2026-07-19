@@ -86,6 +86,7 @@ export class TaskNavigator {
     const first = step.targetIds
       .map((id) => this.#registry.getElement(id))
       .find((element): element is Element => element !== undefined);
-    first?.scrollIntoView?.({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    const reduceMotion = this.#document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    first?.scrollIntoView?.({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
   }
 }
