@@ -64,4 +64,28 @@ describe('AURA Fit', () => {
     expect(fit.score).toBeGreaterThan(0);
     expect(fit.categories[0]?.signalCount).toBe(20);
   });
+
+  it('keeps semantic findings out of the comparable Fit score', () => {
+    const profile = DEMO_PROFILES[2];
+    if (!profile) throw new Error('Demo profile is unavailable.');
+    const localOnly = calculateAuraFit(personalizeFriction(signals, profile));
+    const semanticSignal: FrictionSignal = {
+      id: 'semantic:attention_clutter:1',
+      category: 'attention_clutter',
+      targetIds: ['aura:n3'],
+      severity: 1,
+      confidence: 1,
+      source: 'semantic_ai',
+      reason: 'Semantic analysis found a distracting region.',
+      critical: false,
+    };
+
+    const withSemantic = calculateAuraFit(
+      personalizeFriction([...signals, semanticSignal], profile),
+    );
+
+    expect(withSemantic.score).toBe(localOnly.score);
+    expect(withSemantic.categories).toEqual(localOnly.categories);
+    expect(withSemantic.topFrictionIds).toEqual(localOnly.topFrictionIds);
+  });
 });
