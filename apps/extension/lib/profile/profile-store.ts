@@ -2,8 +2,11 @@ import {
   capabilityProfileListSchema,
   capabilityProfileSchema,
   DEMO_PROFILES,
+  sitePreferenceListSchema,
   type CapabilityProfile,
 } from '@aura/shared';
+
+import { removeSitePermission } from '../site/permission-manager';
 
 const STORAGE_KEYS = {
   activeProfileId: 'aura.activeProfileId',
@@ -11,8 +14,9 @@ const STORAGE_KEYS = {
   profiles: 'aura.profiles',
 } as const;
 
+const SITE_PREFERENCES_KEY = 'aura.sitePreferences.v1';
 const DEMO_RESET_VALUES = {
-  'aura.sitePreferences.v1': [],
+  [SITE_PREFERENCES_KEY]: [],
   'aura.rescueEnabled.v1': true,
 } as const;
 
@@ -33,6 +37,8 @@ export interface ProfileStore {
   setActiveProfile(profileId: string): Promise<ProfileState>;
   resetDemoProfiles(): Promise<ProfileState>;
 }
+
+type SitePermissionRemover = (origin: string) => Promise<boolean>;
 
 function logProfileError(action: string, error: unknown): void {
   console.error(`[AURA profile] ${action}`, error);
@@ -71,8 +77,30 @@ async function writeState(
   }
 }
 
+async function revokeRememberedSitePermissions(
+  storageArea: StorageAreaAdapter,
+  removePermission: SitePermissionRemover,
+): Promise<void> {
+  const stored = await storageArea.get([SITE_PREFERENCES_KEY]);
+  const sites = sitePreferenceListSchema.safeParse(stored[SITE_PREFERENCES_KEY] ?? []);
+  if (!sites.success) {
+    console.warn('[AURA profile] Stored site memory was invalid during demo reset; clearing it anyway.');
+    return;
+  }
+  const results = await Promise.allSettled(
+    sites.data.map(({ origin }) => removePermission(origin)),
+  );
+  const failures = results.filter(({ status }) => status === 'rejected').length;
+  if (failures > 0) {
+    console.warn('[AURA profile] Some optional site permissions could not be revoked during demo reset.', {
+      failures,
+    });
+  }
+}
+
 export function createProfileStore(
   storageArea: StorageAreaAdapter = browser.storage.local,
+  removePermission: SitePermissionRemover = removeSitePermission,
 ): ProfileStore {
   async function getState(): Promise<ProfileState> {
     try {
@@ -180,9 +208,10 @@ export function createProfileStore(
 
   async function resetDemoProfiles(): Promise<ProfileState> {
     try {
+      await revokeRememberedSitePermissions(storageArea, removePermission);
       const state = await seedDemoProfiles(false);
       await storageArea.set(DEMO_RESET_VALUES);
-      console.info('[AURA profile] Demo-only site memory cleared and Rescue restored to default.');
+      console.info('[AURA profile] Demo profiles, site memory, optional site permissions, and Rescue defaults were reset.');
       return state;
     } catch (error) {
       logProfileError('Failed to reset demo profiles.', error);
