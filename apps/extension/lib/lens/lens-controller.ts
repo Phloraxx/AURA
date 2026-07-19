@@ -4,6 +4,7 @@ import type { ElementRegistry } from '../page/element-registry';
 import { LensOverlay } from './lens-overlay';
 
 export class LensController {
+  readonly #document: Document;
   readonly #registry: ElementRegistry;
   readonly #overlay: LensOverlay;
   #signals: readonly FrictionSignal[] = [];
@@ -11,6 +12,7 @@ export class LensController {
   #selectedFrictionId: string | undefined;
 
   constructor(document: Document, registry: ElementRegistry) {
+    this.#document = document;
     this.#registry = registry;
     this.#overlay = new LensOverlay(document, registry);
   }
@@ -35,7 +37,8 @@ export class LensController {
       const target = signal?.targetIds
         .map((id) => this.#registry.getElement(id))
         .find((element): element is Element => element !== undefined);
-      target?.scrollIntoView?.({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      const reduceMotion = this.#document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+      target?.scrollIntoView?.({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
     }
     return this.status();
   }
