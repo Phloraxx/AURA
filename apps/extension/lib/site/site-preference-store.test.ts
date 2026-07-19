@@ -42,12 +42,19 @@ describe('site preference memory', () => {
     expect(() => normalizeSiteOrigin('file:///tmp/page.html')).toThrow(/web pages only/u);
   });
 
-  it('stores validated origin-level preference patches', async () => {
+  it('stores validated origin-level local preference patches only', async () => {
     const store = createSitePreferenceStore();
     await store.save({
       origin: 'https://example.com/private?token=secret',
       autoAdapt: false,
-      preferencePatch: { textScale: 1.4, enlargeTargets: true },
+      preferencePatch: {
+        textScale: 1.4,
+        enlargeTargets: true,
+        simplifyLanguage: true,
+        hideDistractions: true,
+        clarifyControls: true,
+        stepByStepForms: true,
+      },
     });
 
     await expect(store.list()).resolves.toEqual([
