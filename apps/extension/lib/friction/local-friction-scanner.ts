@@ -14,9 +14,64 @@ const INTERACTIVE_SELECTOR = [
 ].join(',');
 
 const READING_SELECTOR = 'article, main, [role="main"], section';
+const FIELD_SELECTOR = 'input:not([type="hidden"]), select, textarea';
+const GROUP_SELECTOR = 'fieldset, [role="group"], [data-form-section]';
+const CRITICAL_CONTROL_SELECTOR = '[required], [aria-invalid="true"], [role="alert"], input[type="password"]';
 const CRITICAL_PATTERN =
   /\b(pay|payment|purchase|checkout|sign[ -]?in|log[ -]?in|password|security|warning|error|required|consent|agree|legal|terms|privacy|medical|financial)\b/iu;
+const MAX_PAGE_SCAN_NODES = 2_000;
+const MAX_INTERACTIVE_SCAN_NODES = 600;
+const MAX_READING_SCAN_NODES = 120;
+const MAX_FORM_SCAN_NODES = 60;
 const MAX_MOTION_SCAN_NODES = 400;
+
+interface PageElementSample {
+  elements: Element[];
+  truncated: boolean;
+}
+
+function boundedPageElements(document: Document): PageElementSample {
+  const root = document.body ?? document.documentElement;
+  if (!root) return { elements: [], truncated: false };
+
+  const elements: Element[] = [root];
+  const walker = document.createTreeWalker(root, 1);
+  let node = walker.nextNode();
+  while (node && elements.length < MAX_PAGE_SCAN_NODES) {
+    if (node instanceof Element) elements.push(node);
+    node = walker.nextNode();
+  }
+  return { elements, truncated: node !== null };
+}
+
+function matching(
+  elements: readonly Element[],
+  selector: string,
+  limit: number,
+): Element[] {
+  const matches: Element[] = [];
+  for (const element of elements) {
+    if (!element.matches(selector)) continue;
+    matches.push(element);
+    if (matches.length >= limit) break;
+  }
+  return matches;
+}
+
+function descendantCount(
+  elements: readonly Element[],
+  parent: Element,
+  selector: string,
+  limit: number,
+): number {
+  let count = 0;
+  for (const element of elements) {
+    if (element === parent || !parent.contains(element) || !element.matches(selector)) continue;
+    count += 1;
+    if (count >= limit) break;
+  }
+  return count;
+}
 
 function isVisible(element: Element): boolean {
   if (
@@ -99,10 +154,15 @@ function accessibleNameHint(element: Element): string | undefined {
   return text || element.getAttribute('alt')?.trim() || undefined;
 }
 
-function isCritical(element: Element): boolean {
+function isCritical(element: Element, pageElements: readonly Element[]): boolean {
+  if (element.matches(CRITICAL_CONTROL_SELECTOR)) return true;
   if (
-    element.matches('[required], [aria-invalid="true"], [role="alert"], input[type="password"]') ||
-    element.querySelector('[required], [aria-invalid="true"], [role="alert"], input[type="password"]')
+    pageElements.some(
+      (candidate) =>
+        candidate !== element &&
+        element.contains(candidate) &&
+        candidate.matches(CRITICAL_CONTROL_SELECTOR),
+    )
   ) {
     return true;
   }
@@ -145,8 +205,8 @@ function idFor(registry: ElementRegistry, element: Element): string {
   return registry.getId(element) ?? registry.register(element);
 }
 
-function readableRegions(document: Document): Element[] {
-  const candidates = Array.from(document.querySelectorAll(READING_SELECTOR)).filter(isVisible);
+function readableRegions(pageElements: readonly Element[]): Element[] {
+  const candidates = matching(pageElements, READING_SELECTOR, MAX_READING_SCAN_NODES).filter(isVisible);
   const articles = candidates.filter((element) => element.matches('article'));
   if (articles.length > 0) return articles.slice(0, 8);
   return candidates
@@ -158,7 +218,8 @@ export function scanLocalFriction(
   document: Document,
   registry: ElementRegistry,
 ): FrictionSignal[] {
-  registry.registerSubtree(document);
+  const pageSample = boundedPageElements(document);
+  const pageElements = pageSample.elements;
   const signals: FrictionSignal[] = [];
   let index = 1;
   const add = (
@@ -173,9 +234,9 @@ export function scanLocalFriction(
     index += 1;
   };
 
-  readableRegions(document).forEach((region) => {
+  readableRegions(pageElements).forEach((region) => {
     const text = textOf(region);
-    const paragraphs = region.querySelectorAll('p, li, blockquote').length;
+    const paragraphs = descendantCount(pageElements, region, 'p, li, blockquote', 3);
     const style = getComputedStyle(region);
     const fontSize = numeric(style.fontSize);
     const lineHeight = numeric(style.lineHeight);
@@ -191,7 +252,7 @@ export function scanLocalFriction(
         denseReading
           ? 'This reading region contains a long sequence of text that may be harder to scan.'
           : 'This reading region uses compact text presentation.',
-        isCritical(region),
+        isCritical(region, pageElements),
       );
     }
 
@@ -204,12 +265,16 @@ export function scanLocalFriction(
         0.45,
         0.68,
         'This reading region uses longer terminology that may benefit from clearer wording.',
-        isCritical(region),
+        isCritical(region, pageElements),
       );
     }
   });
 
-  const interactive = Array.from(document.querySelectorAll(INTERACTIVE_SELECTOR)).filter(isVisible);
+  const interactive = matching(
+    pageElements,
+    INTERACTIVE_SELECTOR,
+    MAX_INTERACTIVE_SCAN_NODES,
+  ).filter(isVisible);
   const smallTargets = interactive.filter((element) => {
     const size = targetSize(element);
     return size !== undefined && size < 44;
@@ -221,7 +286,7 @@ export function scanLocalFriction(
       Math.min(0.9, Math.max(0.35, (44 - (targetSize(element) ?? 44)) / 32)),
       0.82,
       'This interactive target appears smaller than a comfortable touch or pointer target.',
-      isCritical(element),
+      isCritical(element, pageElements),
     );
   });
 
@@ -233,14 +298,14 @@ export function scanLocalFriction(
       0.65,
       0.92,
       'This interactive control does not expose a clear name locally.',
-      isCritical(element),
+      isCritical(element, pageElements),
     );
   });
 
-  const main = document.querySelector('main, [role="main"], article');
-  const nav = Array.from(document.querySelectorAll('nav, [role="navigation"]')).find(isVisible);
+  const main = pageElements.find((element) => element.matches('main, [role="main"], article'));
+  const nav = matching(pageElements, 'nav, [role="navigation"]', 20).find(isVisible);
   if (nav && main) {
-    const navigationControls = Array.from(nav.querySelectorAll(INTERACTIVE_SELECTOR)).filter(isVisible);
+    const navigationControls = interactive.filter((element) => nav.contains(element));
     if (navigationControls.length >= 4) {
       add(
         'focus_navigation',
@@ -265,7 +330,7 @@ export function scanLocalFriction(
     }
   }
 
-  const asides = Array.from(document.querySelectorAll('aside, [role="complementary"]')).filter(isVisible);
+  const asides = matching(pageElements, 'aside, [role="complementary"]', 24).filter(isVisible);
   if (asides.length > 0 && main) {
     add(
       'attention_clutter',
@@ -273,16 +338,16 @@ export function scanLocalFriction(
       Math.min(0.85, 0.45 + asides.length * 0.08),
       0.82,
       'Secondary regions compete with the page’s main content.',
-      asides.some(isCritical),
+      asides.some((aside) => isCritical(aside, pageElements)),
     );
   }
 
-  const forms = Array.from(document.querySelectorAll('form')).filter(isVisible);
+  const forms = matching(pageElements, 'form', MAX_FORM_SCAN_NODES).filter(isVisible);
   forms.forEach((form) => {
-    const fields = Array.from(form.querySelectorAll('input:not([type="hidden"]), select, textarea')).filter(
-      isVisible,
+    const fields = matching(pageElements, FIELD_SELECTOR, MAX_INTERACTIVE_SCAN_NODES).filter(
+      (element) => form.contains(element) && isVisible(element),
     );
-    const groups = form.querySelectorAll('fieldset, [role="group"], [data-form-section]').length;
+    const groups = descendantCount(pageElements, form, GROUP_SELECTOR, 10);
     if (fields.length >= 3 || groups >= 2) {
       const targetId = idFor(registry, form);
       add(
@@ -291,7 +356,7 @@ export function scanLocalFriction(
         Math.min(0.9, 0.35 + fields.length / 18 + groups / 10),
         0.84,
         'This form has several fields or sections that may be easier to complete step by step.',
-        isCritical(form),
+        isCritical(form, pageElements),
       );
       if (groups >= 2) {
         add(
@@ -300,13 +365,15 @@ export function scanLocalFriction(
           Math.min(0.8, 0.4 + groups / 10),
           0.78,
           'This form contains multiple logical sections to work through.',
-          isCritical(form),
+          isCritical(form, pageElements),
         );
       }
     }
   });
 
-  const motionCandidates = Array.from(document.querySelectorAll('body *')).slice(0, MAX_MOTION_SCAN_NODES);
+  const motionCandidates = pageElements
+    .filter((element) => element !== document.body)
+    .slice(0, MAX_MOTION_SCAN_NODES);
   const animated: Element[] = [];
   for (const element of motionCandidates) {
     if (!isVisible(element)) continue;
@@ -322,7 +389,7 @@ export function scanLocalFriction(
       animated.map((element) => idFor(registry, element)),
       0.55,
       0.72,
-      motionCandidates.length >= MAX_MOTION_SCAN_NODES
+      pageSample.truncated || motionCandidates.length >= MAX_MOTION_SCAN_NODES
         ? 'A bounded page scan found animated content that may compete with attention.'
         : 'The page contains animated content that may compete with attention.',
       false,
@@ -330,18 +397,16 @@ export function scanLocalFriction(
   }
 
   const visibleControls = interactive.length;
-  if (visibleControls >= 6 && document.querySelector('main, article')) {
-    const primaryRegion = document.querySelector('main, article');
-    if (primaryRegion) {
-      add(
-        'control_clarity',
-        [idFor(registry, primaryRegion)],
-        0.3,
-        0.55,
-        'Several controls share this page region, so the next useful action may be harder to identify.',
-        false,
-      );
-    }
+  const primaryRegion = pageElements.find((element) => element.matches('main, article'));
+  if (visibleControls >= 6 && primaryRegion) {
+    add(
+      'control_clarity',
+      [idFor(registry, primaryRegion)],
+      0.3,
+      0.55,
+      'Several controls share this page region, so the next useful action may be harder to identify.',
+      false,
+    );
   }
 
   return signals;
