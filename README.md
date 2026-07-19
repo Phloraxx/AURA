@@ -22,6 +22,18 @@ The MVP proves one vertical slice:
 8. Optional AI analysis identifies page semantics such as primary content, distractions, ambiguous controls, form groups, and text worth simplifying.
 9. The same webpage adapts differently when the active profile changes.
 
+## Hackathon productization direction
+
+The stable MVP is the foundation. The polished hackathon product now follows the north-star experience:
+
+> **SEE → TRANSFORM → GUIDE**
+
+- **SEE:** AURA Fit and AURA Lens show where this specific user is likely to experience friction on the current page.
+- **TRANSFORM:** AURA applies safe reversible adaptations and shows a real before/after personalized Fit result.
+- **GUIDE:** Task Mode helps the user navigate what they came to accomplish using the website's original controls.
+
+The complete implementation roadmap is `docs/17-HACKATHON-WOW-IMPLEMENTATION-PLAN.md`. It covers AURA Fit, AURA Lens, polished adaptation progress, Before/After, Task Mode, voice task input, experiential onboarding, the adaptation decision inspector, AURA Rescue, per-site memory, optional on-device AI, testing, security, and the revised demo choreography.
+
 ## Product principles
 
 - **Capability-first, not diagnosis-first.** Never require a medical label.
@@ -143,13 +155,14 @@ the default, so the complete demo is stable without provider credentials.
 10. `docs/08-SECURITY-PRIVACY.md`
 11. `docs/15-PREFLIGHT-REVIEW.md`
 12. `docs/16-CAPABILITY-RESOLUTION.md`
-13. `docs/09-RESEARCH.md`
-14. `docs/10-IMPLEMENTATION-PLAN.md`
-15. `docs/11-TESTING.md`
-16. `docs/12-DEMO.md`
-17. `docs/13-DECISIONS.md`
-18. `docs/14-OPEN-QUESTIONS.md`
-19. `docs/DEFINITION-OF-DONE.md`
+13. `docs/17-HACKATHON-WOW-IMPLEMENTATION-PLAN.md`
+14. `docs/09-RESEARCH.md`
+15. `docs/10-IMPLEMENTATION-PLAN.md`
+16. `docs/11-TESTING.md`
+17. `docs/12-DEMO.md`
+18. `docs/13-DECISIONS.md`
+19. `docs/14-OPEN-QUESTIONS.md`
+20. `docs/DEFINITION-OF-DONE.md`
 
 Codex should start from `docs/CODEX-MASTER-PROMPT.md` after reading the documentation above.
 
@@ -165,6 +178,6 @@ Codex should start from `docs/CODEX-MASTER-PROMPT.md` after reading the document
 
 ## Demo promise
 
-The winning demo is simple:
+The winning demo should make this visibly true:
 
-> Three users. One webpage. Three clearly different adaptations, all produced by the same capability-driven engine.
+> **AURA understands how you use the web, shows where this page may be difficult for you, reshapes it safely, and guides you through what you came here to do—while keeping you in control.**
