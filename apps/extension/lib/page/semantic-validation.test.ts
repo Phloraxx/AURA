@@ -40,18 +40,23 @@ describe('semantic page analysis validation', () => {
     expect(() => validateSemanticAnalysisForPage(value, page)).toThrow(/unknown/u);
   });
 
-  it('filters low-confidence and critical distraction targets', () => {
+  it('filters low-confidence and critical targets', () => {
     const value = analysis();
     value.primaryActions.push({
       id: 'aura:n1',
       confidence: 0.2,
       reason: 'Weak guess',
     });
+    value.formGroups.push(
+      { id: 'aura:n1', confidence: 0.2, reason: 'Weak form guess' },
+      { id: 'aura:n2', confidence: 0.99, reason: 'Critical form group' },
+    );
 
     const validated = validateSemanticAnalysisForPage(value, page);
 
     expect(validated.mainContent).toHaveLength(1);
     expect(validated.primaryActions).toHaveLength(0);
     expect(validated.distractions).toHaveLength(0);
+    expect(validated.formGroups).toHaveLength(0);
   });
 });
