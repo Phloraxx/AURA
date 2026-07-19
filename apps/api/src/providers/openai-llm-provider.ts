@@ -5,6 +5,7 @@ import {
   onboardingResponseSchema,
   semanticPageAnalysisSchema,
   simplifyTextResponseSchema,
+  taskPlanResponseSchema,
   type OnboardingRequest,
   type PageAnalysisRequest,
   type SimplifyTextRequest,
@@ -16,6 +17,7 @@ import { z } from 'zod';
 import { ONBOARDING_SYSTEM_PROMPT } from '../prompts/onboarding.js';
 import { PAGE_ANALYZER_SYSTEM_PROMPT } from '../prompts/page-analyzer.js';
 import { TEXT_SIMPLIFIER_SYSTEM_PROMPT } from '../prompts/text-simplifier.js';
+import { TASK_PLANNER_SYSTEM_PROMPT } from '../prompts/task-planner.js';
 import type { LLMProvider } from './llm-provider.js';
 import { ProviderError } from './llm-provider.js';
 
@@ -186,6 +188,33 @@ export class OpenAILLMProvider implements LLMProvider {
         throw new ProviderError('The text simplifier is temporarily unavailable.', true);
       }
       throw new ProviderError('The text simplifier returned an invalid response.', false);
+    }
+  }
+
+  async planTask(input: Parameters<LLMProvider['planTask']>[0]) {
+    try {
+      const response = await this.#client.responses.parse({
+        model: this.#model,
+        instructions: TASK_PLANNER_SYSTEM_PROMPT,
+        input: JSON.stringify(input),
+        max_output_tokens: 1_800,
+        text: {
+          format: zodTextFormat(taskPlanResponseSchema, 'aura_task_plan'),
+        },
+      });
+      if (!response.output_parsed) {
+        throw new ProviderError('The task planner returned no structured output.', false);
+      }
+      return taskPlanResponseSchema.parse(response.output_parsed);
+    } catch (error) {
+      if (error instanceof ProviderError) throw error;
+      if (error instanceof OpenAI.APIConnectionTimeoutError) {
+        throw new ProviderError('The task planner timed out.', true);
+      }
+      if (error instanceof OpenAI.RateLimitError || error instanceof OpenAI.APIConnectionError) {
+        throw new ProviderError('The task planner is temporarily unavailable.', true);
+      }
+      throw new ProviderError('The task planner returned an invalid response.', false);
     }
   }
 }

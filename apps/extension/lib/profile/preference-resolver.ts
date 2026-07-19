@@ -1,5 +1,6 @@
 import {
   DEFAULT_ADAPTATION_PREFERENCES,
+  adaptationPreferencePatchSchema,
   capabilityProfileSchema,
   type AdaptationPreferencePatch,
   type AdaptationPreferences,
@@ -299,7 +300,17 @@ export function setExplicitPreference<Key extends keyof AdaptationPreferences>(
   key: Key,
   value: AdaptationPreferences[Key],
 ): CapabilityProfile {
-  return withPreferenceLayer(profile, 'explicit', { [key]: value } as AdaptationPreferencePatch);
+  const patch: AdaptationPreferencePatch = { [key]: value };
+  return withPreferenceLayer(profile, 'explicit', patch);
+}
+
+export function setExplicitPreferenceValue(
+  profile: CapabilityProfile,
+  key: keyof AdaptationPreferences,
+  value: AdaptationPreferences[keyof AdaptationPreferences],
+): CapabilityProfile {
+  const patch = adaptationPreferencePatchSchema.parse({ [key]: value });
+  return withPreferenceLayer(profile, 'explicit', patch);
 }
 
 export function clearExplicitPreference(

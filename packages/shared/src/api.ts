@@ -6,6 +6,8 @@ import {
   capabilityProfileSchema,
   profileModalitiesSchema,
 } from './profile.js';
+import { pageRepresentationSchema, semanticPageAnalysisSchema } from './semantic.js';
+import { taskPlanSchema } from './task.js';
 
 export const transcriptEntrySchema = z.object({
   role: z.enum(['assistant', 'user']),
@@ -65,6 +67,16 @@ export const simplifyTextResponseSchema = z
   })
   .strict();
 
+export const taskPlanRequestSchema = z
+  .object({
+    page: pageRepresentationSchema,
+    goal: z.string().trim().min(1).max(1_000),
+    currentAnalysis: semanticPageAnalysisSchema.optional(),
+  })
+  .strict();
+
+export const taskPlanResponseSchema = taskPlanSchema;
+
 export type CapabilityProfilePatch = z.infer<
   typeof capabilityProfilePatchSchema
 >;
@@ -74,3 +86,5 @@ export type ApiError = z.infer<typeof apiErrorSchema>;
 export type TranscriptionResponse = z.infer<typeof transcriptionResponseSchema>;
 export type SimplifyTextRequest = z.infer<typeof simplifyTextRequestSchema>;
 export type SimplifyTextResponse = z.infer<typeof simplifyTextResponseSchema>;
+export type TaskPlanRequest = z.infer<typeof taskPlanRequestSchema>;
+export type TaskPlanResponse = z.infer<typeof taskPlanResponseSchema>;

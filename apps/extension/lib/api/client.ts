@@ -6,6 +6,8 @@ import {
   semanticPageAnalysisSchema,
   simplifyTextRequestSchema,
   simplifyTextResponseSchema,
+  taskPlanRequestSchema,
+  taskPlanResponseSchema,
   transcriptionResponseSchema,
   type OnboardingRequest,
   type OnboardingResponse,
@@ -14,6 +16,8 @@ import {
   type SimplifyTextRequest,
   type SimplifyTextResponse,
   type TranscriptionResponse,
+  type TaskPlanRequest,
+  type TaskPlanResponse,
 } from '@aura/shared';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:8787';
@@ -169,6 +173,10 @@ export function createAuraApiClient({
       return simplifyTextResponseSchema.parse(
         await postJson('/v1/text/simplify', request),
       );
+    },
+    async planTask(input: TaskPlanRequest): Promise<TaskPlanResponse> {
+      const request = taskPlanRequestSchema.parse(input);
+      return taskPlanResponseSchema.parse(await postJson('/v1/task/plan', request));
     },
   };
 }

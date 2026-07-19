@@ -50,7 +50,8 @@ describe('POST /v1/page/analyze', () => {
     const analyzePage = vi.fn<LLMProvider['analyzePage']>();
     const onboarding = vi.fn<LLMProvider['onboarding']>();
     const simplifyText = vi.fn<LLMProvider['simplifyText']>();
-    const app = createApp({ llmProvider: { onboarding, analyzePage, simplifyText } });
+    const planTask = vi.fn<LLMProvider['planTask']>();
+    const app = createApp({ llmProvider: { onboarding, analyzePage, simplifyText, planTask } });
 
     const response = await app.request('/v1/page/analyze', {
       method: 'POST',

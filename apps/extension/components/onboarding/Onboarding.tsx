@@ -7,6 +7,7 @@ import {
   ONBOARDING_QUESTIONS,
   answerCurrentQuestion,
   applyCalibrationChoice,
+  applyLanguageWordingChoice,
   applyProviderResponse,
   profileSummary,
   startOnboarding,
@@ -57,6 +58,7 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
     Array<{ role: 'assistant' | 'user'; content: string }>
   >([]);
   const [adaptiveStatus, setAdaptiveStatus] = useState('');
+  const [languageChoice, setLanguageChoice] = useState<'clearer' | 'formal'>();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const speechOutputRef = useRef(createBrowserSpeechOutput());
 
@@ -351,6 +353,21 @@ export function Onboarding({ onCancel, onComplete }: OnboardingProps) {
           <li key={item}>{item}</li>
         ))}
       </ul>
+      <section className="language-comparison" aria-labelledby="language-comparison-title">
+        <p className="section-kicker">Wording preference</p>
+        <h3 id="language-comparison-title">Which wording is easier to understand quickly?</h3>
+        <div className="language-options">
+          <button className={languageChoice === 'formal' ? 'calibration-card selected' : 'calibration-card'} type="button" onClick={() => { setLanguageChoice('formal'); setState(applyLanguageWordingChoice(state, 'formal')); }}>
+            <strong>Authenticate your credentials to proceed.</strong>
+            <span>Formal wording</span>
+          </button>
+          <button className={languageChoice === 'clearer' ? 'calibration-card selected' : 'calibration-card'} type="button" onClick={() => { setLanguageChoice('clearer'); setState(applyLanguageWordingChoice(state, 'clearer')); }}>
+            <strong>Sign in to continue.</strong>
+            <span>Shorter, clearer wording</span>
+          </button>
+        </div>
+        <p className="route-note">This is a preference comparison, not a timed test. You can change it later.</p>
+      </section>
       <label htmlFor="onboarding-profile-name">Profile name</label>
       <input
         id="onboarding-profile-name"

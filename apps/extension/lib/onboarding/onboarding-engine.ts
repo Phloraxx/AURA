@@ -345,3 +345,16 @@ export function profileSummary(profile: CapabilityProfile): string[] {
   if (preferences.stepByStepForms) items.push('guide complex forms in smaller steps');
   return items.length > 0 ? items : ['keep pages close to their original presentation'];
 }
+
+export function applyLanguageWordingChoice(
+  state: OnboardingState,
+  choice: 'clearer' | 'formal',
+): OnboardingState {
+  if (state.phase !== 'review') return state;
+  return {
+    ...state,
+    profile: withPreferenceLayer(state.profile, 'onboarding', {
+      simplifyLanguage: choice === 'clearer',
+    }),
+  };
+}

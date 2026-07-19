@@ -1,10 +1,28 @@
 # Hackathon Demo Plan
 
-> **Productization note:** This file preserves the original stable MVP demo path. The canonical final hackathon choreography is now defined in `docs/17-HACKATHON-WOW-IMPLEMENTATION-PLAN.md`, including AURA Fit, AURA Lens, same-page/different-profile adaptation, Task Mode, guided forms, AURA Rescue, the Decision Inspector, and Original/AURA comparison. Use this baseline while those phases are under implementation; use the revised two-minute demo in the new roadmap for final rehearsal.
+> **Productization note:** The page-first experience, AURA Fit, Lens, Task Mode, Rescue, Decision Inspector, site memory, and Original/AURA comparison are implemented. Use the choreography below for the stable offline-first rehearsal; the detailed rationale remains in `docs/17-HACKATHON-WOW-IMPLEMENTATION-PLAN.md`.
 
 ## Goal
 
 Tell one clear story in under two minutes.
+
+## Final wow path
+
+1. Open the **Page** tab on `cluttered-article.html` and click **Scan this page**.
+   Show the profile-specific AURA Fit and **Show friction** Lens markers.
+2. Click **Adapt this page**. Point out the progress stages, local-first behavior,
+   Fit before/after, **Why these changes?**, and **Original / AURA** comparison.
+3. Open **Task**, use **Find the main action** or speak a goal, then start guided
+   mode. AURA highlights original controls and never activates critical actions.
+4. Trigger a repeated near-miss on the small fixture control. Show **AURA Rescue**,
+   choose **Try this**, and explain that consent applies the reversible setting.
+5. Return to **Profile** to show Rescue on/off and origin-only site memory. Use
+   **Always adapt this site** only when the permission explanation is understood.
+
+The deterministic scan, Fit, Lens, adaptation, compare view, Task fallback, and
+Undo path remain usable when the API is offline. If Chrome exposes its optional
+`LanguageModel` API, semantic analysis can run on-device; otherwise AURA uses
+the fixed API and then stays deterministic-only.
 
 ## Demo setup
 

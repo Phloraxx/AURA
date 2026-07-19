@@ -5,6 +5,8 @@ import {
   semanticPageAnalysisSchema,
   simplifyTextRequestSchema,
   simplifyTextResponseSchema,
+  taskPlanRequestSchema,
+  taskPlanResponseSchema,
   transcriptionResponseSchema,
   type ApiError,
 } from '@aura/shared';
@@ -106,6 +108,22 @@ export function createApp({
           errorEnvelope(
             'payload_too_large',
             'This request is too large for AURA to process.',
+            false,
+            safeRequestId(context.get('requestId')),
+          ),
+          413,
+        ),
+    }),
+  );
+  app.use(
+    '/v1/task/*',
+    bodyLimit({
+      maxSize: 64 * 1024,
+      onError: (context) =>
+        context.json(
+          errorEnvelope(
+            'payload_too_large',
+            'This task request is too large for AURA to process.',
             false,
             safeRequestId(context.get('requestId')),
           ),
@@ -216,6 +234,46 @@ export function createApp({
         errorEnvelope(
           'page_analysis_failed',
           'Semantic page analysis is unavailable. Local adaptations remain active.',
+          retryable,
+          requestId,
+        ),
+        502,
+      );
+    }
+  });
+
+  app.post('/v1/task/plan', async (context) => {
+    const requestId = context.get('requestId');
+    let body: unknown;
+    try {
+      body = await context.req.json();
+    } catch {
+      return context.json(
+        errorEnvelope('invalid_json', 'Send a valid JSON request.', false, requestId),
+        400,
+      );
+    }
+    const parsed = taskPlanRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return context.json(
+        errorEnvelope(
+          'invalid_task_request',
+          'Tell AURA what you want to do on this page.',
+          false,
+          requestId,
+        ),
+        400,
+      );
+    }
+    try {
+      const result = taskPlanResponseSchema.parse(await llmProvider.planTask(parsed.data));
+      return context.json(result);
+    } catch (error) {
+      const retryable = error instanceof ProviderError ? error.retryable : false;
+      return context.json(
+        errorEnvelope(
+          'task_plan_failed',
+          'AURA could not create a task plan. Existing page adaptations remain unchanged.',
           retryable,
           requestId,
         ),

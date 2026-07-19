@@ -266,3 +266,27 @@ Codex should research and document these only when needed for implementation:
 ## Research quality rule
 
 For browser/runtime implementation details, prefer primary official documentation. For accessibility guidance, prefer W3C/WAI. For Codex behavior, prefer official OpenAI documentation. Record the date checked.
+
+## 17. Chrome Prompt API is an optional extension-only local provider
+
+Checked: 2026-07-19
+
+Chrome's current Built-in AI documentation exposes the Prompt API through the
+`LanguageModel` global and recommends checking the asynchronous
+`LanguageModel.availability()` result before creating a session. The API is
+still availability-dependent and browser-managed model downloads can make it
+unavailable on otherwise compatible machines.
+
+Official sources:
+- https://developer.chrome.com/docs/ai/prompt-api
+- https://developer.chrome.com/docs/ai/built-in/overview
+- https://developer.chrome.com/docs/ai/get-started
+
+Implementation consequence:
+- AURA feature-detects `globalThis.LanguageModel` in the side panel,
+- local prompts return JSON that is parsed by the same shared Zod contracts as
+  remote responses,
+- local semantic analysis falls back to the fixed AURA API and then to the
+  deterministic-only path,
+- experimental local AI is never a hard dependency and no model-generated code
+  is accepted or executed.

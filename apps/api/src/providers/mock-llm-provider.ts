@@ -3,6 +3,7 @@ import type {
   PageElementRepresentation,
   SemanticPageAnalysis,
   SimplifyTextResponse,
+  TaskPlanResponse,
 } from '@aura/shared';
 
 import type { LLMProvider } from './llm-provider.js';
@@ -129,6 +130,104 @@ export class MockLLMProvider implements LLMProvider {
       simplifiedText,
       requiresOriginal: highStakes,
       warnings: highStakes ? ['Keep the original available because this text may be high stakes.'] : [],
+    });
+  }
+
+  planTask(input: Parameters<LLMProvider['planTask']>[0]): Promise<TaskPlanResponse> {
+    const goal = input.goal.trim();
+    const lower = goal.toLowerCase();
+    const elements = input.page.elements;
+    const textFor = (element: PageElementRepresentation) =>
+      `${element.accessibleName ?? ''} ${element.text ?? ''}`.trim();
+    const first = (...predicates: Array<(element: PageElementRepresentation) => boolean>) =>
+      elements.find((element) => predicates.some((predicate) => predicate(element)));
+    const controls = elements.filter(({ kind }) => kind === 'control');
+    const main = first(
+      (element) => element.kind === 'landmark' && (element.tag === 'main' || element.tag === 'article'),
+    );
+    const form = first((element) => element.kind === 'form_group' || element.tag === 'form');
+    const applyControl = first((element) => /apply|continue|submit|start/iu.test(textFor(element)));
+    const cartControl = first((element) => /cart|checkout|buy|purchase/iu.test(textFor(element)));
+    const kind = /apply|job|application/iu.test(lower)
+      ? 'apply'
+      : /form|register|registration|complete/iu.test(lower)
+        ? 'complete_form'
+        : /checkout|purchase|buy|cart/iu.test(lower)
+          ? 'purchase'
+          : /read|article|content/iu.test(lower)
+            ? 'read_content'
+            : /compare/iu.test(lower)
+              ? 'compare'
+              : 'find_information';
+    const steps = [] as TaskPlanResponse['steps'];
+    if (main) {
+      steps.push({
+        id: 'task-step:review',
+        label: 'Review the relevant page information',
+        description: 'Read the main content before taking an important action.',
+        targetIds: [main.id],
+        optional: false,
+        critical: false,
+      });
+    }
+    if (form && (kind === 'apply' || kind === 'complete_form')) {
+      steps.push({
+        id: 'task-step:form',
+        label: kind === 'apply' ? 'Complete the application details' : 'Complete the form sections',
+        targetIds: [form.id],
+        optional: false,
+        critical: false,
+      });
+    }
+    if (applyControl && (kind === 'apply' || kind === 'complete_form')) {
+      steps.push({
+        id: 'task-step:continue',
+        label: 'Choose the next application step',
+        targetIds: [applyControl.id],
+        optional: false,
+        critical: true,
+      });
+    }
+    if (cartControl && kind === 'purchase') {
+      steps.push({
+        id: 'task-step:purchase',
+        label: 'Review the purchase control',
+        description: 'AURA will highlight it, but you must decide whether to activate it.',
+        targetIds: [cartControl.id],
+        optional: false,
+        critical: true,
+      });
+    }
+    if (steps.length === 0 && controls[0]) {
+      steps.push({
+        id: 'task-step:explore',
+        label: 'Review the most relevant control',
+        targetIds: [controls[0].id],
+        optional: false,
+        critical: Boolean(controls[0].critical),
+      });
+    }
+    if (steps.length === 0 && main) {
+      steps.push({
+        id: 'task-step:main',
+        label: 'Review the main content',
+        targetIds: [main.id],
+        optional: false,
+        critical: false,
+      });
+    }
+    return Promise.resolve({
+      version: 1,
+      task: {
+        id: `task:${kind}`,
+        label: goal,
+        rawUserGoal: goal,
+        kind,
+      },
+      steps: steps.slice(0, 12),
+      warnings: [
+        'AURA guides the original page controls. It does not submit forms, approve payments, or accept legal terms for you.',
+      ],
     });
   }
 }

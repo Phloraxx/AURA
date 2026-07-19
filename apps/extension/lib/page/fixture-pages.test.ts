@@ -8,6 +8,7 @@ import { createSemanticPolicy } from '../adaptation/policy-engine';
 import { TransformEngine } from '../adaptation/transform-engine';
 import { ElementRegistry } from './element-registry';
 import { extractPageRepresentation } from './semantic-extractor';
+import { resolveAdaptationPreferences } from '../profile/preference-resolver';
 
 function loadFixture(name: string) {
   const html = readFileSync(resolve(process.cwd(), `../../fixtures/${name}`), 'utf8');
@@ -75,7 +76,7 @@ describe('repository demo fixtures', () => {
     };
     const engine = new TransformEngine(document, registry);
 
-    engine.applyPlan(createSemanticPolicy(profile, analysis));
+    engine.applyPlan(createSemanticPolicy(resolveAdaptationPreferences(profile), analysis));
     cart.click();
     expect(clicked).toHaveBeenCalledOnce();
     expect(cart.getAttribute('data-aura-primary-action')).toBe('true');

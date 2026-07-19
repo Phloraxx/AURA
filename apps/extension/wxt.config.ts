@@ -12,6 +12,7 @@ export default defineConfig({
       'http://localhost:8787/*',
       ...(process.env.AURA_E2E === '1' ? ['http://localhost:4173/*'] : []),
     ],
+    optional_host_permissions: ['http://*/*', 'https://*/*'],
     action: {
       default_title: 'Open AURA',
     },
