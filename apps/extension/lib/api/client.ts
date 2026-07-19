@@ -27,8 +27,9 @@ export class AuraApiError extends Error {
   constructor(
     message: string,
     readonly retryable: boolean,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = 'AuraApiError';
   }
 }
@@ -78,10 +79,15 @@ export function createAuraApiClient({
           parsed.success && parsed.data.error.retryable,
         );
       }
+      console.info('[AURA api] Request completed.', { method: 'POST', path, status: response.status });
       return payload;
     } catch (error) {
+      console.error('[AURA api] JSON request failed.', { method: 'POST', path, error });
       if (error instanceof AuraApiError) throw error;
-      throw new AuraApiError('Adaptive setup is currently unavailable.', true);
+      const message = error instanceof Error && error.name === 'AbortError'
+        ? 'The AURA API request timed out.'
+        : 'Adaptive setup is currently unavailable.';
+      throw new AuraApiError(message, true, { cause: error });
     } finally {
       clearTimeout(timeout);
     }
@@ -105,10 +111,15 @@ export function createAuraApiClient({
           parsed.success && parsed.data.error.retryable,
         );
       }
+      console.info('[AURA api] Form request completed.', { method: 'POST', path, status: response.status });
       return payload;
     } catch (error) {
+      console.error('[AURA api] Form request failed.', { method: 'POST', path, error });
       if (error instanceof AuraApiError) throw error;
-      throw new AuraApiError('Voice transcription is currently unavailable.', true);
+      const message = error instanceof Error && error.name === 'AbortError'
+        ? 'Voice transcription timed out.'
+        : 'Voice transcription is currently unavailable.';
+      throw new AuraApiError(message, true, { cause: error });
     } finally {
       clearTimeout(timeout);
     }
