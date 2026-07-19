@@ -27,8 +27,13 @@ export function auraFitLabel(score: number): AuraFitBreakdown['label'] {
 export function calculateAuraFit(
   personalized: readonly PersonalizedFriction[],
 ): AuraFitBreakdown {
+  // AURA Fit is intentionally based only on deterministic local signals so a
+  // before/after comparison always measures the page with the same instrument.
+  // Semantic signals still power Lens and explanations, but they are not mixed
+  // into the score after an adaptation has already been applied.
+  const scorable = personalized.filter(({ signal }) => signal.source === 'local');
   const byCategory = new Map<FrictionCategory, PersonalizedFriction[]>();
-  for (const item of personalized) {
+  for (const item of scorable) {
     const items = byCategory.get(item.signal.category) ?? [];
     items.push(item);
     byCategory.set(item.signal.category, items);
@@ -54,7 +59,7 @@ export function calculateAuraFit(
   }
   const score = totalWeight === 0 ? 100 : Math.round(100 * (1 - weightedRisk / totalWeight));
   const clampedScore = Math.min(100, Math.max(0, score));
-  const topFrictionIds = [...personalized]
+  const topFrictionIds = [...scorable]
     .sort((a, b) => b.impact - a.impact)
     .slice(0, 10)
     .map(({ signal }) => signal.id);
