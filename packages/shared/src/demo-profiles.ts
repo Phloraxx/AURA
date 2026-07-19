@@ -1,5 +1,5 @@
 import type {
-  AdaptationPreferences,
+  AdaptationPreferencePatch,
   CapabilityDimensions,
   CapabilityProfile,
 } from './profile.js';
@@ -29,7 +29,7 @@ function createDemoProfile(
   id: string,
   name: string,
   dimensions: Array<[keyof CapabilityDimensions, number]>,
-  preferences: Partial<AdaptationPreferences>,
+  onboardingPreferences: AdaptationPreferencePatch = {},
 ): CapabilityProfile {
   const neutral = createNeutralProfile({ id, name, now: SEEDED_AT });
   const resolvedDimensions = dimensions.reduce(
@@ -41,9 +41,9 @@ function createDemoProfile(
   return capabilityProfileSchema.parse({
     ...neutral,
     dimensions: resolvedDimensions,
-    preferences: {
-      ...neutral.preferences,
-      ...preferences,
+    preferenceLayers: {
+      ...neutral.preferenceLayers,
+      onboarding: onboardingPreferences,
     },
   });
 }
@@ -52,48 +52,25 @@ export const DEMO_PROFILES: readonly CapabilityProfile[] = [
   createDemoProfile(
     'demo-low-vision',
     'Low vision focused',
-    [['visual', 0.35]],
+    [['visual', 0.25]],
     {
-      textScale: 1.5,
-      lineSpacing: 1.6,
-      readingWidth: 'narrow',
       contrast: 'enhanced',
-      enlargeTargets: true,
-      targetSizePx: 48,
     },
   ),
   createDemoProfile(
     'demo-motor-cognitive',
     'Motor and cognitive load focused',
     [
-      ['motor', 0.4],
-      ['cognitive', 0.5],
+      ['motor', 0.3],
+      ['cognitive', 0.35],
     ],
-    {
-      lineSpacing: 1.4,
-      readingWidth: 'narrow',
-      focusMode: true,
-      enlargeTargets: true,
-      targetSizePx: 56,
-      stepByStepForms: true,
-      clarifyControls: true,
-    },
   ),
   createDemoProfile(
     'demo-attention-language',
     'Attention and language focused',
     [
-      ['attention', 0.35],
-      ['language', 0.45],
+      ['attention', 0.25],
+      ['language', 0.35],
     ],
-    {
-      lineSpacing: 1.35,
-      readingWidth: 'very_narrow',
-      reduceMotion: true,
-      focusMode: true,
-      simplifyLanguage: true,
-      hideDistractions: true,
-      clarifyControls: true,
-    },
   ),
 ] as const;
