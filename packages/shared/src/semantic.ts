@@ -62,6 +62,7 @@ export const SEMANTIC_CONFIDENCE = {
   primaryAction: 0.7,
   complexText: 0.7,
   mainContent: 0.7,
+  formGroup: 0.7,
 } as const;
 
 export type PageElementRepresentation = z.infer<typeof pageElementSchema>;
