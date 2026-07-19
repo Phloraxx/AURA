@@ -6,11 +6,15 @@ import { TransformEngine } from './transform-engine';
 
 
 describe('safety-aware focus mode', () => {
-  it('collapses ordinary complementary content but preserves critical regions', () => {
+  it('collapses ordinary complementary content but preserves critical and primary-contained regions', () => {
     document.documentElement.removeAttribute('data-aura-active');
     document.head.innerHTML = '<title>Fixture</title>';
     document.body.innerHTML = `
-      <main id="main"><h1>Article</h1><p>Primary content</p></main>
+      <main id="main">
+        <h1>Article</h1>
+        <p>Primary content</p>
+        <aside id="inline-note">Context that is part of the article.</aside>
+      </main>
       <aside id="related">Related stories</aside>
       <aside id="critical"><strong>Security warning</strong><p>Review this warning before continuing.</p></aside>
     `;
@@ -36,10 +40,12 @@ describe('safety-aware focus mode', () => {
 
     expect(document.querySelector('#related')?.getAttribute('data-aura-secondary')).toBe('collapsed');
     expect(document.querySelector('#critical')?.hasAttribute('data-aura-secondary')).toBe(false);
+    expect(document.querySelector('#inline-note')?.hasAttribute('data-aura-secondary')).toBe(false);
     expect(document.querySelectorAll('[data-aura-focus-control]')).toHaveLength(1);
 
     engine.revertAll();
     expect(document.querySelector('#related')?.hasAttribute('data-aura-secondary')).toBe(false);
+    expect(document.querySelector('#inline-note')?.hasAttribute('data-aura-secondary')).toBe(false);
     expect(document.querySelectorAll('[data-aura-focus-control]')).toHaveLength(0);
   });
 });
