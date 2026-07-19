@@ -9,7 +9,7 @@ import {
 } from './preference-resolver';
 
 function profileWithNeed(
-  dimension: 'visual' | 'motor' | 'cognitive' | 'attention' | 'language',
+  dimension: 'visual' | 'auditory' | 'motor' | 'cognitive' | 'attention' | 'language',
   capacity: number,
   confidence = 1,
 ) {
@@ -42,6 +42,15 @@ describe('preference resolver', () => {
     expect(resolution.preferences.textScale).toBe(1);
     expect(resolution.preferences.readingWidth).toBe('normal');
     expect(resolution.sources.textScale).toBe('default');
+  });
+
+  it('guarantees visual output when auditory support is needed', () => {
+    const profile = profileWithNeed('auditory', 0.2, 1);
+    profile.modalities.preferredOutput = ['speech'];
+
+    const resolution = resolveAdaptationPreferences(profile);
+
+    expect(resolution.modalities.preferredOutput).toEqual(['visual', 'speech']);
   });
 
   it('composes recommendations from multiple capability dimensions', () => {
