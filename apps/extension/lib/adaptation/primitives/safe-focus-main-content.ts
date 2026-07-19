@@ -32,7 +32,7 @@ export function safeFocusMainContent({
   style.dataset.auraOwned = 'true';
   style.dataset.auraInstruction = instruction.id;
   style.textContent =
-    'html[data-aura-active] [data-aura-primary-content] { position: relative !important; z-index: 1 !important; } html[data-aura-active] [data-aura-secondary="collapsed"] { display: none !important; } html[data-aura-active] [data-aura-focus-control] { display: block !important; margin: 0.75rem auto !important; min-height: 44px !important; padding: 0.6rem 0.9rem !important; border: 2px solid #315a3e !important; border-radius: 0.45rem !important; color: #173622 !important; background: #fff !important; font: 700 1rem/1.3 system-ui, sans-serif !important; }';
+    'html[data-aura-active] [data-aura-primary-content] { position: relative !important; z-index: 1 !important; } html[data-aura-active] [data-aura-secondary="collapsed"] { display: none !important; } html[data-aura-active] [data-aura-focus-control] { display: block !important; align-self: start !important; justify-self: start !important; block-size: fit-content !important; inline-size: fit-content !important; max-inline-size: 100% !important; margin: 0.75rem auto !important; min-height: 44px !important; padding: 0.6rem 0.9rem !important; border: 2px solid #315a3e !important; border-radius: 0.45rem !important; color: #173622 !important; background: #fff !important; font: 700 1rem/1.3 system-ui, sans-serif !important; }';
 
   const registered = (instruction.targetIds ?? [])
     .map((id) => registry.getElement(id))
