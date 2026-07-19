@@ -11,11 +11,16 @@ import {
 } from './onboarding-engine';
 
 describe('onboarding engine', () => {
-  it('asks 5–8 functional questions without diagnosis language', () => {
+  it('asks 5–8 functional questions without diagnosis language and covers all capability dimensions', () => {
     expect(ONBOARDING_QUESTIONS.length).toBeGreaterThanOrEqual(5);
     expect(ONBOARDING_QUESTIONS.length).toBeLessThanOrEqual(8);
     const copy = JSON.stringify(ONBOARDING_QUESTIONS).toLowerCase();
     expect(copy).not.toMatch(/diagnos|disability detection|medical condition/u);
+    const areas = new Set(ONBOARDING_QUESTIONS.map(({ area }) => area));
+    expect(areas).toEqual(expect.objectContaining ? areas : areas);
+    for (const dimension of ['visual', 'auditory', 'motor', 'cognitive', 'attention', 'language']) {
+      expect(areas.has(dimension as never)).toBe(true);
+    }
   });
 
   it('uses one state machine for choice and text answers and records onboarding provenance', () => {
@@ -30,6 +35,18 @@ describe('onboarding engine', () => {
     textState = answerCurrentQuestion(textState, 'Yes, larger text would help me');
     expect(textState.profile.preferences.textScale).toBe(1.3);
     expect(textState.questionIndex).toBe(choiceState.questionIndex);
+  });
+
+  it('records auditory support without resolving to speech-only output', () => {
+    let state = startOnboarding('choices');
+    while (ONBOARDING_QUESTIONS[state.questionIndex]?.area !== 'auditory') {
+      state = answerCurrentQuestion(state, 'skip');
+    }
+    state = answerCurrentQuestion(state, 'yes');
+
+    expect(state.profile.dimensions.auditory.sources).toContain('self_report');
+    expect(state.profile.dimensions.auditory.capacity).toBe(0.55);
+    expect(resolveAdaptationPreferences(state.profile).modalities.preferredOutput).toContain('visual');
   });
 
   it('supports skipping every question without inventing capability evidence', () => {
