@@ -16,6 +16,7 @@ const INTERACTIVE_SELECTOR = [
 const READING_SELECTOR = 'article, main, [role="main"], section';
 const CRITICAL_PATTERN =
   /\b(pay|payment|purchase|checkout|sign[ -]?in|log[ -]?in|password|security|warning|error|required|consent|agree|legal|terms|privacy|medical|financial)\b/iu;
+const MAX_MOTION_SCAN_NODES = 400;
 
 function isVisible(element: Element): boolean {
   if (
@@ -108,24 +109,15 @@ function isCritical(element: Element): boolean {
   return CRITICAL_PATTERN.test(textOf(element).slice(0, 600));
 }
 
-function hasAnimationRule(document: Document, element: Element): boolean {
-  try {
-    return Array.from(document.styleSheets).some((sheet) => {
-      try {
-        return Array.from(sheet.cssRules).some((rule) => {
-          if (!(rule instanceof CSSStyleRule)) return false;
-          return (
-            /animation(?:-name)?\s*:/iu.test(rule.cssText) &&
-            element.matches(rule.selectorText)
-          );
-        });
-      } catch {
-        return false;
-      }
-    });
-  } catch {
-    return false;
-  }
+function hasMotion(style: CSSStyleDeclaration): boolean {
+  const animationName = style.animationName?.trim();
+  const animationDuration = style.animationDuration?.trim();
+  const transitionDuration = style.transitionDuration?.trim();
+  return Boolean(
+    (animationName && animationName !== 'none') ||
+    (animationDuration && !/^0(?:s|ms)?(?:,\s*0(?:s|ms)?)*$/u.test(animationDuration)) ||
+    (transitionDuration && !/^0(?:s|ms)?(?:,\s*0(?:s|ms)?)*$/u.test(transitionDuration)),
+  );
 }
 
 function signal(
@@ -314,22 +306,25 @@ export function scanLocalFriction(
     }
   });
 
-  const animated = Array.from(document.querySelectorAll('*')).filter((element) => {
-    if (!isVisible(element)) return false;
+  const motionCandidates = Array.from(document.querySelectorAll('body *')).slice(0, MAX_MOTION_SCAN_NODES);
+  const animated: Element[] = [];
+  for (const element of motionCandidates) {
+    if (!isVisible(element)) continue;
     const style = getComputedStyle(element);
-    return (
-      (style.animationName && style.animationName !== 'none') ||
-      Boolean(element.getAttribute('style')?.match(/animation|transition/iu)) ||
-      hasAnimationRule(document, element)
-    );
-  });
+    if (hasMotion(style) || element.matches('video[autoplay], marquee, blink')) {
+      animated.push(element);
+      if (animated.length >= 8) break;
+    }
+  }
   if (animated.length > 0) {
     add(
       'motion',
-      animated.slice(0, 8).map((element) => idFor(registry, element)),
+      animated.map((element) => idFor(registry, element)),
       0.55,
       0.72,
-      'The page contains animated content that may compete with attention.',
+      motionCandidates.length >= MAX_MOTION_SCAN_NODES
+        ? 'A bounded page scan found animated content that may compete with attention.'
+        : 'The page contains animated content that may compete with attention.',
       false,
     );
   }
