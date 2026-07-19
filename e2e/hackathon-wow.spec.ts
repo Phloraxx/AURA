@@ -1,4 +1,4 @@
-import { chromium, expect, test, type Page } from '@playwright/test';
+import { chromium, expect, test, type Page, type Worker } from '@playwright/test';
 import { resolve } from 'node:path';
 
 interface ExtensionApi {
@@ -22,7 +22,7 @@ async function clickControlWithoutActivating(panel: Page, label: string): Promis
   await control.evaluate((element) => (element as HTMLElement).click());
 }
 
-async function injectRuntime(serviceWorker: Page, fixtureUrl: string): Promise<void> {
+async function injectRuntime(serviceWorker: Worker, fixtureUrl: string): Promise<void> {
   await serviceWorker.evaluate(async (url) => {
     const extensionApi = (globalThis as typeof globalThis & { chrome: ExtensionApi }).chrome;
     const [tab] = await extensionApi.tabs.query({ url });
