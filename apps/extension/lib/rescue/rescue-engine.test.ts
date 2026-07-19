@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createNeutralProfile, capabilityProfileSchema } from '@aura/shared';
 
@@ -9,9 +9,11 @@ import { RescueEngine } from './rescue-engine';
 describe('RescueEngine', () => {
   afterEach(() => {
     document.body.replaceChildren();
+    vi.restoreAllMocks();
   });
 
   function setup() {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true);
     document.body.innerHTML = '<button aria-label="Tiny">Tiny</button>';
     const target = document.querySelector('button');
     if (!target) throw new Error('Fixture target is missing.');
@@ -49,16 +51,32 @@ describe('RescueEngine', () => {
     rescue.destroy();
   });
 
-  it('clears an accepted suggestion before a new adaptation run', () => {
-    const { event, rescue } = setup();
+  it('clears an accepted suggestion, resets interaction history, and prevents immediate re-triggering', () => {
+    const { event, rescue, suggestions } = setup();
     event();
     event();
     expect(rescue.status().suggestion).toBeDefined();
 
     const status = rescue.clearSuggestion();
+    event();
+    event();
 
     expect(status.suggestion).toBeUndefined();
     expect(status.enabled).toBe(true);
+    expect(rescue.status().suggestion).toBeUndefined();
+    expect(suggestions).toHaveLength(1);
+    rescue.destroy();
+  });
+
+  it('ignores Rescue interaction telemetry when the page is not focused', () => {
+    const { event, rescue, suggestions } = setup();
+    vi.mocked(document.hasFocus).mockReturnValue(false);
+
+    event();
+    event();
+
+    expect(rescue.status().suggestion).toBeUndefined();
+    expect(suggestions).toEqual([]);
     rescue.destroy();
   });
 });
