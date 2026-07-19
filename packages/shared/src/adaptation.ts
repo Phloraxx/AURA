@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 
 export const deterministicAdaptationKindSchema = z.enum([
   'increaseTextScale',
@@ -16,6 +16,7 @@ export const semanticAdaptationKindSchema = z.enum([
   'highlightPrimaryAction',
   'clarifyAmbiguousControls',
   'simplifyText',
+  'guideFormSteps',
 ]);
 
 export const adaptationKindSchema = z.union([

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 
 import { adaptationPlanSchema } from './adaptation.js';
 import { semanticAdaptationPlanSchema } from './adaptation.js';

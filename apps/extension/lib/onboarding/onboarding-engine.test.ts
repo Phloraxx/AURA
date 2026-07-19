@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { resolveAdaptationPreferences } from '../profile/preference-resolver';
 import {
   CALIBRATION_TASKS,
   ONBOARDING_QUESTIONS,
@@ -17,10 +18,12 @@ describe('onboarding engine', () => {
     expect(copy).not.toMatch(/diagnos|disability detection|medical condition/u);
   });
 
-  it('uses one state machine for choice and text answers', () => {
+  it('uses one state machine for choice and text answers and records onboarding provenance', () => {
     let choiceState = startOnboarding('choices');
     choiceState = answerCurrentQuestion(choiceState, 'yes');
     expect(choiceState.profile.preferences.textScale).toBe(1.3);
+    expect(choiceState.profile.preferenceLayers.onboarding.textScale).toBe(1.3);
+    expect(resolveAdaptationPreferences(choiceState.profile).sources.textScale).toBe('onboarding');
     expect(choiceState.profile.dimensions.visual.sources).toContain('self_report');
 
     let textState = startOnboarding('text');
@@ -41,7 +44,7 @@ describe('onboarding engine', () => {
     expect(state.profile.preferences.textScale).toBe(1);
   });
 
-  it('implements exactly three calibration tasks with weak evidence', () => {
+  it('implements exactly three calibration tasks with weak evidence and stronger preference precedence', () => {
     expect(CALIBRATION_TASKS).toEqual([
       'text_presentation',
       'control_size',
@@ -62,13 +65,19 @@ describe('onboarding engine', () => {
       focusMode: true,
       hideDistractions: true,
     });
+    expect(state.profile.preferenceLayers.calibration).toMatchObject({
+      textScale: 1.5,
+      targetSizePx: 52,
+      focusMode: true,
+    });
+    expect(resolveAdaptationPreferences(state.profile).sources.textScale).toBe('calibration');
     expect(state.profile.dimensions.visual).toMatchObject({
       confidence: 0.3,
       sources: ['calibration'],
     });
   });
 
-  it('produces a plain-language review from explicit preferences', () => {
+  it('produces a plain-language review from resolved preferences', () => {
     let state = startOnboarding('quick');
     state = applyCalibrationChoice(state, 'comfortable');
     state = applyCalibrationChoice(state, 'standard');

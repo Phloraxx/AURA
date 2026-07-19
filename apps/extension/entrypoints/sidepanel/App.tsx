@@ -14,9 +14,17 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { Onboarding } from '../../components/onboarding/Onboarding';
-import { createAuraApiClient } from '../../lib/api/client';
 import { createSemanticPolicy } from '../../lib/adaptation/policy-engine';
+import { createAuraApiClient } from '../../lib/api/client';
 import { validateSemanticAnalysisForPage } from '../../lib/page/semantic-validation';
+import {
+  clearAllExplicitPreferences,
+  clearExplicitPreference,
+  materializeResolvedProfile,
+  resolveAdaptationPreferences,
+  setExplicitPreference,
+  type PreferenceSource,
+} from '../../lib/profile/preference-resolver';
 import {
   createProfileStore,
   type ProfileState,
@@ -30,6 +38,7 @@ const SEMANTIC_KINDS = new Set([
   'highlightPrimaryAction',
   'clarifyAmbiguousControls',
   'simplifyText',
+  'guideFormSteps',
 ]);
 
 function adaptationLabel(kind: string): string {
@@ -41,10 +50,25 @@ const BOOLEAN_PREFERENCES = [
   ['focusMode', 'Focus on primary content'],
   ['simplifyLanguage', 'Offer simpler wording'],
   ['enlargeTargets', 'Make controls easier to select'],
-  ['stepByStepForms', 'Prefer forms in smaller steps'],
+  ['stepByStepForms', 'Guide complex forms in smaller steps'],
   ['hideDistractions', 'Collapse distracting secondary content'],
   ['clarifyControls', 'Clarify ambiguous controls'],
 ] as const satisfies readonly [keyof AdaptationPreferences, string][];
+
+const PREFERENCE_LABELS: Record<keyof AdaptationPreferences, string> = {
+  textScale: 'Text size',
+  lineSpacing: 'Line spacing',
+  readingWidth: 'Reading width',
+  contrast: 'Contrast',
+  reduceMotion: 'Reduced motion',
+  focusMode: 'Focus mode',
+  simplifyLanguage: 'Simpler wording',
+  enlargeTargets: 'Larger controls',
+  targetSizePx: 'Minimum control size',
+  stepByStepForms: 'Guided form steps',
+  hideDistractions: 'Distraction reduction',
+  clarifyControls: 'Clearer controls',
+};
 
 const DIMENSION_LABELS: Record<keyof CapabilityDimensions, string> = {
   visual: 'Visual information',
@@ -54,6 +78,23 @@ const DIMENSION_LABELS: Record<keyof CapabilityDimensions, string> = {
   attention: 'Focus amid competing content',
   language: 'Complex language and terminology',
 };
+
+function preferenceSourceLabel(source: PreferenceSource): string {
+  switch (source) {
+    case 'capability':
+      return 'AURA recommendation';
+    case 'onboarding':
+      return 'Onboarding';
+    case 'calibration':
+      return 'Calibration';
+    case 'explicit':
+      return 'My choice';
+    case 'legacy':
+      return 'Saved choice';
+    default:
+      return 'Default';
+  }
+}
 
 function activeProfile(state: ProfileState): CapabilityProfile | undefined {
   return state.profiles.find(({ id }) => id === state.activeProfileId);
@@ -72,7 +113,8 @@ export function App() {
 
   function adoptState(nextState: ProfileState, message: string) {
     setProfileState(nextState);
-    setDraft(activeProfile(nextState));
+    const profile = activeProfile(nextState);
+    setDraft(profile ? materializeResolvedProfile(profile) : undefined);
     setStatus(message);
   }
 
@@ -103,14 +145,15 @@ export function App() {
     key: Key,
     value: AdaptationPreferences[Key],
   ) {
-    setDraft((current) =>
-      current
-        ? {
-            ...current,
-            preferences: { ...current.preferences, [key]: value },
-          }
-        : current,
-    );
+    setDraft((current) => (current ? setExplicitPreference(current, key, value) : current));
+  }
+
+  function resetPreference(key: keyof AdaptationPreferences) {
+    setDraft((current) => (current ? clearExplicitPreference(current, key) : current));
+  }
+
+  function resetAllExplicitPreferences() {
+    setDraft((current) => (current ? clearAllExplicitPreferences(current) : current));
   }
 
   function updateDimension(
@@ -119,17 +162,17 @@ export function App() {
   ) {
     setDraft((current) =>
       current
-        ? {
+        ? materializeResolvedProfile({
             ...current,
             dimensions: {
               ...current.dimensions,
               [name]: {
                 capacity,
                 confidence: 1,
-                sources: ['self_report'],
+                sources: ['explicit_preference'],
               },
             },
-          }
+          })
         : current,
     );
   }
@@ -155,7 +198,7 @@ export function App() {
     setIsBusy(true);
     try {
       const state = await store.saveProfile({
-        ...draft,
+        ...materializeResolvedProfile(draft),
         updatedAt: new Date().toISOString(),
       });
       adoptState(state, 'Profile preferences saved locally.');
@@ -180,12 +223,13 @@ export function App() {
 
   async function completeOnboarding(profile: CapabilityProfile): Promise<void> {
     const state = await store.saveProfile({
-      ...profile,
+      ...materializeResolvedProfile(profile),
       updatedAt: new Date().toISOString(),
     });
     adoptState(state, 'Accessible setup completed and saved locally.');
     setShowOnboarding(false);
   }
+
   async function sendRawPageMessage(
     message: ExtensionMessage,
     injectIfMissing = true,
@@ -222,6 +266,7 @@ export function App() {
 
   async function adaptPage() {
     if (!draft) return;
+    const resolution = resolveAdaptationPreferences(draft);
     const runId = analysisRunRef.current + 1;
     analysisRunRef.current = runId;
     setIsAnalyzing(false);
@@ -231,10 +276,11 @@ export function App() {
       const next = await sendPageMessage({ type: 'PAGE_ADAPT', profile: draft });
       setPageStatus(next);
       const wantsSemanticSupport =
-        draft.preferences.focusMode ||
-        draft.preferences.simplifyLanguage ||
-        draft.preferences.hideDistractions ||
-        draft.preferences.clarifyControls;
+        resolution.preferences.focusMode ||
+        resolution.preferences.simplifyLanguage ||
+        resolution.preferences.hideDistractions ||
+        resolution.preferences.clarifyControls ||
+        resolution.preferences.stepByStepForms;
       if (!wantsSemanticSupport) {
         setSemanticAnalysis(undefined);
         setStatus(
@@ -255,7 +301,7 @@ export function App() {
         const analysis = validateSemanticAnalysisForPage(response, page);
         setSemanticAnalysis(analysis);
         const simplifications: Record<string, SimplifyTextResponse> = {};
-        if (draft.preferences.simplifyLanguage) {
+        if (resolution.preferences.simplifyLanguage) {
           await Promise.all(
             analysis.complexTextBlocks.slice(0, 3).map(async ({ id }) => {
               const element = page.elements.find((candidate) => candidate.id === id);
@@ -273,11 +319,14 @@ export function App() {
           );
         }
         if (analysisRunRef.current !== runId) return;
-        const semanticPlan = createSemanticPolicy(draft, analysis, simplifications);
-        const semanticStatus = await sendPageMessage({
-          type: 'PAGE_SEMANTIC_APPLY',
-          plan: semanticPlan,
-        }, false);
+        const semanticPlan = createSemanticPolicy(resolution, analysis, simplifications);
+        const semanticStatus = await sendPageMessage(
+          {
+            type: 'PAGE_SEMANTIC_APPLY',
+            plan: semanticPlan,
+          },
+          false,
+        );
         if (analysisRunRef.current !== runId) return;
         setPageStatus(semanticStatus);
         setStatus(
@@ -323,6 +372,31 @@ export function App() {
     }
   }
 
+  const resolution = draft ? resolveAdaptationPreferences(draft) : undefined;
+  const explainedPreferences = resolution
+    ? (Object.keys(resolution.preferences) as Array<keyof AdaptationPreferences>).filter(
+        (key) => resolution.sources[key] !== 'default',
+      )
+    : [];
+  const hasExplicitChoices = resolution
+    ? Object.values(resolution.sources).some((source) => source === 'explicit')
+    : false;
+
+  const preferenceMeta = (key: keyof AdaptationPreferences) => {
+    if (!resolution) return null;
+    const source = resolution.sources[key];
+    return (
+      <div className="inline-actions">
+        <span className="local-badge">{preferenceSourceLabel(source)}</span>
+        {source === 'explicit' ? (
+          <button className="text-button" type="button" onClick={() => resetPreference(key)}>
+            Use AURA recommendation
+          </button>
+        ) : null}
+      </div>
+    );
+  };
+
   return (
     <main className="shell">
       <header className="masthead">
@@ -342,7 +416,7 @@ export function App() {
           onCancel={() => setShowOnboarding(false)}
           onComplete={completeOnboarding}
         />
-      ) : profileState && draft ? (
+      ) : profileState && draft && resolution ? (
         <form
           className="profile-form"
           onSubmit={(event) => {
@@ -414,6 +488,7 @@ export function App() {
                 updatePreference('textScale', event.currentTarget.valueAsNumber)
               }
             />
+            {preferenceMeta('textScale')}
 
             <label htmlFor="line-spacing">
               Line spacing <output>{draft.preferences.lineSpacing.toFixed(1)}×</output>
@@ -429,6 +504,7 @@ export function App() {
                 updatePreference('lineSpacing', event.currentTarget.valueAsNumber)
               }
             />
+            {preferenceMeta('lineSpacing')}
 
             <label htmlFor="reading-width">Reading width</label>
             <select
@@ -445,6 +521,7 @@ export function App() {
               <option value="narrow">Narrow</option>
               <option value="very_narrow">Very narrow</option>
             </select>
+            {preferenceMeta('readingWidth')}
 
             <label htmlFor="contrast">Contrast</label>
             <select
@@ -460,19 +537,23 @@ export function App() {
               <option value="default">Keep site colors</option>
               <option value="enhanced">Enhanced contrast</option>
             </select>
+            {preferenceMeta('contrast')}
           </section>
 
           <fieldset className="card choice-list">
             <legend>Adaptation preferences</legend>
             {BOOLEAN_PREFERENCES.map(([key, label]) => (
-              <label className="check-row" key={key}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(draft.preferences[key])}
-                  onChange={(event) => updatePreference(key, event.currentTarget.checked)}
-                />
-                <span>{label}</span>
-              </label>
+              <div key={key}>
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(draft.preferences[key])}
+                    onChange={(event) => updatePreference(key, event.currentTarget.checked)}
+                  />
+                  <span>{label}</span>
+                </label>
+                {preferenceMeta(key)}
+              </div>
             ))}
 
             <label htmlFor="target-size">
@@ -490,13 +571,14 @@ export function App() {
                 updatePreference('targetSizePx', event.currentTarget.valueAsNumber)
               }
             />
+            {preferenceMeta('targetSizePx')}
           </fieldset>
 
           <details className="card capability-details">
             <summary>Capability signals</summary>
             <p className="help-text">
               These answers guide recommendations. They are not medical measurements or a
-              diagnosis.
+              diagnosis. Confidence is considered before a capability changes the interface.
             </p>
             {CAPABILITY_DIMENSION_NAMES.map((name) => (
               <div className="dimension" key={name}>
@@ -517,6 +599,32 @@ export function App() {
                 />
               </div>
             ))}
+          </details>
+
+          <details className="card capability-details">
+            <summary>Why AURA recommends these settings</summary>
+            <p className="help-text">
+              Capability recommendations are the lowest-priority suggestions. Onboarding,
+              calibration, and your manual choices override them.
+            </p>
+            <ul className="summary-list">
+              {explainedPreferences.map((key) => (
+                <li key={key}>
+                  <strong>{PREFERENCE_LABELS[key]}:</strong>{' '}
+                  {preferenceSourceLabel(resolution.sources[key])}.{' '}
+                  {resolution.reasons[key] ?? 'Resolved from your accessibility profile.'}
+                </li>
+              ))}
+            </ul>
+            {hasExplicitChoices ? (
+              <button
+                className="secondary"
+                type="button"
+                onClick={resetAllExplicitPreferences}
+              >
+                Use AURA recommendations for all manual choices
+              </button>
+            ) : null}
           </details>
 
           <section className="card" aria-labelledby="page-heading">

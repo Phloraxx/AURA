@@ -20,7 +20,7 @@ interface ExtensionApi {
   };
 }
 
-test('loads the MV3 extension, switches deterministic profiles, and undoes without reload', async () => {
+test('loads the MV3 extension, switches capability-driven profiles, and undoes without reload', async () => {
   const extensionPath = resolve('apps/extension/.output/chrome-mv3');
   const context = await chromium.launchPersistentContext('', {
     channel: 'chromium',
@@ -112,14 +112,14 @@ test('loads the MV3 extension, switches deterministic profiles, and undoes witho
       expect.objectContaining({ adapted: true, appliedKinds: expect.arrayContaining(['improveContrast']) }),
     );
     await expect(page.locator('html')).toHaveAttribute('data-aura-active', 'true');
-    await expect(page.locator('style[data-aura-owned]')).toHaveCount(6);
+    await expect(page.locator('style[data-aura-owned]')).toHaveCount(5);
 
     const attentionStatus = await applyProfile(2);
     expect(attentionStatus).toEqual(
       expect.objectContaining({ adapted: true, appliedKinds: expect.arrayContaining(['focusMainContent']) }),
     );
     await expect(page.locator('aside')).toHaveAttribute('data-aura-secondary', 'collapsed');
-    await expect(page.locator('style[data-aura-owned]')).toHaveCount(5);
+    await expect(page.locator('style[data-aura-owned]')).toHaveCount(3);
 
     const undoStatus = await serviceWorker.evaluate(async () => {
       const extensionApi = (globalThis as typeof globalThis & { chrome: ExtensionApi }).chrome;

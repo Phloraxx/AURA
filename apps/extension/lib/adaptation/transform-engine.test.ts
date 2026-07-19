@@ -11,6 +11,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ElementRegistry } from '../page/element-registry';
 import { extractLocalPageSignals } from '../page/local-signals';
+import {
+  resolveAdaptationPreferences,
+  withPreferenceLayer,
+} from '../profile/preference-resolver';
 import { createDeterministicPolicy } from './policy-engine';
 import { TransformEngine } from './transform-engine';
 
@@ -22,20 +26,18 @@ const CLUTTERED_ARTICLE = readFileSync(
 function fullProfile(): CapabilityProfile {
   const base = DEMO_PROFILES[0];
   if (!base) throw new Error('Demo profile fixture is missing.');
-  return {
-    ...base,
-    preferences: {
-      ...base.preferences,
-      reduceMotion: true,
-      focusMode: true,
-    },
-  };
+  return withPreferenceLayer(base, 'explicit', {
+    reduceMotion: true,
+    focusMode: true,
+    enlargeTargets: true,
+    targetSizePx: 48,
+  });
 }
 
 function createEngine(profile = fullProfile()) {
   const registry = new ElementRegistry();
   const signals = extractLocalPageSignals(document, registry);
-  const plan = createDeterministicPolicy(profile, signals);
+  const plan = createDeterministicPolicy(resolveAdaptationPreferences(profile), signals);
   return { engine: new TransformEngine(document, registry), plan, registry };
 }
 
@@ -104,20 +106,18 @@ describe('TransformEngine deterministic primitives', () => {
     const attentionProfile = DEMO_PROFILES[2];
     if (!attentionProfile) throw new Error('Demo profile fixture is missing.');
     const nextPlan = createDeterministicPolicy(
-      attentionProfile,
+      resolveAdaptationPreferences(attentionProfile),
       extractLocalPageSignals(document, engine.registry),
     );
 
     const status = engine.reconcilePlan(nextPlan);
 
     expect(status.appliedKinds).toEqual([
-      'increaseLineSpacing',
-      'limitReadingWidth',
       'reduceMotion',
       'enhanceFocusIndicators',
       'focusMainContent',
     ]);
-    expect(document.querySelectorAll('style[data-aura-owned]')).toHaveLength(5);
+    expect(document.querySelectorAll('style[data-aura-owned]')).toHaveLength(3);
   });
 
   it('adapts the repository article fixture differently for two profiles', () => {
@@ -130,6 +130,7 @@ describe('TransformEngine deterministic primitives', () => {
 
     const lowVisionRuntime = createEngine(lowVision);
     const lowVisionStatus = lowVisionRuntime.engine.applyPlan(lowVisionRuntime.plan);
+    expect(lowVisionStatus.appliedKinds).toContain('increaseTextScale');
     expect(lowVisionStatus.appliedKinds).toContain('improveContrast');
     expect(lowVisionStatus.appliedKinds).not.toContain('focusMainContent');
     lowVisionRuntime.engine.revertAll();
@@ -158,7 +159,7 @@ describe('TransformEngine deterministic primitives', () => {
     expect(document.querySelectorAll('[data-aura-focus-control]')).toHaveLength(2);
   });
 
-  it('applies and fully reverts all four semantic primitives without replacing controls', () => {
+  it('applies and fully reverts semantic primitives without replacing controls', () => {
     document.body.innerHTML = `
       <main>
         <p id="complex">Utilize the primary control subsequent to setup.</p>
@@ -252,5 +253,66 @@ describe('TransformEngine deterministic primitives', () => {
       'Utilize the primary control subsequent to setup.',
     );
     expect(document.querySelectorAll('[data-aura-owned]')).toHaveLength(0);
+  });
+
+  it('guides detected form groups reversibly without removing controls', () => {
+    document.body.innerHTML = `
+      <form>
+        <section id="contact"><label>Email <input id="email"></label></section>
+        <section id="address"><label>City <input id="city"></label></section>
+        <button id="submit">Submit</button>
+      </form>`;
+    const registry = new ElementRegistry();
+    registry.registerSubtree(document);
+    const targetId = (selector: string) => {
+      const element = document.querySelector(selector);
+      if (!element) throw new Error(`Missing fixture target: ${selector}`);
+      return registry.getId(element) ?? registry.register(element);
+    };
+    const contactId = targetId('#contact');
+    const addressId = targetId('#address');
+    const plan: AdaptationPlan = {
+      version: 1,
+      instructions: [
+        {
+          id: 'semantic:guide-form',
+          kind: 'guideFormSteps',
+          source: 'semantic_ai',
+          targetIds: [contactId, addressId],
+          params: {
+            groups: [
+              { label: 'Contact details', elementIds: [contactId] },
+              { label: 'Address details', elementIds: [addressId] },
+            ],
+          },
+          reason: 'Fixture form guide',
+        },
+      ],
+    };
+
+    const engine = new TransformEngine(document, registry);
+    engine.applyPlan(plan);
+    expect(document.querySelector('[data-aura-form-guide]')).not.toBeNull();
+    expect(document.querySelector('#contact')?.getAttribute('data-aura-form-step-active')).toBe(
+      'true',
+    );
+    expect(document.querySelectorAll('input')).toHaveLength(2);
+    expect(document.querySelector('#submit')).not.toBeNull();
+
+    const next = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-aura-form-guide] button')).find(
+      (button) => button.textContent === 'Next step',
+    );
+    next?.click();
+    expect(document.querySelector('#address')?.getAttribute('data-aura-form-step-active')).toBe(
+      'true',
+    );
+
+    engine.revertAll();
+    expect(document.querySelector('[data-aura-form-guide]')).toBeNull();
+    expect(document.querySelector('#contact')?.hasAttribute('data-aura-form-step')).toBe(false);
+    expect(document.querySelector('#address')?.hasAttribute('data-aura-form-step-active')).toBe(
+      false,
+    );
+    expect(document.querySelectorAll('input')).toHaveLength(2);
   });
 });

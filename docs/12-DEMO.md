@@ -1,5 +1,7 @@
 # Hackathon Demo Plan
 
+> **Productization note:** This file preserves the original stable MVP demo path. The canonical final hackathon choreography is now defined in `docs/17-HACKATHON-WOW-IMPLEMENTATION-PLAN.md`, including AURA Fit, AURA Lens, same-page/different-profile adaptation, Task Mode, guided forms, AURA Rescue, the Decision Inspector, and Original/AURA comparison. Use this baseline while those phases are under implementation; use the revised two-minute demo in the new roadmap for final rehearsal.
+
 ## Goal
 
 Tell one clear story in under two minutes.

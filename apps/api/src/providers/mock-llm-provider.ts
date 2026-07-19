@@ -64,6 +64,11 @@ export class MockLLMProvider implements LLMProvider {
             textFor(element),
           )),
     );
+    const formGroups = elements.filter(({ kind }) => kind === 'form_group');
+    const logicalFormGroups = formGroups.some(({ tag }) => tag === 'fieldset')
+      ? formGroups.filter(({ tag }) => tag === 'fieldset')
+      : formGroups;
+
     return Promise.resolve({
       mainContent: main.slice(0, 3).map((element) => scored(element, 'Main page landmark', 0.98)),
       primaryActions: primary
@@ -87,10 +92,15 @@ export class MockLLMProvider implements LLMProvider {
         .filter(({ kind, text }) => kind === 'text' && (text?.length ?? 0) > 250)
         .slice(0, 10)
         .map((element) => scored(element, 'Long text block may benefit from simplification', 0.75)),
-      formGroups: elements
-        .filter(({ kind }) => kind === 'form_group')
+      formGroups: logicalFormGroups
         .slice(0, 10)
-        .map((element) => scored(element, 'Form grouping', 0.9)),
+        .map((element, index) =>
+          scored(
+            element,
+            element.accessibleName || `Form section ${index + 1}`,
+            0.9,
+          ),
+        ),
       warnings: truncated ? ['The compact page representation was truncated.'] : [],
     });
   }

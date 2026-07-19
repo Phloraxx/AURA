@@ -29,94 +29,131 @@ export interface ProfileStore {
   resetDemoProfiles(): Promise<ProfileState>;
 }
 
+function logProfileError(action: string, error: unknown): void {
+  console.error(`[AURA profile] ${action}`, error);
+}
+
 function freshDemoProfiles(): CapabilityProfile[] {
   return DEMO_PROFILES.map((profile) => capabilityProfileSchema.parse(profile));
 }
 
 function parseStoredProfiles(value: unknown): CapabilityProfile[] | undefined {
   const result = capabilityProfileListSchema.safeParse(value);
-  return result.success && result.data.length > 0 ? result.data : undefined;
+  if (!result.success) {
+    if (value !== undefined) {
+      console.warn('[AURA profile] Stored profiles failed validation; reseeding demos.', {
+        issues: result.error.issues.map(({ code, path, message }) => ({ code, path, message })),
+      });
+    }
+    return undefined;
+  }
+  return result.data.length > 0 ? result.data : undefined;
 }
 
 async function writeState(
   storageArea: StorageAreaAdapter,
   state: ProfileState,
 ): Promise<void> {
-  await storageArea.set({
-    [STORAGE_KEYS.activeProfileId]: state.activeProfileId,
-    [STORAGE_KEYS.hasLaunched]: true,
-    [STORAGE_KEYS.profiles]: state.profiles,
-  });
+  try {
+    await storageArea.set({
+      [STORAGE_KEYS.activeProfileId]: state.activeProfileId,
+      [STORAGE_KEYS.hasLaunched]: true,
+      [STORAGE_KEYS.profiles]: state.profiles,
+    });
+  } catch (error) {
+    logProfileError('Failed to write profile state to browser storage.', error);
+    throw error;
+  }
 }
 
 export function createProfileStore(
   storageArea: StorageAreaAdapter = browser.storage.local,
 ): ProfileStore {
   async function getState(): Promise<ProfileState> {
-    const stored = await storageArea.get([
-      STORAGE_KEYS.profiles,
-      STORAGE_KEYS.activeProfileId,
-      STORAGE_KEYS.hasLaunched,
-    ]);
-    const profiles = parseStoredProfiles(stored[STORAGE_KEYS.profiles]);
-    const storedActiveId = stored[STORAGE_KEYS.activeProfileId];
+    try {
+      const stored = await storageArea.get([
+        STORAGE_KEYS.profiles,
+        STORAGE_KEYS.activeProfileId,
+        STORAGE_KEYS.hasLaunched,
+      ]);
+      const profiles = parseStoredProfiles(stored[STORAGE_KEYS.profiles]);
+      const storedActiveId = stored[STORAGE_KEYS.activeProfileId];
 
-    if (profiles) {
-      const activeProfileId =
-        typeof storedActiveId === 'string' &&
-        profiles.some(({ id }) => id === storedActiveId)
-          ? storedActiveId
-          : profiles[0]?.id;
+      if (profiles) {
+        const activeProfileId =
+          typeof storedActiveId === 'string' &&
+          profiles.some(({ id }) => id === storedActiveId)
+            ? storedActiveId
+            : profiles[0]?.id;
 
-      if (activeProfileId) {
-        const state = {
-          activeProfileId,
-          needsOnboarding: stored[STORAGE_KEYS.hasLaunched] !== true,
-          profiles,
-        };
-        if (
-          activeProfileId !== storedActiveId ||
-          stored[STORAGE_KEYS.hasLaunched] !== true
-        ) {
-          await writeState(storageArea, state);
+        if (activeProfileId) {
+          const state = {
+            activeProfileId,
+            needsOnboarding: stored[STORAGE_KEYS.hasLaunched] !== true,
+            profiles,
+          };
+          if (
+            activeProfileId !== storedActiveId ||
+            stored[STORAGE_KEYS.hasLaunched] !== true
+          ) {
+            await writeState(storageArea, state);
+          }
+          return state;
         }
-        return state;
       }
-    }
 
-    return seedDemoProfiles(true);
+      return seedDemoProfiles(true);
+    } catch (error) {
+      logProfileError('Failed to load profile state.', error);
+      throw error;
+    }
   }
 
   async function saveProfile(profile: CapabilityProfile): Promise<ProfileState> {
-    const validated = capabilityProfileSchema.parse(profile);
-    const current = await getState();
-    const existingIndex = current.profiles.findIndex(({ id }) => id === validated.id);
-    const profiles = [...current.profiles];
+    try {
+      const validated = capabilityProfileSchema.parse(profile);
+      const current = await getState();
+      const existingIndex = current.profiles.findIndex(({ id }) => id === validated.id);
+      const profiles = [...current.profiles];
 
-    if (existingIndex >= 0) {
-      profiles[existingIndex] = validated;
-    } else {
-      profiles.push(validated);
+      if (existingIndex >= 0) {
+        profiles[existingIndex] = validated;
+      } else {
+        profiles.push(validated);
+      }
+
+      const state = {
+        activeProfileId: validated.id,
+        needsOnboarding: false,
+        profiles,
+      };
+      await writeState(storageArea, state);
+      console.info('[AURA profile] Profile saved successfully.', {
+        activeProfileId: state.activeProfileId,
+        profileCount: state.profiles.length,
+      });
+      return state;
+    } catch (error) {
+      logProfileError('Failed to validate or save the active profile.', error);
+      throw error;
     }
-
-    const state = {
-      activeProfileId: validated.id,
-      needsOnboarding: false,
-      profiles,
-    };
-    await writeState(storageArea, state);
-    return state;
   }
 
   async function setActiveProfile(profileId: string): Promise<ProfileState> {
-    const current = await getState();
-    if (!current.profiles.some(({ id }) => id === profileId)) {
-      throw new Error('The selected AURA profile does not exist.');
-    }
+    try {
+      const current = await getState();
+      if (!current.profiles.some(({ id }) => id === profileId)) {
+        throw new Error('The selected AURA profile does not exist.');
+      }
 
-    const state = { ...current, activeProfileId: profileId, needsOnboarding: false };
-    await writeState(storageArea, state);
-    return state;
+      const state = { ...current, activeProfileId: profileId, needsOnboarding: false };
+      await writeState(storageArea, state);
+      console.info('[AURA profile] Active profile changed.', { activeProfileId: profileId });
+      return state;
+    } catch (error) {
+      logProfileError('Failed to change the active profile.', error);
+      throw error;
+    }
   }
 
   async function seedDemoProfiles(needsOnboarding: boolean): Promise<ProfileState> {
@@ -128,11 +165,21 @@ export function createProfileStore(
 
     const state = { activeProfileId, needsOnboarding, profiles };
     await writeState(storageArea, state);
+    console.info('[AURA profile] Demo profiles seeded.', {
+      activeProfileId,
+      profileCount: profiles.length,
+      needsOnboarding,
+    });
     return state;
   }
 
   async function resetDemoProfiles(): Promise<ProfileState> {
-    return seedDemoProfiles(false);
+    try {
+      return await seedDemoProfiles(false);
+    } catch (error) {
+      logProfileError('Failed to reset demo profiles.', error);
+      throw error;
+    }
   }
 
   return {

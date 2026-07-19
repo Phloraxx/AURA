@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 
 export const evidenceSourceSchema = z.enum([
   'self_report',
@@ -42,6 +42,16 @@ export const adaptationPreferencesSchema = z.object({
   clarifyControls: z.boolean(),
 });
 
+export const adaptationPreferencePatchSchema = adaptationPreferencesSchema.partial();
+
+export const preferenceLayersSchema = z
+  .object({
+    onboarding: adaptationPreferencePatchSchema,
+    calibration: adaptationPreferencePatchSchema,
+    explicit: adaptationPreferencePatchSchema,
+  })
+  .default({ onboarding: {}, calibration: {}, explicit: {} });
+
 export const capabilityProfileSchema = z.object({
   version: z.literal(1),
   id: z.string().trim().min(1).max(100),
@@ -51,6 +61,7 @@ export const capabilityProfileSchema = z.object({
   dimensions: capabilityDimensionsSchema,
   modalities: profileModalitiesSchema,
   preferences: adaptationPreferencesSchema,
+  preferenceLayers: preferenceLayersSchema,
 });
 
 export const capabilityProfileListSchema = z.array(capabilityProfileSchema);
@@ -62,6 +73,10 @@ export type ProfileModalities = z.infer<typeof profileModalitiesSchema>;
 export type AdaptationPreferences = z.infer<
   typeof adaptationPreferencesSchema
 >;
+export type AdaptationPreferencePatch = z.infer<
+  typeof adaptationPreferencePatchSchema
+>;
+export type PreferenceLayers = z.infer<typeof preferenceLayersSchema>;
 export type CapabilityProfile = z.infer<typeof capabilityProfileSchema>;
 
 export const CAPABILITY_DIMENSION_NAMES = [
@@ -125,5 +140,10 @@ export function createNeutralProfile({
       screenReader: false,
     },
     preferences: DEFAULT_ADAPTATION_PREFERENCES,
+    preferenceLayers: {
+      onboarding: {},
+      calibration: {},
+      explicit: {},
+    },
   });
 }

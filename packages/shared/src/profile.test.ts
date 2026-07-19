@@ -21,6 +21,11 @@ describe('capabilityProfileSchema', () => {
       reduceMotion: false,
       hideDistractions: false,
     });
+    expect(profile.preferenceLayers).toEqual({
+      onboarding: {},
+      calibration: {},
+      explicit: {},
+    });
     expect(profile.dimensions.visual).toEqual({
       capacity: 1,
       confidence: 0,
@@ -54,7 +59,7 @@ describe('capabilityProfileSchema', () => {
     ).toThrow();
   });
 
-  it('provides three valid and visibly distinct demo profiles', () => {
+  it('provides three valid and capability-distinct demo profiles', () => {
     expect(DEMO_PROFILES).toHaveLength(3);
     expect(DEMO_PROFILES.map(({ id }) => id)).toEqual([
       'demo-low-vision',
@@ -64,8 +69,10 @@ describe('capabilityProfileSchema', () => {
     for (const profile of DEMO_PROFILES) {
       expect(capabilityProfileSchema.safeParse(profile).success).toBe(true);
     }
-    expect(new Set(DEMO_PROFILES.map(({ preferences }) => preferences))).toHaveLength(
-      3,
-    );
+    expect(DEMO_PROFILES[0]?.dimensions.visual.capacity).toBeLessThan(1);
+    expect(DEMO_PROFILES[1]?.dimensions.motor.capacity).toBeLessThan(1);
+    expect(DEMO_PROFILES[1]?.dimensions.cognitive.capacity).toBeLessThan(1);
+    expect(DEMO_PROFILES[2]?.dimensions.attention.capacity).toBeLessThan(1);
+    expect(DEMO_PROFILES[2]?.dimensions.language.capacity).toBeLessThan(1);
   });
 });

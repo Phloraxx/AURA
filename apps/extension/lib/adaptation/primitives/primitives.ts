@@ -438,6 +438,110 @@ export function simplifyText(context: PrimitiveContext): AdaptationPrimitive {
   };
 }
 
+interface FormStepGroup {
+  label: string;
+  elementIds: string[];
+}
+
+function parseFormStepGroups(value: unknown): FormStepGroup[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== 'object') return [];
+    const record = candidate as Record<string, unknown>;
+    if (typeof record.label !== 'string' || !Array.isArray(record.elementIds)) return [];
+    const elementIds = record.elementIds.filter((id): id is string => typeof id === 'string');
+    return elementIds.length > 0 ? [{ label: record.label.slice(0, 120), elementIds }] : [];
+  });
+}
+
+export function guideFormSteps(context: PrimitiveContext): AdaptationPrimitive {
+  const { document, instruction, registry } = context;
+  const groups = parseFormStepGroups(instruction.params?.groups);
+  const originals = new Map<Element, { step: string | null; active: string | null }>();
+  const style = stylePrimitive(
+    document,
+    instruction.id,
+    'html[data-aura-active] [data-aura-form-step-active="true"] { outline: 3px solid #005fcc !important; outline-offset: 4px !important; } html[data-aura-active] [data-aura-form-guide] { display: flex !important; flex-wrap: wrap !important; gap: 0.5rem !important; align-items: center !important; margin: 1rem 0 !important; padding: 0.75rem !important; border: 2px solid #315a3e !important; border-radius: 0.5rem !important; background: #fff !important; color: #173622 !important; font: 600 1rem/1.4 system-ui, sans-serif !important; } html[data-aura-active] [data-aura-form-guide] button { min-height: 44px !important; padding: 0.55rem 0.8rem !important; }',
+  );
+  const control = document.createElement('div');
+  const previous = document.createElement('button');
+  const next = document.createElement('button');
+  const status = document.createElement('span');
+  let currentIndex = 0;
+
+  control.dataset.auraOwned = 'true';
+  control.dataset.auraFormGuide = 'true';
+  control.setAttribute('role', 'group');
+  control.setAttribute('aria-label', 'AURA form step guide');
+  previous.type = 'button';
+  previous.textContent = 'Previous step';
+  next.type = 'button';
+  next.textContent = 'Next step';
+  status.setAttribute('aria-live', 'polite');
+  control.append(previous, status, next);
+
+  const elementsForGroup = (group: FormStepGroup): Element[] =>
+    group.elementIds
+      .map((id) => registry.getElement(id))
+      .filter((element): element is Element => element !== undefined);
+
+  const setCurrent = (index: number, moveFocus: boolean) => {
+    if (groups.length < 2) return;
+    currentIndex = Math.max(0, Math.min(groups.length - 1, index));
+    groups.forEach((group, groupIndex) => {
+      for (const element of elementsForGroup(group)) {
+        element.setAttribute('data-aura-form-step-active', String(groupIndex === currentIndex));
+      }
+    });
+    const group = groups[currentIndex];
+    if (!group) return;
+    status.textContent = `Step ${currentIndex + 1} of ${groups.length}: ${group.label}`;
+    previous.disabled = currentIndex === 0;
+    next.disabled = currentIndex === groups.length - 1;
+    if (!moveFocus) return;
+    const first = elementsForGroup(group)[0];
+    if (!(first instanceof HTMLElement)) return;
+    first.scrollIntoView({ block: 'center', behavior: 'auto' });
+    const focusable = first.matches('button, input, select, textarea, a[href], [tabindex]')
+      ? first
+      : first.querySelector<HTMLElement>('button, input, select, textarea, a[href], [tabindex]');
+    focusable?.focus({ preventScroll: true });
+  };
+
+  previous.addEventListener('click', () => setCurrent(currentIndex - 1, true));
+  next.addEventListener('click', () => setCurrent(currentIndex + 1, true));
+
+  return {
+    apply() {
+      if (groups.length < 2) return;
+      style.apply();
+      for (const group of groups) {
+        for (const element of elementsForGroup(group)) {
+          if (!originals.has(element)) {
+            originals.set(element, {
+              step: element.getAttribute('data-aura-form-step'),
+              active: element.getAttribute('data-aura-form-step-active'),
+            });
+          }
+          element.setAttribute('data-aura-form-step', 'true');
+        }
+      }
+      const firstTarget = elementsForGroup(groups[0] as FormStepGroup)[0];
+      if (firstTarget && !control.isConnected) firstTarget.before(control);
+      setCurrent(currentIndex, false);
+    },
+    revert() {
+      control.remove();
+      for (const [element, original] of originals) {
+        restoreAttribute(element, 'data-aura-form-step', original.step);
+        restoreAttribute(element, 'data-aura-form-step-active', original.active);
+      }
+      originals.clear();
+      style.revert();
+    },
+  };
+}
+
 export const deterministicPrimitiveFactories = {
   increaseTextScale,
   increaseLineSpacing,
@@ -454,4 +558,5 @@ export const semanticPrimitiveFactories = {
   highlightPrimaryAction,
   clarifyAmbiguousControls,
   simplifyText,
+  guideFormSteps,
 } as const;
