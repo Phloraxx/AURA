@@ -5,6 +5,8 @@ import {
   type PersonalizedFriction,
 } from '@aura/shared';
 
+import { relevantPersonalizedFriction } from './personalized-friction';
+
 const CATEGORY_WEIGHTS: Record<FrictionCategory, number> = {
   readability: 1.1,
   interaction_target: 1.15,
@@ -29,9 +31,12 @@ export function calculateAuraFit(
 ): AuraFitBreakdown {
   // AURA Fit is intentionally based only on deterministic local signals so a
   // before/after comparison always measures the page with the same instrument.
-  // Semantic signals still power Lens and explanations, but they are not mixed
-  // into the score after an adaptation has already been applied.
-  const scorable = personalized.filter(({ signal }) => signal.source === 'local');
+  // Irrelevant categories for the active profile are excluded rather than
+  // diluting the score denominator. Semantic signals still power Lens and
+  // explanations, but they are not mixed into the comparable score.
+  const scorable = relevantPersonalizedFriction(personalized).filter(
+    ({ signal }) => signal.source === 'local',
+  );
   const byCategory = new Map<FrictionCategory, PersonalizedFriction[]>();
   for (const item of scorable) {
     const items = byCategory.get(item.signal.category) ?? [];
