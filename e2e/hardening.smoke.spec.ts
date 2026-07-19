@@ -18,7 +18,7 @@ interface ExtensionApi {
   };
 }
 
-test('keeps runtime injection idempotent and applies manually remembered site choices', async () => {
+test('keeps runtime injection idempotent, applies site choices, and restores a clean baseline for fresh scans', async () => {
   const extensionPath = resolve('apps/extension/.output/chrome-mv3');
   const context = await chromium.launchPersistentContext('', {
     channel: 'chromium',
@@ -80,6 +80,19 @@ test('keeps runtime injection idempotent and applies manually remembered site ch
       .locator('style[data-aura-owned][data-aura-instruction]')
       .evaluateAll((elements) => elements.map((element) => element.getAttribute('data-aura-instruction')));
     expect(new Set(instructionIds).size).toBe(instructionIds.length);
+
+    // A scan not explicitly paired with the Adapt flow is a new baseline scan.
+    // This models reopening the panel or switching profiles while the old page is still adapted.
+    const scan = await serviceWorker.evaluate(async (profile) => {
+      const extensionApi = (globalThis as typeof globalThis & { chrome: ExtensionApi }).chrome;
+      const [tab] = await extensionApi.tabs.query({ url: 'http://localhost:4173/*' });
+      if (tab?.id === undefined) throw new Error('Fixture tab is unavailable.');
+      return extensionApi.tabs.sendMessage(tab.id, { type: 'PAGE_SCAN', profile });
+    }, DEMO_PROFILES[0]);
+
+    expect(scan).toEqual(expect.objectContaining({ fit: expect.objectContaining({ isHeuristic: true }) }));
+    await expect(page.locator('html')).not.toHaveAttribute('data-aura-active', 'true');
+    await expect(page.locator('style[data-aura-owned]')).toHaveCount(0);
 
     await serviceWorker.evaluate(async () => {
       const extensionApi = (globalThis as typeof globalThis & { chrome: ExtensionApi }).chrome;
