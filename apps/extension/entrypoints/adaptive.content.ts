@@ -31,6 +31,16 @@ import { RescueEngine } from '../lib/rescue/rescue-engine';
 import { createSitePreferenceStore } from '../lib/site/site-preference-store';
 import { TaskNavigator } from '../lib/task/task-navigator';
 
+interface AuraRuntimeLease {
+  id: number;
+  dispose(): void;
+}
+
+interface AuraRuntimeGlobal {
+  __auraRuntimeGenerationV1__?: number;
+  __auraRuntimeLeaseV1__?: AuraRuntimeLease;
+}
+
 function messageType(value: unknown): string {
   if (!value || typeof value !== 'object') return 'unknown';
   const type = (value as Record<string, unknown>).type;
@@ -48,11 +58,21 @@ export default defineContentScript({
   registration: 'runtime',
   main(context) {
     const root = document.documentElement;
-    const originalRuntimeMarker = root.getAttribute('data-aura-runtime');
-    if (originalRuntimeMarker === 'ready' || originalRuntimeMarker === 'initializing') {
-      console.debug('[AURA content] Runtime already exists; skipping duplicate injection.');
-      return;
+    const runtimeGlobal = globalThis as typeof globalThis & AuraRuntimeGlobal;
+    const previousRuntime = runtimeGlobal.__auraRuntimeLeaseV1__;
+    if (previousRuntime) {
+      previousRuntime.dispose();
+      delete runtimeGlobal.__auraRuntimeLeaseV1__;
+      console.debug('[AURA content] Replaced an existing runtime during reinjection.');
     }
+
+    const runtimeId = (runtimeGlobal.__auraRuntimeGenerationV1__ ?? 0) + 1;
+    runtimeGlobal.__auraRuntimeGenerationV1__ = runtimeId;
+    const existingRuntimeMarker = root.getAttribute('data-aura-runtime');
+    const originalRuntimeMarker =
+      existingRuntimeMarker === 'ready' || existingRuntimeMarker === 'initializing'
+        ? null
+        : existingRuntimeMarker;
     root.setAttribute('data-aura-runtime', 'initializing');
 
     const registry = new ElementRegistry();
@@ -79,6 +99,7 @@ export default defineContentScript({
     console.info('[AURA content] Runtime initialized.', {
       pageProtocol: location.protocol,
       pageOrigin: location.origin,
+      runtimeId,
     });
 
     const observer = observeDynamicPage(document, () => {
@@ -260,20 +281,30 @@ export default defineContentScript({
       return true;
     };
 
-    browser.runtime.onMessage.addListener(onMessage);
-    context.onInvalidated(() => {
+    let disposed = false;
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
       browser.runtime.onMessage.removeListener(onMessage);
       observer.disconnect();
       lens.destroy();
       tasks.revert();
       rescue.destroy();
       engine.revertAll();
+    };
+
+    browser.runtime.onMessage.addListener(onMessage);
+    runtimeGlobal.__auraRuntimeLeaseV1__ = { id: runtimeId, dispose };
+    context.onInvalidated(() => {
+      if (runtimeGlobal.__auraRuntimeLeaseV1__?.id !== runtimeId) return;
+      dispose();
+      delete runtimeGlobal.__auraRuntimeLeaseV1__;
       if (originalRuntimeMarker === null) {
         root.removeAttribute('data-aura-runtime');
       } else {
         root.setAttribute('data-aura-runtime', originalRuntimeMarker);
       }
-      console.info('[AURA content] Runtime invalidated and cleaned up.');
+      console.info('[AURA content] Runtime invalidated and cleaned up.', { runtimeId });
     });
   },
 });
