@@ -17,14 +17,15 @@ describe('profile demo reset', () => {
       'aura.rescueEnabled.v1': false,
     };
     const storage: StorageAreaAdapter = {
-      async get(keys) {
-        return Object.fromEntries(keys.map((key) => [key, values[key]]));
+      get(keys) {
+        return Promise.resolve(Object.fromEntries(keys.map((key) => [key, values[key]])));
       },
-      async set(items) {
+      set(items) {
         Object.assign(values, items);
+        return Promise.resolve();
       },
     };
-    const removePermission = vi.fn(async () => true);
+    const removePermission = vi.fn(() => Promise.resolve(true));
     const store = createProfileStore(storage, removePermission);
 
     const state = await store.resetDemoProfiles();
@@ -49,16 +50,18 @@ describe('profile demo reset', () => {
       ],
     };
     const storage: StorageAreaAdapter = {
-      async get(keys) {
-        return Object.fromEntries(keys.map((key) => [key, values[key]]));
+      get(keys) {
+        return Promise.resolve(Object.fromEntries(keys.map((key) => [key, values[key]])));
       },
-      async set(items) {
+      set(items) {
         Object.assign(values, items);
+        return Promise.resolve();
       },
     };
-    const store = createProfileStore(storage, vi.fn(async () => {
-      throw new Error('permission API unavailable');
-    }));
+    const store = createProfileStore(
+      storage,
+      vi.fn(() => Promise.reject(new Error('permission API unavailable'))),
+    );
 
     await expect(store.resetDemoProfiles()).resolves.toEqual(
       expect.objectContaining({ needsOnboarding: false }),
