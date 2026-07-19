@@ -129,14 +129,20 @@ describe('createSemanticPolicy', () => {
       ambiguousControls: [],
       complexTextBlocks: [],
       formGroups: [
-        { label: 'Contact', elementIds: ['aura:n1', 'aura:n2'] },
-        { label: 'Address', elementIds: ['aura:n3'] },
+        { id: 'aura:n1', confidence: 0.9, reason: 'Contact details' },
+        { id: 'aura:n3', confidence: 0.9, reason: 'Address details' },
       ],
       warnings: [],
     });
 
     expect(plan.instructions.find(({ kind }) => kind === 'guideFormSteps')).toMatchObject({
-      targetIds: ['aura:n1', 'aura:n2', 'aura:n3'],
+      targetIds: ['aura:n1', 'aura:n3'],
+      params: {
+        groups: [
+          { label: 'Contact details', elementIds: ['aura:n1'] },
+          { label: 'Address details', elementIds: ['aura:n3'] },
+        ],
+      },
     });
   });
 });
