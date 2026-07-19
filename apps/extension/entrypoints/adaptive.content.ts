@@ -17,7 +17,10 @@ import { TransformEngine } from '../lib/adaptation/transform-engine';
 import { validatePlanTargets } from '../lib/adaptation/target-validation';
 import { calculateAuraFit } from '../lib/friction/aura-fit';
 import { scanLocalFriction } from '../lib/friction/local-friction-scanner';
-import { personalizeFriction } from '../lib/friction/personalized-friction';
+import {
+  personalizeFriction,
+  relevantPersonalizedFriction,
+} from '../lib/friction/personalized-friction';
 import { LensController } from '../lib/lens/lens-controller';
 import { ElementRegistry } from '../lib/page/element-registry';
 import { extractLocalPageSignals } from '../lib/page/local-signals';
@@ -70,6 +73,8 @@ export default defineContentScript({
     let activePlan: AdaptationPlan | undefined;
     let rescueEnabled = true;
     let lastLocalSignals: ReturnType<typeof scanLocalFriction> = [];
+    let baselineScanReady = false;
+    let expectPostAdaptScan = false;
 
     console.info('[AURA content] Runtime initialized.', {
       pageProtocol: location.protocol,
@@ -108,6 +113,8 @@ export default defineContentScript({
         case 'PAGE_ADAPT': {
           const profile = await profileForCurrentSite(parsed.data.profile);
           activeProfile = profile;
+          expectPostAdaptScan = baselineScanReady;
+          baselineScanReady = false;
           rescue.clearSuggestion();
           rescue.setProfile(profile);
           rescue.setEnabled(rescueEnabled);
@@ -127,6 +134,8 @@ export default defineContentScript({
           deterministicPlan = undefined;
           activePlan = undefined;
           lastLocalSignals = [];
+          baselineScanReady = false;
+          expectPostAdaptScan = false;
           lens.setEnabled(false);
           tasks.revert();
           rescue.clearSuggestion();
@@ -141,31 +150,54 @@ export default defineContentScript({
           return engine.getStatus();
         case 'PAGE_SCAN': {
           const profile = await profileForCurrentSite(parsed.data.profile);
+          const postAdaptScan = expectPostAdaptScan;
+          expectPostAdaptScan = false;
+          if (engine.getStatus().adapted && !postAdaptScan) {
+            engine.revertAll();
+            deterministicPlan = undefined;
+            activePlan = undefined;
+            lens.setEnabled(false);
+            tasks.revert();
+            rescue.clearSuggestion();
+            console.info('[AURA content] Restored the original page before a fresh baseline scan.');
+          }
           activeProfile = profile;
           rescue.setProfile(profile);
           rescue.setEnabled(rescueEnabled);
           const resolution = resolveAdaptationPreferences(profile);
           lastLocalSignals = scanLocalFriction(document, registry);
-          const personalized = personalizeFriction(lastLocalSignals, {
-            ...profile,
-            preferences: resolution.preferences,
-          });
-          lens.setSignals(lastLocalSignals);
+          const personalized = relevantPersonalizedFriction(
+            personalizeFriction(lastLocalSignals, {
+              ...profile,
+              preferences: resolution.preferences,
+            }),
+          );
+          const relevantSignals = personalized.map(({ signal }) => signal);
+          lens.setSignals(relevantSignals);
+          baselineScanReady = !postAdaptScan;
           return pageScanResponseSchema.parse({
             pageId: `${location.origin}${location.pathname}`,
-            localSignals: lastLocalSignals,
+            localSignals: relevantSignals,
             semanticSignals: [],
             fit: calculateAuraFit(personalized),
             scannedAt: new Date().toISOString(),
           });
         }
-        case 'PAGE_LENS_SET':
-          lens.setSignals(
-            parsed.data.signals.filter(({ targetIds }) =>
-              targetIds.every((id) => registry.has(id)),
-            ),
+        case 'PAGE_LENS_SET': {
+          const available = parsed.data.signals.filter(({ targetIds }) =>
+            targetIds.every((id) => registry.has(id)),
           );
+          const signals = activeProfile
+            ? relevantPersonalizedFriction(
+                personalizeFriction(available, {
+                  ...activeProfile,
+                  preferences: resolveAdaptationPreferences(activeProfile).preferences,
+                }),
+              ).map(({ signal }) => signal)
+            : available;
+          lens.setSignals(signals);
           return lens.setEnabled(parsed.data.enabled);
+        }
         case 'PAGE_LENS_SELECT':
           return lens.select(parsed.data.frictionId);
         case 'PAGE_COMPARE_SET': {
