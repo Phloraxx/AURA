@@ -19,6 +19,15 @@ function loadFixture(name: string): ElementRegistry {
 describe('local friction scanner', () => {
   it('finds readability, attention, and motion signals on the article fixture', () => {
     const registry = loadFixture('cluttered-article.html');
+    const ticker = document.querySelector<HTMLElement>('.ticker');
+    if (!ticker) throw new Error('Animated ticker fixture is missing.');
+
+    // happy-dom does not reliably resolve stylesheet keyframes into computed animation values.
+    // Mirror the fixture's declared animation inline so this unit test exercises scanner logic,
+    // while the browser audit continues to verify real computed styles in Chromium.
+    ticker.style.animationName = 'pulse';
+    ticker.style.animationDuration = '1.4s';
+
     const signals = scanLocalFriction(document, registry);
 
     expect(signals.some(({ category }) => category === 'readability')).toBe(true);
