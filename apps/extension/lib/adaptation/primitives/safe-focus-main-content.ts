@@ -55,7 +55,7 @@ export function safeFocusMainContent({
         document.querySelectorAll('aside, [role="complementary"]'),
       ).filter(
         (element) =>
-          !mains.some((main) => element.contains(main)) &&
+          !mains.some((main) => element.contains(main) || main.contains(element)) &&
           !element.closest('[data-aura-owned]') &&
           !isSafetyCritical(element),
       );
