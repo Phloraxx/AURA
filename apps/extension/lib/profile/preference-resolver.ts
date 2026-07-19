@@ -35,6 +35,27 @@ function supportNeed(dimension: CapabilityDimension): number {
   return (1 - dimension.capacity) * dimension.confidence;
 }
 
+function resolveModalities(
+  profile: Pick<CapabilityProfile, 'dimensions' | 'modalities'>,
+): ProfileModalities {
+  const preferredInput = [...profile.modalities.preferredInput];
+  const preferredOutput = [...profile.modalities.preferredOutput];
+  const auditory = supportNeed(profile.dimensions.auditory);
+
+  // When the auditory capability signal indicates support is useful, AURA must
+  // never resolve to speech-only output. This is a conservative capability-level
+  // guarantee; explicit speech output can still remain available alongside text.
+  if (auditory >= 0.25 && !preferredOutput.includes('visual')) {
+    preferredOutput.unshift('visual');
+  }
+
+  return {
+    ...profile.modalities,
+    preferredInput,
+    preferredOutput,
+  };
+}
+
 function assignRecommendation<Key extends keyof AdaptationPreferences>(
   recommendations: CapabilityRecommendations,
   key: Key,
@@ -263,7 +284,7 @@ export function resolveAdaptationPreferences(profile: CapabilityProfile): Prefer
     'Explicitly chosen by the user.',
   );
 
-  return { preferences, modalities: profile.modalities, sources, reasons };
+  return { preferences, modalities: resolveModalities(profile), sources, reasons };
 }
 
 function normalizedLayersForMutation(profile: CapabilityProfile): PreferenceLayers {
