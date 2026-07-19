@@ -12,6 +12,7 @@ import {
   type AdaptationPrimitive,
   type PrimitiveContext,
 } from './primitives/primitives';
+import { safeFocusMainContent } from './primitives/safe-focus-main-content';
 
 interface AppliedRecord {
   kind: AdaptationKind;
@@ -22,7 +23,11 @@ interface AppliedRecord {
 const primitiveFactories: Record<
   AdaptationKind,
   (context: PrimitiveContext) => AdaptationPrimitive
-> = { ...deterministicPrimitiveFactories, ...semanticPrimitiveFactories };
+> = {
+  ...deterministicPrimitiveFactories,
+  ...semanticPrimitiveFactories,
+  focusMainContent: safeFocusMainContent,
+};
 
 export class TransformEngine {
   readonly #applied = new Map<string, AppliedRecord>();
