@@ -53,6 +53,11 @@ export class RescueEngine {
     };
   }
 
+  clearSuggestion(): RescueStatus {
+    this.#suggestion = undefined;
+    return this.status();
+  }
+
   setEnabled(enabled: boolean): RescueStatus {
     this.#enabled = enabled;
     if (!enabled) this.#suggestion = undefined;
