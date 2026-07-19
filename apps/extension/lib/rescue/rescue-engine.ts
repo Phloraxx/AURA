@@ -17,6 +17,7 @@ interface RescueConfig {
 type SuggestionHandler = (suggestion: RescueSuggestion) => void;
 
 const INTERACTIVE_SELECTOR = 'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="link"]';
+const ACCEPTED_SUGGESTION_COOLDOWN_MS = 30_000;
 
 export class RescueEngine {
   readonly #document: Document;
@@ -54,13 +55,20 @@ export class RescueEngine {
   }
 
   clearSuggestion(): RescueStatus {
+    if (this.#suggestion) {
+      this.#cooldowns.set(this.#suggestion.id, Date.now() + ACCEPTED_SUGGESTION_COOLDOWN_MS);
+    }
     this.#suggestion = undefined;
+    this.#resetInteractionHistory();
     return this.status();
   }
 
   setEnabled(enabled: boolean): RescueStatus {
     this.#enabled = enabled;
-    if (!enabled) this.#suggestion = undefined;
+    if (!enabled) {
+      this.#suggestion = undefined;
+      this.#resetInteractionHistory();
+    }
     return this.status();
   }
 
@@ -68,6 +76,7 @@ export class RescueEngine {
     if (this.#suggestion?.id === suggestionId) {
       this.#cooldowns.set(suggestionId, Date.now() + 5_000);
       this.#suggestion = undefined;
+      this.#resetInteractionHistory();
     }
     return this.status();
   }
@@ -84,6 +93,15 @@ export class RescueEngine {
     this.#document.removeEventListener('focusin', this.#onFocusIn, true);
     this.#document.removeEventListener('keydown', this.#onKeyDown, true);
     this.#document.removeEventListener('scroll', this.#onScroll, true);
+  }
+
+  #resetInteractionHistory(): void {
+    this.#nearMisses.clear();
+    this.#focusVisits.clear();
+    this.#tabCount = 0;
+    this.#scrollReversals = [];
+    this.#lastScrollDirection = undefined;
+    this.#lastScrollTop = this.#document.defaultView?.scrollY ?? this.#document.documentElement.scrollTop;
   }
 
   #onPointerUp = (event: PointerEvent): void => {
@@ -180,6 +198,7 @@ export class RescueEngine {
   };
 
   #suggest(suggestion: RescueSuggestion): void {
+    if (this.#document.visibilityState !== 'visible' || !this.#document.hasFocus()) return;
     const cooldownUntil = this.#cooldowns.get(suggestion.id) ?? 0;
     if (Date.now() < cooldownUntil) return;
     this.#suggestion = rescueSuggestionSchema.parse(suggestion);
