@@ -46,5 +46,19 @@ describe('side panel accessibility', () => {
       rules: { 'color-contrast': { enabled: false } },
     });
     expect(profileResults.violations).toEqual([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Page' }));
+    await screen.findByRole('heading', { name: 'See where AURA can help' });
+    const pageResults = await axe.run(container, {
+      rules: { 'color-contrast': { enabled: false } },
+    });
+    expect(pageResults.violations).toEqual([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Task' }));
+    await screen.findByRole('heading', { name: 'What are you trying to do?' });
+    const taskResults = await axe.run(container, {
+      rules: { 'color-contrast': { enabled: false } },
+    });
+    expect(taskResults.violations).toEqual([]);
   });
 });

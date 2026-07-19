@@ -14,6 +14,7 @@ import {
 
 import { createDeterministicPolicy } from '../lib/adaptation/policy-engine';
 import { TransformEngine } from '../lib/adaptation/transform-engine';
+import { validatePlanTargets } from '../lib/adaptation/target-validation';
 import { ElementRegistry } from '../lib/page/element-registry';
 import { extractLocalPageSignals } from '../lib/page/local-signals';
 import { observeDynamicPage } from '../lib/page/mutation-observer';
@@ -162,11 +163,12 @@ export default defineContentScript({
             return snapshot;
           }
           case 'PAGE_SEMANTIC_APPLY': {
+            const semanticPlan = validatePlanTargets(parsed.data.plan, registry);
             activePlan = {
               version: 1,
               instructions: [
                 ...(deterministicPlan?.instructions ?? []),
-                ...parsed.data.plan.instructions,
+                ...semanticPlan.instructions,
               ],
             };
             const status = engine.reconcilePlan(activePlan);

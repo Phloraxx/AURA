@@ -211,6 +211,7 @@ export function App() {
   const [selectedFrictionId, setSelectedFrictionId] = useState<string>();
   const [compareMode, setCompareMode] = useState<'original' | 'adapted'>('adapted');
   const runIdRef = useRef(0);
+  const pageContextRef = useRef<{ tabId: number; key: string } | undefined>(undefined);
   const [taskGoal, setTaskGoal] = useState('');
   const [taskPlan, setTaskPlan] = useState<TaskPlan>();
   const [taskStepIndex, setTaskStepIndex] = useState(0);
@@ -253,6 +254,81 @@ export function App() {
       });
     return () => {
       active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function refreshPageContext(notifyOnChange: boolean): Promise<void> {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!active || tab?.id === undefined) return;
+      const key = `${tab.id}:${tab.url ?? 'unavailable'}`;
+      const previous = pageContextRef.current;
+      pageContextRef.current = { tabId: tab.id, key };
+      if (previous && previous.key !== key) {
+        runIdRef.current += 1;
+        setPageState('idle');
+        setPageStatus(undefined);
+        setPageScan(undefined);
+        setOriginalScan(undefined);
+        setAdaptedScan(undefined);
+        setSemanticAnalysis(undefined);
+        setIsLensEnabled(false);
+        setSelectedFrictionId(undefined);
+        setTaskPlan(undefined);
+        setTaskStepIndex(0);
+        setTaskActive(false);
+        setRescueSuggestion(undefined);
+        if (notifyOnChange) setStatus('The page changed. Rescan to continue safely.');
+      }
+
+      if (typeof tab.url !== 'string') {
+        setCurrentOrigin(undefined);
+        setCurrentSite(undefined);
+        return;
+      }
+      try {
+        const origin = normalizeSiteOrigin(tab.url);
+        setCurrentOrigin(origin);
+        setCurrentSite(await siteStore.get(origin));
+      } catch {
+        setCurrentOrigin(undefined);
+        setCurrentSite(undefined);
+      }
+    }
+
+    const tabsApi = browser.tabs as typeof browser.tabs & {
+      onActivated?: typeof browser.tabs.onActivated;
+      onUpdated?: typeof browser.tabs.onUpdated;
+    };
+
+    const onActivated: Parameters<typeof browser.tabs.onActivated.addListener>[0] = () => {
+      void refreshPageContext(true);
+    };
+    const onUpdated: Parameters<typeof browser.tabs.onUpdated.addListener>[0] = (
+      _tabId,
+      changeInfo,
+    ) => {
+      if (changeInfo.status === 'complete' || changeInfo.url) {
+        void refreshPageContext(true);
+      }
+    };
+
+    void refreshPageContext(false).catch(() => {
+      if (active) setStatus('AURA could not refresh the current page context.');
+    });
+    if (!tabsApi.onActivated || !tabsApi.onUpdated) {
+      return () => {
+        active = false;
+      };
+    }
+    tabsApi.onActivated.addListener(onActivated);
+    tabsApi.onUpdated.addListener(onUpdated);
+    return () => {
+      active = false;
+      tabsApi.onActivated?.removeListener(onActivated);
+      tabsApi.onUpdated?.removeListener(onUpdated);
     };
   }, []);
 
@@ -510,11 +586,13 @@ export function App() {
         setCompareMode('adapted');
       }
       const before = await scanCurrentPage(profile, false);
+      if (currentRunId !== runIdRef.current) return;
       setOriginalScan(before);
       setPageState('applying_local');
       setStatus('Applying your local adaptations…');
       const localStatus = await sendStatusMessage({ type: 'PAGE_ADAPT', profile });
       setPageStatus(localStatus);
+      let appliedKinds = localStatus.appliedKinds;
       try {
         await sendRawPageMessage({ type: 'PAGE_RESCUE_SET', enabled: rescueEnabled }, false);
       } catch {
@@ -539,6 +617,7 @@ export function App() {
           );
           if (currentRunId !== runIdRef.current) return;
           const response = await semanticProvider.analyzePage(page);
+          if (currentRunId !== runIdRef.current) return;
           const analysis = validateSemanticAnalysisForPage(response, page);
           setSemanticAnalysis(analysis);
           setSemanticProviderKind(semanticProvider.kind());
@@ -561,6 +640,7 @@ export function App() {
               }),
             );
           }
+          if (currentRunId !== runIdRef.current) return;
           setPageState('applying_semantic');
           setStatus('Applying optional semantic adaptations…');
           const semanticPlan = createSemanticPolicy(resolution, analysis, simplifications);
@@ -569,12 +649,14 @@ export function App() {
             false,
           );
           setPageStatus(semanticStatus);
+          appliedKinds = semanticStatus.appliedKinds;
         } catch {
           setSemanticAnalysis(undefined);
           setStatus('Local adaptations remain active. Optional semantic help was unavailable.');
         }
       }
 
+      if (currentRunId !== runIdRef.current) return;
       setPageState('scanning');
       setStatus('Rechecking AURA Fit after adaptation…');
       const after = await scanCurrentPage(profile, false);
@@ -583,10 +665,9 @@ export function App() {
       setAdaptedScan(merged);
       setCompareMode('adapted');
       setPageState('adapted');
-      const activeCount = pageStatus?.appliedKinds.length ?? localStatus.appliedKinds.length;
       setStatus(
-        activeCount > 0
-          ? `AURA adapted the page with ${activeCount} reversible changes.`
+        appliedKinds.length > 0
+          ? `AURA adapted the page with ${appliedKinds.length} reversible changes.`
           : 'AURA finished scanning. No changes were needed for this profile.',
       );
     } catch {
@@ -919,7 +1000,7 @@ export function App() {
           </section>
         ) : null}
         {adaptedScan && originalScan && currentOrigin ? (
-          <section className="card site-memory" aria-labelledby="remember-heading"><div className="section-heading"><div><p className="section-kicker">Persistence</p><h2 id="remember-heading">Remember this page?</h2></div><span className="local-badge">Origin only</span></div><p className="help-text">AURA stores only <strong>{currentOrigin}</strong>, not this page&apos;s path, query, text, or form values.</p>{currentSite ? <><p className="success-message">These choices are remembered for this site{currentSite.autoAdapt ? ' and auto-adapt is enabled' : ''}.</p><button className="secondary" type="button" disabled={siteBusy} onClick={() => void forgetSite(currentSite.origin)}>Remove site memory</button></> : <div className="actions compact-actions"><button className="secondary" type="button" disabled={siteBusy} onClick={() => void rememberCurrentSite(false)}>Remember choices</button><button className="primary" type="button" disabled={siteBusy} onClick={() => void rememberCurrentSite(true)}>Always adapt this site</button></div>}</section>
+          <section className="card site-memory" aria-labelledby="remember-heading"><div className="section-heading"><div><p className="section-kicker">Persistence</p><h2 id="remember-heading">Remember this page?</h2></div><span className="local-badge">Origin only</span></div><p className="help-text">AURA stores only <strong>{currentOrigin}</strong>, not this page&apos;s path, query, text, or form values.</p>{currentSite ? <><p className="success-message">These choices are remembered for this site{currentSite.autoAdapt ? ' and auto-adapt is enabled' : ''}.</p><button className="secondary" type="button" disabled={siteBusy} onClick={() => void forgetSite(currentSite.origin)}>Remove site memory</button></> : <><p className="help-text">Always adapt asks for permission on this origin so AURA can apply deterministic changes on future visits. Other sites remain untouched.</p><div className="actions compact-actions"><button className="secondary" type="button" disabled={siteBusy} onClick={() => void rememberCurrentSite(false)}>Remember choices</button><button className="primary" type="button" disabled={siteBusy} onClick={() => void rememberCurrentSite(true)}>Always adapt this site</button></div></>}</section>
         ) : null}
         {semanticAnalysis ? <p className="help-text">{semanticProviderKind === 'on_device' ? 'On-device semantic support' : 'Optional semantic support'} found {semanticAnalysis.primaryActions.length} likely primary action(s) and {semanticAnalysis.distractions.length} secondary region(s).</p> : null}
       </div>
