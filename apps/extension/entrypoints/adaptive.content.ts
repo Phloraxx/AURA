@@ -12,6 +12,7 @@ import { ElementRegistry } from '../lib/page/element-registry';
 import { extractLocalPageSignals } from '../lib/page/local-signals';
 import { observeDynamicPage } from '../lib/page/mutation-observer';
 import { extractPageRepresentation } from '../lib/page/semantic-extractor';
+import { resolveAdaptationPreferences } from '../lib/profile/preference-resolver';
 
 export default defineContentScript({
   registration: 'runtime',
@@ -35,7 +36,8 @@ export default defineContentScript({
         case 'PAGE_ADAPT': {
           activeProfile = parsed.data.profile;
           const signals = extractLocalPageSignals(document, registry);
-          deterministicPlan = createDeterministicPolicy(parsed.data.profile, signals);
+          const resolution = resolveAdaptationPreferences(parsed.data.profile);
+          deterministicPlan = createDeterministicPolicy(resolution, signals);
           return engine.applyPlan(deterministicPlan);
         }
         case 'PAGE_REVERT':
