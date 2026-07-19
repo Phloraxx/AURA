@@ -7,6 +7,8 @@ import type {
   PersonalizedFriction,
 } from '@aura/shared';
 
+export const PERSONALIZED_FRICTION_RELEVANCE_THRESHOLD = 0.05;
+
 function supportNeed(dimension: CapabilityDimension): number {
   return (1 - dimension.capacity) * dimension.confidence;
 }
@@ -83,6 +85,14 @@ export function personalizeFriction(
       recommendationKeys: RECOMMENDATIONS[signal.category],
     };
   });
+}
+
+export function relevantPersonalizedFriction(
+  items: readonly PersonalizedFriction[],
+): PersonalizedFriction[] {
+  return items
+    .filter(({ profileRelevance }) => profileRelevance > PERSONALIZED_FRICTION_RELEVANCE_THRESHOLD)
+    .sort((first, second) => second.impact - first.impact);
 }
 
 export function recommendationKeysForCategory(
