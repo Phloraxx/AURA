@@ -18,29 +18,32 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+          run_install: false
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.20.2
           cache: pnpm
 
-      - name: Enable Corepack
-        run: corepack enable
-
       - name: Install dependencies
-        run: corepack pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: corepack pnpm lint
+        run: pnpm lint
 
       - name: Typecheck
-        run: corepack pnpm typecheck
+        run: pnpm typecheck
 
       - name: Unit and integration tests
-        run: corepack pnpm test
+        run: pnpm test
 
       - name: Build
-        run: corepack pnpm build
+        run: pnpm build
 
   extension-smoke:
     runs-on: ubuntu-latest
@@ -49,24 +52,27 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+          run_install: false
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.20.2
           cache: pnpm
 
-      - name: Enable Corepack
-        run: corepack enable
-
       - name: Install dependencies
-        run: corepack pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Install Chromium
-        run: corepack pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Start fixture server
         run: |
-          corepack pnpm demo:fixtures > /tmp/aura-fixtures.log 2>&1 &
+          pnpm demo:fixtures > /tmp/aura-fixtures.log 2>&1 &
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:4173/cluttered-article.html > /dev/null; then
               exit 0
@@ -77,4 +83,4 @@ jobs:
           exit 1
 
       - name: Run Manifest V3 smoke test
-        run: corepack pnpm test:e2e
+        run: pnpm test:e2e
