@@ -19,6 +19,17 @@ describe('task plan validation', () => {
     }, page).steps[0]?.targetIds).toEqual(['aura:n1']);
   });
 
+  it('promotes steps targeting critical page elements even when the model marks them non-critical', () => {
+    const plan = validateTaskPlanForPage({
+      version: 1,
+      task: { id: 'task:apply', label: 'Apply', rawUserGoal: 'Apply', kind: 'apply' },
+      steps: [{ id: 'step:1', label: 'Review action', targetIds: ['aura:n1'], optional: false, critical: false }],
+      warnings: [],
+    }, page);
+
+    expect(plan.steps[0]?.critical).toBe(true);
+  });
+
   it('rejects model plans that invent element IDs', () => {
     expect(() => validateTaskPlanForPage({
       version: 1,
