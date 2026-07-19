@@ -6,5 +6,15 @@ export function validateTaskPlanForPage(value: unknown, page: PageRepresentation
   if (plan.steps.some((step) => step.targetIds.some((id) => !ids.has(id)))) {
     throw new Error('The task plan referenced an unavailable page element.');
   }
-  return plan;
+
+  const criticalIds = new Set(
+    page.elements.filter(({ critical }) => critical).map(({ id }) => id),
+  );
+  return taskPlanSchema.parse({
+    ...plan,
+    steps: plan.steps.map((step) => ({
+      ...step,
+      critical: step.critical || step.targetIds.some((id) => criticalIds.has(id)),
+    })),
+  });
 }
