@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 
 export const pageElementIdSchema = z.string().regex(/^aura:n[1-9]\d*$/u);
 
