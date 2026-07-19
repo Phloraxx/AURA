@@ -16,6 +16,7 @@ export const semanticAdaptationKindSchema = z.enum([
   'highlightPrimaryAction',
   'clarifyAmbiguousControls',
   'simplifyText',
+  'guideFormSteps',
 ]);
 
 export const adaptationKindSchema = z.union([
