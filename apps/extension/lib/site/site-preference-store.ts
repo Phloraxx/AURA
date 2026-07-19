@@ -4,6 +4,7 @@ import {
   sitePreferenceListSchema,
   sitePreferenceSchema,
   type AdaptationPreferencePatch,
+  type AdaptationPreferences,
   type CapabilityProfile,
   type SitePreference,
 } from '@aura/shared';
@@ -13,6 +14,17 @@ import { resolveAdaptationPreferences } from '../profile/preference-resolver';
 const STORAGE_KEY = 'aura.sitePreferences.v1';
 const ACTIVE_PROFILE_ID_KEY = 'aura.activeProfileId';
 const PROFILES_KEY = 'aura.profiles';
+
+const LOCAL_SITE_PREFERENCE_KEYS = [
+  'textScale',
+  'lineSpacing',
+  'readingWidth',
+  'contrast',
+  'reduceMotion',
+  'focusMode',
+  'enlargeTargets',
+  'targetSizePx',
+] as const satisfies readonly (keyof AdaptationPreferences)[];
 
 export function normalizeSiteOrigin(value: string): string {
   const url = new URL(value);
@@ -41,6 +53,22 @@ async function readActiveProfileFromStorage(): Promise<CapabilityProfile | undef
   const activeProfileId = stored[ACTIVE_PROFILE_ID_KEY];
   if (typeof activeProfileId !== 'string') return undefined;
   return profiles.data.find(({ id }) => id === activeProfileId);
+}
+
+export function localSitePreferencePatch(
+  candidate: AdaptationPreferencePatch,
+): AdaptationPreferencePatch {
+  const parsed = adaptationPreferencePatchSchema.parse(candidate);
+  const local: AdaptationPreferencePatch = {};
+  for (const key of LOCAL_SITE_PREFERENCE_KEYS) {
+    const value = parsed[key];
+    if (value !== undefined) {
+      (local as Record<keyof AdaptationPreferences, AdaptationPreferences[keyof AdaptationPreferences]>)[
+        key
+      ] = value;
+    }
+  }
+  return adaptationPreferencePatchSchema.parse(local);
 }
 
 export function preferenceDelta(
@@ -73,7 +101,7 @@ export function createSitePreferenceStore(
     async save({ origin, autoAdapt, preferencePatch }) {
       const normalized = normalizeSiteOrigin(origin);
       const existing = await list();
-      let storedPatch = adaptationPreferencePatchSchema.parse(preferencePatch);
+      let storedPatch = localSitePreferencePatch(preferencePatch);
       try {
         const activeProfile = await activeProfileReader();
         if (activeProfile) {
