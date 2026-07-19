@@ -15,6 +15,8 @@
       .ticker { animation: pulse 1.4s infinite alternate; }
       .cards { display: grid; gap: .5rem; }
       .card { padding: .65rem; border: 1px solid #ccd; }
+      .article-actions { display: flex; align-items: center; gap: .35rem; }
+      .tiny-bookmark { width: 22px; height: 22px; min-width: 22px; min-height: 22px; padding: 0; border: 1px solid #667; border-radius: 50%; background: white; line-height: 1; }
       @keyframes pulse { to { opacity: .45; } }
       @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
     </style>
@@ -37,7 +39,10 @@
           <p>A useful adaptation layer preserves the original application while changing presentation in small, reversible steps.</p>
           <h3>Start with the person</h3>
           <p>Explicit choices should take priority over inferred recommendations. The person must remain in control.</p>
-          <button type="button">Save this article</button>
+          <div class="article-actions">
+            <button type="button">Save this article</button>
+            <button id="rescue-demo-target" class="tiny-bookmark" type="button" aria-label="Bookmark article">☆</button>
+          </div>
         </article>
       </main>
       <aside aria-label="Recommended stories">
