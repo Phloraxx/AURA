@@ -186,14 +186,19 @@ export function createSemanticPolicy(
     }
   }
 
-  const formGroups = analysis.formGroups ?? [];
+  const formGroups = analysis.formGroups;
   if (preferences.stepByStepForms && formGroups.length > 1) {
     instructions.push({
       id: 'semantic:guide-form-steps',
       kind: 'guideFormSteps',
       source: 'semantic_ai',
-      targetIds: [...new Set(formGroups.flatMap(({ elementIds }) => elementIds))],
-      params: { groups: formGroups },
+      targetIds: formGroups.map(({ id }) => id),
+      params: {
+        groups: formGroups.map(({ id, reason }, index) => ({
+          label: reason || `Form section ${index + 1}`,
+          elementIds: [id],
+        })),
+      },
       reason: preferenceReason(
         resolution,
         'stepByStepForms',
