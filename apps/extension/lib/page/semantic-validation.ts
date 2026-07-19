@@ -45,5 +45,9 @@ export function validateSemanticAnalysisForPage(
     complexTextBlocks: analysis.complexTextBlocks.filter(
       ({ confidence }) => confidence >= SEMANTIC_CONFIDENCE.complexText,
     ),
+    formGroups: analysis.formGroups.filter(
+      ({ id, confidence }) =>
+        confidence >= SEMANTIC_CONFIDENCE.formGroup && !criticalIds.has(id),
+    ),
   });
 }
