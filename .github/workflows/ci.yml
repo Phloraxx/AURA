@@ -44,13 +44,34 @@ jobs:
           path: /tmp/aura-lint.log
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm typecheck 2>&1 | tee /tmp/aura-typecheck.log
+
+      - name: Upload typecheck failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-failure-log
+          path: /tmp/aura-typecheck.log
 
       - name: Unit and integration tests
-        run: pnpm test
+        run: pnpm test 2>&1 | tee /tmp/aura-tests.log
+
+      - name: Upload test failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-failure-log
+          path: /tmp/aura-tests.log
 
       - name: Build
-        run: pnpm build
+        run: pnpm build 2>&1 | tee /tmp/aura-build.log
+
+      - name: Upload build failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-log
+          path: /tmp/aura-build.log
 
   extension-smoke:
     runs-on: ubuntu-latest
@@ -90,4 +111,11 @@ jobs:
           exit 1
 
       - name: Run Manifest V3 smoke test
-        run: pnpm test:e2e
+        run: pnpm test:e2e 2>&1 | tee /tmp/aura-e2e.log
+
+      - name: Upload E2E failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-log
+          path: /tmp/aura-e2e.log
