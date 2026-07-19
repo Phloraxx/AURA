@@ -17,9 +17,9 @@ describe('onboarding engine', () => {
     const copy = JSON.stringify(ONBOARDING_QUESTIONS).toLowerCase();
     expect(copy).not.toMatch(/diagnos|disability detection|medical condition/u);
     const areas = new Set(ONBOARDING_QUESTIONS.map(({ area }) => area));
-    expect(areas).toEqual(expect.objectContaining ? areas : areas);
-    for (const dimension of ['visual', 'auditory', 'motor', 'cognitive', 'attention', 'language']) {
-      expect(areas.has(dimension as never)).toBe(true);
+    const capabilityAreas = ['visual', 'auditory', 'motor', 'cognitive', 'attention', 'language'] as const;
+    for (const dimension of capabilityAreas) {
+      expect(areas.has(dimension)).toBe(true);
     }
   });
 
