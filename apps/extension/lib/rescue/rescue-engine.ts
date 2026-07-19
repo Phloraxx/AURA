@@ -95,6 +95,10 @@ export class RescueEngine {
     this.#document.removeEventListener('scroll', this.#onScroll, true);
   }
 
+  #isActivePage(): boolean {
+    return this.#document.visibilityState === 'visible' && this.#document.hasFocus();
+  }
+
   #resetInteractionHistory(): void {
     this.#nearMisses.clear();
     this.#focusVisits.clear();
@@ -105,7 +109,7 @@ export class RescueEngine {
   }
 
   #onPointerUp = (event: PointerEvent): void => {
-    if (!this.#enabled || this.#suggestion) return;
+    if (!this.#enabled || this.#suggestion || !this.#isActivePage()) return;
     const x = event.clientX;
     const y = event.clientY;
     const candidates = Array.from(this.#document.querySelectorAll(INTERACTIVE_SELECTOR)).filter((element) => {
@@ -135,7 +139,7 @@ export class RescueEngine {
   };
 
   #onFocusIn = (event: FocusEvent): void => {
-    if (!this.#enabled || !this.#config.cognitiveRelevant && !this.#config.attentionRelevant) return;
+    if (!this.#enabled || !this.#isActivePage() || !this.#config.cognitiveRelevant && !this.#config.attentionRelevant) return;
     const target = event.target instanceof Element ? event.target : undefined;
     if (!target) return;
     const id = this.#registry.getId(target) ?? this.#registry.register(target);
@@ -156,7 +160,7 @@ export class RescueEngine {
   };
 
   #onKeyDown = (event: KeyboardEvent): void => {
-    if (!this.#enabled || event.key !== 'Tab') return;
+    if (!this.#enabled || !this.#isActivePage() || event.key !== 'Tab') return;
     this.#tabCount += 1;
     if (this.#tabCount < 8) return;
     const main = this.#document.querySelector('main, [role="main"], article');
@@ -174,7 +178,7 @@ export class RescueEngine {
   };
 
   #onScroll = (): void => {
-    if (!this.#enabled || !this.#config.attentionRelevant) return;
+    if (!this.#enabled || !this.#isActivePage() || !this.#config.attentionRelevant) return;
     const top = this.#document.defaultView?.scrollY ?? this.#document.documentElement.scrollTop;
     const direction = top > this.#lastScrollTop ? 'down' : top < this.#lastScrollTop ? 'up' : undefined;
     if (direction && this.#lastScrollDirection && direction !== this.#lastScrollDirection) {
@@ -198,7 +202,7 @@ export class RescueEngine {
   };
 
   #suggest(suggestion: RescueSuggestion): void {
-    if (this.#document.visibilityState !== 'visible' || !this.#document.hasFocus()) return;
+    if (!this.#isActivePage()) return;
     const cooldownUntil = this.#cooldowns.get(suggestion.id) ?? 0;
     if (Date.now() < cooldownUntil) return;
     this.#suggestion = rescueSuggestionSchema.parse(suggestion);
