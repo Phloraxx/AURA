@@ -11,6 +11,11 @@ const STORAGE_KEYS = {
   profiles: 'aura.profiles',
 } as const;
 
+const DEMO_RESET_VALUES = {
+  'aura.sitePreferences.v1': [],
+  'aura.rescueEnabled.v1': true,
+} as const;
+
 export interface StorageAreaAdapter {
   get(keys: string[]): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;
@@ -175,7 +180,10 @@ export function createProfileStore(
 
   async function resetDemoProfiles(): Promise<ProfileState> {
     try {
-      return await seedDemoProfiles(false);
+      const state = await seedDemoProfiles(false);
+      await storageArea.set(DEMO_RESET_VALUES);
+      console.info('[AURA profile] Demo-only site memory cleared and Rescue restored to default.');
+      return state;
     } catch (error) {
       logProfileError('Failed to reset demo profiles.', error);
       throw error;
