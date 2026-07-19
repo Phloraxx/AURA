@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createNeutralProfile } from '@aura/shared';
+
+import { resolveAdaptationPreferences } from '../profile/preference-resolver';
 import { hasSitePermission, requestSitePermission } from './permission-manager';
 import { createSitePreferenceStore, normalizeSiteOrigin } from './site-preference-store';
 
@@ -10,7 +13,12 @@ describe('site preference memory', () => {
     vi.stubGlobal('browser', {
       storage: {
         local: {
-          get: vi.fn((key: string) => Promise.resolve({ [key]: values[key] })),
+          get: vi.fn((keys: string | string[]) => {
+            const requested = Array.isArray(keys) ? keys : [keys];
+            return Promise.resolve(
+              Object.fromEntries(requested.map((key) => [key, values[key]])),
+            );
+          }),
           set: vi.fn((next: Record<string, unknown>) => {
             Object.assign(values, next);
             return Promise.resolve();
@@ -50,6 +58,33 @@ describe('site preference memory', () => {
       }),
     ]);
     expect(JSON.stringify(values)).not.toContain('token');
+  });
+
+  it('stores only choices that differ from the saved active profile', async () => {
+    const profile = createNeutralProfile({
+      id: 'profile:active',
+      name: 'Active profile',
+      now: '2026-07-19T00:00:00.000Z',
+    });
+    const baseline = resolveAdaptationPreferences(profile).preferences;
+    values['aura.activeProfileId'] = profile.id;
+    values['aura.profiles'] = [profile];
+
+    const store = createSitePreferenceStore();
+    await store.save({
+      origin: 'https://example.com',
+      autoAdapt: true,
+      preferencePatch: {
+        ...baseline,
+        enlargeTargets: !baseline.enlargeTargets,
+      },
+    });
+
+    await expect(store.list()).resolves.toEqual([
+      expect.objectContaining({
+        preferencePatch: { enlargeTargets: !baseline.enlargeTargets },
+      }),
+    ]);
   });
 
   it('uses explicit permission checks for always-adapt mode', async () => {
