@@ -53,6 +53,8 @@ const api: AuraShellApi = {
     ipcRenderer.invoke(IPC_CHANNELS.setOnboardingActive, active),
   setPanelOpen: (open) =>
     ipcRenderer.invoke(IPC_CHANNELS.setPanelOpen, open),
+  startRecompose: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.startRecompose, request),
   transcribeVoice: (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.transcribeVoice, request),
   updateLearnedPreferences: (preferences) =>
