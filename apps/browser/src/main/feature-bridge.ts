@@ -91,9 +91,10 @@ function sendRecomposePlan(
   return true;
 }
 
-ipcMain.handle(IPC_CHANNELS.startRecompose, (_event, untrusted) => {
-  const request = localRecomposeRequestSchema.parse(untrusted);
-  const plan = buildPageRecomposePlan({
+function deterministicPlan(
+  request: ReturnType<typeof localRecomposeRequestSchema.parse>,
+) {
+  return buildPageRecomposePlan({
     currentGoal: request.currentGoal,
     page: request.page,
     preset: request.preset,
@@ -101,16 +102,35 @@ ipcMain.handle(IPC_CHANNELS.startRecompose, (_event, untrusted) => {
     subtitle:
       'AURA is rebuilding this real page now while local and cloud intelligence refine it.',
   });
-  return sendRecomposePlan(request, plan);
+}
+
+ipcMain.handle(IPC_CHANNELS.startRecompose, (_event, untrusted) => {
+  const request = localRecomposeRequestSchema.parse(untrusted);
+  return sendRecomposePlan(request, deterministicPlan(request));
 });
 
 ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
   const request = localRecomposeRequestSchema.parse(untrusted);
+
+  // The visual transformation starts before the local model returns. This makes
+  // model latency visible as progressive refinement instead of a loading wait.
+  if (!sendRecomposePlan(request, deterministicPlan(request))) {
+    return localRecomposeResultSchema.parse({
+      applied: false,
+      durationMs: 0,
+      error:
+        'The current webpage changed before AURA could start personalization.',
+      model: process.env.AURA_LOCAL_MODEL?.trim() || 'qwen3.5:4b-mlx',
+      output: null,
+    });
+  }
+
   const result = await localProvider.analyze(request);
   if (result.output === null) {
     return localRecomposeResultSchema.parse({
       ...result,
-      applied: false,
+      // The deterministic interface is already active even when Qwen is not.
+      applied: true,
     });
   }
 
