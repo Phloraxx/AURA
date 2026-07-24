@@ -2,11 +2,7 @@ import { ipcRenderer } from 'electron';
 
 import { createPageAdaptationRuntime } from '../page-adaptation/runtime';
 import { createPageIntelligenceRuntime } from '../page-intelligence/runtime';
-import {
-  buildPageRecomposePlan,
-  inferPresetFromSettings,
-  refinePageRecomposeWithSemantic,
-} from '../page-recompose/plan';
+import { refinePageRecomposeWithSemantic } from '../page-recompose/plan';
 import { createPageRecomposeRuntime } from '../page-recompose/runtime';
 import {
   adaptationCommandSchema,
@@ -38,7 +34,9 @@ const AURA_EVENT_THEME_ATTRIBUTE = 'data-aura-event-theme';
 
 /** Keep AURA-owned page surfaces aligned with the event identity. */
 function installAuraEventTheme(): void {
-  if (document.querySelector(`style[${AURA_EVENT_THEME_ATTRIBUTE}]`) !== null) return;
+  if (document.querySelector(`style[${AURA_EVENT_THEME_ATTRIBUTE}]`) !== null) {
+    return;
+  }
   const host = document.head ?? document.documentElement;
   if (host === null) return;
 
@@ -117,7 +115,10 @@ function combineEvents(
 ): AdaptationEvent {
   const failed = events.find((event) => event.status === 'failed');
   return {
-    changedTargetCount: events.reduce((total, event) => total + event.changedTargetCount, 0),
+    changedTargetCount: events.reduce(
+      (total, event) => total + event.changedTargetCount,
+      0,
+    ),
     error: failed?.error ?? null,
     operation,
     pageId,
@@ -146,118 +147,120 @@ const intelligenceRuntime = createPageIntelligenceRuntime((model) => {
 const adaptationRuntime = createPageAdaptationRuntime();
 const recomposeRuntime = createPageRecomposeRuntime();
 
-ipcRenderer.on(PAGE_COMMAND_CHANNEL, (_event, untrustedCommand: PageRuntimeCommand) => {
-  const command = pageRuntimeCommandSchema.safeParse(untrustedCommand);
-  if (command.success) intelligenceRuntime.handleCommand(command.data);
-});
+ipcRenderer.on(
+  PAGE_COMMAND_CHANNEL,
+  (_event, untrustedCommand: PageRuntimeCommand) => {
+    const command = pageRuntimeCommandSchema.safeParse(untrustedCommand);
+    if (command.success) intelligenceRuntime.handleCommand(command.data);
+  },
+);
 
-ipcRenderer.on(ADAPTATION_COMMAND_CHANNEL, (_event, untrustedCommand: AdaptationCommand) => {
-  const parsed = adaptationCommandSchema.safeParse(untrustedCommand);
-  if (!parsed.success) return;
-  const command = parsed.data;
-  const current =
-    command.pageId === currentPageId &&
-    (command.type === 'set-adaptation-view' || command.revision === currentRevision);
-  if (!current) {
-    ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, {
-      changedTargetCount: 0,
-      error: 'The page changed before AURA could apply this presentation.',
-      operation:
-        command.type === 'apply-presentation' || command.type === 'update-presentation'
-          ? 'presentation'
-          : command.type === 'apply-semantic'
-            ? 'semantic'
-            : command.type === 'apply-recompose'
-              ? 'recompose'
-              : 'view',
-      pageId: command.pageId,
-      status: 'failed',
-      view: command.type === 'set-adaptation-view' ? command.view : 'original',
-    });
-    return;
-  }
-
-  if (command.type === 'apply-recompose') {
-    if (
-      currentRecomposePlan !== null &&
-      sourceRank(command.plan.source) < sourceRank(currentRecomposePlan.source)
-    ) {
+ipcRenderer.on(
+  ADAPTATION_COMMAND_CHANNEL,
+  (_event, untrustedCommand: AdaptationCommand) => {
+    const parsed = adaptationCommandSchema.safeParse(untrustedCommand);
+    if (!parsed.success) return;
+    const command = parsed.data;
+    const current =
+      command.pageId === currentPageId &&
+      (command.type === 'set-adaptation-view' ||
+        command.revision === currentRevision);
+    if (!current) {
       ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, {
-        changedTargetCount: currentRecomposePlan.sections.reduce(
-          (count, section) => count + section.items.length,
-          0,
-        ),
-        error: null,
-        operation: 'recompose',
+        changedTargetCount: 0,
+        error: 'The page changed before AURA could apply this presentation.',
+        operation:
+          command.type === 'apply-presentation' ||
+          command.type === 'update-presentation'
+            ? 'presentation'
+            : command.type === 'apply-semantic'
+              ? 'semantic'
+              : command.type === 'apply-recompose'
+                ? 'recompose'
+                : 'view',
         pageId: command.pageId,
-        status: 'applied',
-        view: 'aura',
+        status: 'failed',
+        view:
+          command.type === 'set-adaptation-view' ? command.view : 'original',
       });
       return;
     }
-    currentRecomposePlan = command.plan;
-    ipcRenderer.send(
-      ADAPTATION_EVENT_CHANNEL,
-      recomposeRuntime.applyPlan(command.plan, currentReduceMotion),
-    );
-    return;
-  }
 
-  if (command.type === 'set-adaptation-view') {
-    const events = [adaptationRuntime.handleCommand(command)];
-    if (currentRecomposePlan !== null) {
-      events.push(recomposeRuntime.setView(command.pageId, command.view));
+    if (command.type === 'apply-recompose') {
+      if (
+        currentRecomposePlan !== null &&
+        sourceRank(command.plan.source) < sourceRank(currentRecomposePlan.source)
+      ) {
+        ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, {
+          changedTargetCount: currentRecomposePlan.sections.reduce(
+            (count, section) => count + section.items.length,
+            0,
+          ),
+          error: null,
+          operation: 'recompose',
+          pageId: command.pageId,
+          status: 'applied',
+          view: 'aura',
+        });
+        return;
+      }
+      currentReduceMotion = command.reduceMotion;
+      currentRecomposePlan = command.plan;
+      ipcRenderer.send(
+        ADAPTATION_EVENT_CHANNEL,
+        recomposeRuntime.applyPlan(command.plan, command.reduceMotion),
+      );
+      return;
+    }
+
+    if (command.type === 'set-adaptation-view') {
+      const events = [adaptationRuntime.handleCommand(command)];
+      if (currentRecomposePlan !== null) {
+        events.push(recomposeRuntime.setView(command.pageId, command.view));
+      }
+      ipcRenderer.send(
+        ADAPTATION_EVENT_CHANNEL,
+        combineEvents(command.pageId, command.view, 'view', events),
+      );
+      return;
+    }
+
+    if (
+      command.type === 'apply-presentation' ||
+      command.type === 'update-presentation'
+    ) {
+      currentReduceMotion = command.settings.reduceMotion;
+      ipcRenderer.send(
+        ADAPTATION_EVENT_CHANNEL,
+        adaptationRuntime.handleCommand(command),
+      );
+      return;
+    }
+
+    const semanticEvent = adaptationRuntime.handleCommand(command);
+    const events = [semanticEvent];
+    if (
+      semanticEvent.status !== 'failed' &&
+      currentRecomposePlan !== null &&
+      currentPageModel !== null
+    ) {
+      currentRecomposePlan = refinePageRecomposeWithSemantic(
+        {
+          ...currentRecomposePlan,
+          revision: currentPageModel.revision,
+        },
+        command.plan,
+      );
+      events.push(
+        recomposeRuntime.applyPlan(currentRecomposePlan, currentReduceMotion),
+      );
     }
     ipcRenderer.send(
       ADAPTATION_EVENT_CHANNEL,
-      combineEvents(command.pageId, command.view, 'view', events),
+      combineEvents(command.pageId, semanticEvent.view, 'semantic', events),
     );
-    return;
-  }
-
-  if (command.type === 'apply-presentation' || command.type === 'update-presentation') {
-    currentReduceMotion = command.settings.reduceMotion;
-    const presentationEvent = adaptationRuntime.handleCommand(command);
-    const events = [presentationEvent];
-    if (presentationEvent.status !== 'failed' && currentPageModel !== null) {
-      const preset = inferPresetFromSettings(command.settings);
-      currentRecomposePlan = buildPageRecomposePlan({
-        page: currentPageModel,
-        preset,
-        source: 'deterministic',
-        subtitle:
-          'AURA is rebuilding this real page while deeper understanding arrives.',
-      });
-      events.push(recomposeRuntime.applyPlan(currentRecomposePlan, currentReduceMotion));
-    }
-    ipcRenderer.send(
-      ADAPTATION_EVENT_CHANNEL,
-      combineEvents(command.pageId, 'aura', 'presentation', events),
-    );
-    return;
-  }
-
-  const semanticEvent = adaptationRuntime.handleCommand(command);
-  const events = [semanticEvent];
-  if (
-    semanticEvent.status !== 'failed' &&
-    currentRecomposePlan !== null &&
-    currentPageModel !== null
-  ) {
-    currentRecomposePlan = refinePageRecomposeWithSemantic(
-      {
-        ...currentRecomposePlan,
-        revision: currentPageModel.revision,
-      },
-      command.plan,
-    );
-    events.push(recomposeRuntime.applyPlan(currentRecomposePlan, currentReduceMotion));
-  }
-  ipcRenderer.send(
-    ADAPTATION_EVENT_CHANNEL,
-    combineEvents(command.pageId, semanticEvent.view, 'semantic', events),
-  );
-});
+  },
+);
 
 window.addEventListener(
   'pagehide',
