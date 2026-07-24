@@ -6,11 +6,11 @@ This file defines the default instructions for coding agents working on the `aur
 
 Build the macOS AURA Browser event prototype defined by `docs/browser/`.
 
-The goal is not a broad browser or a collection of accessibility features. The goal is one polished experience in which AURA:
+The goal is one polished experience in which AURA:
 
-1. learns the person,
-2. transforms a real judge-selected webpage through **Make This Mine**,
-3. lets the user talk naturally to AURA to change or guide that page.
+1. learns the person;
+2. transforms a real judge-selected webpage through **Make This Mine**;
+3. lets the user talk naturally to AURA to adjust, explain, guide, or explicitly teach a preference.
 
 ## Source of truth
 
@@ -29,64 +29,94 @@ Before editing code, read in order:
 11. `docs/browser/DEFINITION-OF-DONE.md`
 12. `STATUS.md`
 
-For this branch, older extension-era documents under `docs/` are historical and non-authoritative unless a browser source-of-truth document explicitly references them.
+Older extension-era documents are non-authoritative unless the browser source of truth explicitly references them.
 
-When architecture, scope, or product behavior changes, update the relevant browser document and `08-DECISIONS.md` before or with the code change.
+Material architecture/scope changes require an ADR update before or with code.
 
 ## Execution rules
 
-- Work milestone-by-milestone according to `06-IMPLEMENTATION-PLAN.md`.
-- Do not begin a later milestone while an earlier milestone's acceptance criteria are materially failing.
+- Work milestone-by-milestone.
+- Current milestone is `STATUS.md`; do not jump ahead while its acceptance gate is materially failing.
 - W4 **Make This Mine** and real-site reliability outrank secondary features.
-- No new named product mode without revising the product source of truth.
-- Do not reintroduce AURA Fit, Lens, Rescue, Reader, Focus, Simplify, or Task Mode as independent primary UI concepts.
-- Do not build Windows parity before the macOS event build is polished.
-- Do not build browser-engine, sync, password-manager, updater, bookmark-ecosystem, or extension-store work for the event.
-- Voice is stretch work; text conversation is required.
-- Prefer a complete vertical experience over subsystem rewrites.
+- Do not introduce new named product modes.
+- Do not reintroduce AURA Fit, Lens, Rescue, Reader, Focus, Simplify, or Task Mode as independent primary UI.
+- Do not build Windows parity before the Mac event build is polished.
+- Do not build engine forks, browser sync, password manager, updater, bookmark ecosystem, or extension-store work.
+- Text conversation is required; voice is stretch.
+- Prefer a complete vertical experience over architecture churn.
 
-## Architecture rules
+## Locked browser architecture
 
-- Primary client is `apps/browser` once W1 begins.
-- Use Electron `BaseWindow` + `WebContentsView`; do not base new work on deprecated `BrowserView` or `<webview>`.
-- Page intelligence combines AURA DOM IDs, CDP DOM/layout, CDP accessibility semantics, and optional screenshots.
-- Do not return to a first-N DOM element extractor.
-- Keep page target IDs and PageModel revisions explicit.
-- AI returns typed structured data; trusted local code performs page changes.
+- Primary client: `apps/browser`.
+- Use one local React `BrowserWindow` shell plus one child remote `WebContentsView`.
+- Do not use deprecated `BrowserView` or Electron `<webview>`.
+- Remote AURA runtime is a dedicated PageView preload.
+- Keep PageView `contextIsolation: true`, `nodeIntegration: false`; use narrow preload-to-main IPC.
+- Use `electron-vite` for browser dev/build; Forge only for packaging.
+- Target `darwin-arm64` first.
+
+## Page-intelligence rules
+
+- Runtime-first extraction with stable `data-aura-id` targets.
+- Rank/summarize semantic elements; never return to first-N DOM truncation.
+- Collect only useful geometry/selected computed styles.
+- Use viewport screenshot for visual context.
+- CDP Accessibility is selective enrichment.
+- DOMSnapshot is diagnostic/fallback unless W2 data proves it should be in the default path.
+- Keep PageModel revisions explicit; reject stale target plans.
+- Fix weak extraction instead of hiding it with prompt complexity.
+
+## AI rules
+
+- Browser event build calls OpenAI from Electron main; do not require the Hono API server.
+- Initial baseline: `gpt-5.6-terra`, environment-configurable.
+- Use Responses API + structured outputs; page screenshots may be image input.
+- AI returns typed semantic/adaptation requests; trusted AURA code performs changes.
 - Never execute model-generated JavaScript or arbitrary generated HTML.
-- Every adaptation primitive must be reversible and idempotent.
-- Preserve original controls and page state wherever practical.
-- `Original ↔ AURA` is a hard requirement.
-- Deterministic profile adaptation must work when AI is slow or unavailable.
-- Do not run a chain of multiple sequential agents when one rich structured call can do the job.
+- Use few rich calls, not an agent swarm.
+- Required operations: onboarding turn, page analysis, conversation turn.
+- Required conversation action families: Adjust, Explain, Goal/Guide, Remember.
+
+## Adaptation rules
+
+Use least-invasive sufficient tier:
+
+1. presentation profile;
+2. emphasis/de-emphasis/highlight;
+3. validated collapse/targeted simplification/progressive form reveal;
+4. small AURA-owned guidance/summary tied to original controls.
+
+- Large-scale arbitrary DOM reparenting is not required.
+- Every primitive is typed, reversible, idempotent, and target-validated.
+- Preserve original controls and state wherever practical.
+- `Original ↔ AURA` is mandatory.
+- Deterministic profile adaptation must work when AI is slow/unavailable.
 
 ## Memory rules
 
-Persistent memory is limited to:
+Required persistent memory:
 
 - profile;
-- explicit learned preferences;
-- site preferences.
+- explicit learned global preferences.
 
-Current task/intent is session memory.
+Site-specific memory is secondary. Current task/intent is session memory.
 
-Persistent learning comes from onboarding/calibration answers or explicit `Remember`/edit actions. Do not silently turn behavior into a diagnosis or permanent preference.
+Do not silently turn behavior into diagnosis/permanent memory. Persistent changes come from onboarding/calibration or explicit `Remember`/edit actions.
 
 ## Coding standards
 
 - TypeScript strict mode.
-- Zod at process/network/model boundaries.
+- Zod at IPC/model/persistence boundaries.
 - Small typed IPC contracts.
-- Provider-specific OpenAI code behind provider interfaces.
-- No `any` except narrow documented third-party boundaries.
+- Provider-specific OpenAI code behind a narrow interface.
+- Avoid `any` except documented third-party boundaries.
 - Prefer pure functions for ranking, policy, validation, and memory resolution.
-- AURA page runtime injection must be idempotent.
 - Debounce DOM mutation processing.
-- Do not expose debug JSON/logs in event builds.
+- Keep debug inspectors/logs out of event builds.
 
 ## Validation
 
-After meaningful changes run the relevant repository commands once they exist:
+Run relevant commands as they exist:
 
 ```bash
 corepack pnpm lint
@@ -95,33 +125,33 @@ corepack pnpm test
 corepack pnpm build
 ```
 
-Browser work must also satisfy the milestone-specific acceptance criteria and the real-site matrix in `07-TESTING-DEMO.md`.
+Also satisfy milestone acceptance criteria and `tests/sites.md` / `07-TESTING-DEMO.md`.
 
-For each real-world failure that can be reduced to a stable pattern, add a local regression fixture/test.
+For each reproducible real-site failure pattern, add a local fixture/regression test when practical.
 
 ## Commit discipline
 
-Keep commits aligned with milestone/subsystem boundaries, for example:
-
 ```text
 chore(browser): scaffold Electron shell
-feat(intelligence): capture DOM and AX page model
-feat(profile): add browser onboarding and memory
-feat(adaptation): add reversible presentation profile
-feat(ai): analyze page with multimodal structured output
+feat(browser): add remote WebContentsView navigation
+feat(browser): add page preload runtime
+feat(intelligence): build ranked PageModel
+feat(profile): add Learn Me calibration and memory
+feat(adaptation): add reversible presentation tiers
+feat(ai): add multimodal page analysis
 feat(aura): implement Make This Mine
-feat(conversation): add contextual page commands
+feat(conversation): add contextual AURA actions
 style(browser): polish judged experience
-test(browser): harden real-site regression cases
+test(browser): harden real-site failures
 ```
 
 ## Stop conditions
 
-Stop and update the source of truth rather than guessing when:
+Stop and update the source of truth instead of guessing when:
 
 - a required Electron/CDP capability cannot be verified on the pinned version;
-- the proposed approach consistently breaks primary website functionality;
-- Page Intelligence is weak and implementation is trying to hide it with prompt complexity;
+- the approach consistently breaks primary website functionality;
+- Page Intelligence is weak and work is trying to hide it with prompt complexity;
 - a new feature competes with W4/W7 without clear product value;
 - a change conflicts with an accepted ADR;
-- an implementation would make Original/AURA restoration unreliable.
+- Original/AURA restoration becomes unreliable.
