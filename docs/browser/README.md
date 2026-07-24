@@ -56,7 +56,8 @@ Otherwise defer it.
 8. `07-TESTING-DEMO.md`
 9. `08-DECISIONS.md`
 10. `09-DESIGN-SYSTEM.md`
-11. `DEFINITION-OF-DONE.md`
+11. `10-MOTION-PERSONALITY.md`
+12. `DEFINITION-OF-DONE.md`
 
 `STATUS.md` at repository root records the active milestone and release evidence.
 
@@ -64,7 +65,7 @@ Otherwise defer it.
 
 The AURA Browser was promoted to `main` through PR #2 after green GitHub CI. W1 through W6 are implemented and W7 hardening/release work is effectively complete except for the final credentialed OpenAI smoke test on the actual event network/hotspot and any issue that test reveals.
 
-The feature scope is frozen. Only reliability, release, copy, and measured latency fixes belong before the event.
+The feature scope is frozen. Only reliability, release, copy, measured latency, and interaction/design polish of the existing three first-class experiences belong before the event.
 
 ## Research basis
 

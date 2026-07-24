@@ -1,0 +1,593 @@
+/*
+ * AURA motion + assistant personality layer.
+ *
+ * Motion is intentionally quiet: it communicates state, continuity, and
+ * feedback without becoming a second visual product. Spatial motion is
+ * disabled for people who prefer reduced motion; color/opacity feedback
+ * remains so state changes are still legible.
+ */
+
+:root {
+  --aura-motion-fast: 120ms;
+  --aura-motion-standard: 190ms;
+  --aura-motion-slow: 320ms;
+  --aura-ease-out: cubic-bezier(0.2, 0.82, 0.2, 1);
+  --aura-ease-soft: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* The browser chrome should feel tactile without bouncing. */
+.icon-button,
+.aura-toggle,
+.primary-action,
+.secondary-action,
+.text-button,
+.adaptation-switch button,
+.profile-card button,
+.suggestion-row button,
+.memory-proposal button,
+.memory-item button,
+.primary-compact,
+.send-button,
+.comfort-choice {
+  transition:
+    color var(--aura-motion-fast) ease,
+    background-color var(--aura-motion-fast) ease,
+    border-color var(--aura-motion-fast) ease,
+    box-shadow var(--aura-motion-standard) ease,
+    filter var(--aura-motion-fast) ease,
+    opacity var(--aura-motion-fast) ease,
+    transform var(--aura-motion-fast) var(--aura-ease-out);
+}
+
+.icon-button:active:not(:disabled),
+.aura-toggle:active:not(:disabled),
+.primary-action:active:not(:disabled),
+.secondary-action:active:not(:disabled),
+.text-button:active:not(:disabled),
+.adaptation-switch button:active:not(:disabled),
+.profile-card button:active:not(:disabled),
+.suggestion-row button:active:not(:disabled),
+.memory-proposal button:active:not(:disabled),
+.memory-item button:active:not(:disabled),
+.primary-compact:active:not(:disabled),
+.send-button:active:not(:disabled),
+.comfort-choice:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.icon-button:hover:not(:disabled),
+.aura-toggle:hover:not(:disabled),
+.suggestion-row button:hover:not(:disabled),
+.profile-card button:hover:not(:disabled),
+.memory-proposal button:hover:not(:disabled),
+.memory-item button:hover:not(:disabled),
+.primary-compact:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.aura-toggle[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--aura-brand) 34%, var(--aura-border));
+  background: color-mix(in srgb, var(--aura-brand-soft) 82%, var(--aura-surface));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--aura-brand) 10%, transparent);
+}
+
+.aura-toggle .interface-icon {
+  transition:
+    color var(--aura-motion-fast) ease,
+    opacity var(--aura-motion-fast) ease,
+    transform var(--aura-motion-standard) var(--aura-ease-out);
+}
+
+.aura-toggle:hover .interface-icon,
+.aura-toggle[aria-expanded="true"] .interface-icon {
+  transform: scale(1.08);
+}
+
+/* Address-bar feedback mirrors a native search field: brief and precise. */
+.address-form {
+  transition:
+    border-color var(--aura-motion-standard) ease,
+    box-shadow var(--aura-motion-standard) ease,
+    background-color var(--aura-motion-standard) ease;
+}
+
+.load-dot {
+  transition:
+    background-color var(--aura-motion-standard) ease,
+    box-shadow var(--aura-motion-standard) ease,
+    opacity var(--aura-motion-standard) ease;
+}
+
+.load-dot.active {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--aura-brand-bright) 12%, transparent);
+}
+
+/*
+ * The AURA mark is the assistant's presence indicator. The mark itself stays
+ * recognizable; state comes from restrained light, stroke, and apex motion.
+ */
+.brand-mark,
+.panel-symbol {
+  position: relative;
+  overflow: hidden;
+  transition:
+    box-shadow var(--aura-motion-standard) ease,
+    border-color var(--aura-motion-standard) ease,
+    transform var(--aura-motion-standard) var(--aura-ease-out);
+}
+
+.brand-mark::after,
+.panel-symbol::after {
+  position: absolute;
+  inset: 1px;
+  border: 1px solid color-mix(in srgb, white 14%, transparent);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.brand-mark svg,
+.panel-symbol svg {
+  transform-origin: 50% 55%;
+}
+
+.brand-mark svg path,
+.panel-symbol svg path,
+.brand-mark svg circle,
+.panel-symbol svg circle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* AURA is actively reasoning or responding. */
+.aura-panel:has(.semantic-status.analyzing) .panel-symbol,
+.aura-panel:has(.message.waiting) .panel-symbol {
+  box-shadow:
+    0 8px 22px rgba(23, 61, 44, 0.18),
+    0 0 0 6px color-mix(in srgb, var(--aura-brand-bright) 10%, transparent);
+}
+
+/* The gold focus point is the only repeating brand motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .shell[data-reduce-motion="false"] .aura-panel:has(.semantic-status.analyzing) .panel-symbol svg circle,
+  .shell[data-reduce-motion="false"] .aura-panel:has(.message.waiting) .panel-symbol svg circle {
+    animation: aura-focus-breathe 1.45s ease-in-out infinite;
+  }
+
+  .shell[data-reduce-motion="false"] .aura-panel:has(.semantic-status.analyzing) .panel-symbol svg path,
+  .shell[data-reduce-motion="false"] .aura-panel:has(.message.waiting) .panel-symbol svg path {
+    animation: aura-aperture-breathe 1.45s ease-in-out infinite;
+  }
+
+  .shell[data-reduce-motion="false"] .aura-panel {
+    animation: aura-panel-enter var(--aura-motion-slow) var(--aura-ease-soft) both;
+  }
+
+  .shell[data-reduce-motion="false"] .semantic-status,
+  .shell[data-reduce-motion="false"] .adaptation-switch,
+  .shell[data-reduce-motion="false"] .memory-proposal {
+    animation: aura-surface-enter 240ms var(--aura-ease-out) both;
+  }
+
+  .shell[data-reduce-motion="false"] .message {
+    animation: aura-message-enter 220ms var(--aura-ease-out) both;
+  }
+
+  .shell[data-reduce-motion="false"] .conversation-empty {
+    animation: aura-fade-in 220ms ease both;
+  }
+
+  .learn-me:not(.density-calm):not(.density-step_by_step) .learn-me-copy {
+    animation: aura-step-enter 260ms var(--aura-ease-soft) both;
+  }
+
+  .learn-me.density-calm .learn-me-copy,
+  .learn-me.density-step_by_step .learn-me-copy {
+    animation: aura-fade-in 180ms ease both;
+  }
+
+  .learn-me:not(.density-calm):not(.density-step_by_step) .comfort-choice.selected {
+    animation: aura-choice-settle 180ms var(--aura-ease-out) both;
+  }
+}
+
+@keyframes aura-focus-breathe {
+  0%,
+  100% {
+    opacity: 0.86;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+}
+
+@keyframes aura-aperture-breathe {
+  0%,
+  100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes aura-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes aura-surface-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aura-message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aura-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aura-choice-settle {
+  0% {
+    transform: scale(0.99);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes aura-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Comet-style lesson, AURA execution: keep the assistant visually present in
+ * the sidecar without adding a new product mode or a second navigation system.
+ */
+.talk-card {
+  position: relative;
+}
+
+.talk-heading {
+  position: relative;
+  padding: 14px 14px 13px 48px;
+  border: 1px solid color-mix(in srgb, var(--aura-border) 86%, transparent);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--aura-brand-soft) 56%, transparent), transparent 70%),
+    var(--aura-surface);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+.talk-heading::before {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  background:
+    url("./favicon.svg") center / 19px 19px no-repeat,
+    linear-gradient(145deg, #347e5a, var(--aura-brand-strong));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--aura-brand) 18%, transparent);
+  content: "";
+}
+
+.talk-heading::after {
+  display: block;
+  width: fit-content;
+  margin-top: 7px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--aura-brand) 18%, var(--aura-border));
+  border-radius: 999px;
+  color: var(--aura-ink-secondary);
+  background: color-mix(in srgb, var(--aura-brand-soft) 52%, var(--aura-surface));
+  content: "Here with you";
+  font-size: var(--aura-ui-small-size, 12px);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.talk-card:has(.intent-chip):not(:has(.message.waiting)) .talk-heading::after {
+  content: "Keeping your goal in view";
+}
+
+.talk-card:has(.message.waiting) .talk-heading::after {
+  content: "Working with this page";
+}
+
+.talk-card:has(.memory-proposal) .talk-heading::after {
+  content: "Ready to remember";
+}
+
+/* Context suggestions behave like quick prompts, not three more menu items. */
+.suggestion-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestion-row button {
+  width: fit-content;
+  min-height: max(40px, var(--aura-ui-target, 44px));
+  padding-inline: 12px;
+  border-radius: 999px;
+  text-align: left;
+}
+
+/* Conversation is the product surface, not a developer log. */
+.conversation-log {
+  gap: 11px;
+  padding: 2px 3px 4px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--aura-brand) 24%, transparent) transparent;
+}
+
+.message {
+  position: relative;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+
+.message.assistant {
+  max-width: 94%;
+  padding-left: 42px;
+  border-color: color-mix(in srgb, var(--aura-border) 88%, transparent);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--aura-brand-soft) 35%, transparent), transparent 62%),
+    var(--aura-surface);
+}
+
+.message.assistant::before {
+  position: absolute;
+  top: 10px;
+  left: 11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background:
+    url("./favicon.svg") center / 17px 17px no-repeat,
+    linear-gradient(145deg, #347e5a, var(--aura-brand-strong));
+  content: "";
+}
+
+.message.user {
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--aura-brand) 12%, transparent);
+}
+
+.message.waiting {
+  border-color: color-mix(in srgb, var(--aura-brand-bright) 26%, var(--aura-border));
+}
+
+.message.waiting::after {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--aura-gold);
+  box-shadow:
+    10px 0 0 color-mix(in srgb, var(--aura-gold) 70%, transparent),
+    20px 0 0 color-mix(in srgb, var(--aura-gold) 42%, transparent);
+  content: "";
+}
+
+/* The composer is visually one surface, similar to a native assistant sidecar. */
+.conversation-form {
+  gap: 6px;
+}
+
+.conversation-form > div {
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--aura-border-strong);
+  border-radius: 17px;
+  background: var(--aura-surface);
+  box-shadow: var(--aura-shadow-small);
+  transition:
+    border-color var(--aura-motion-standard) ease,
+    box-shadow var(--aura-motion-standard) ease;
+}
+
+.conversation-form > div:focus-within {
+  border-color: var(--aura-brand-bright);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--aura-brand) 12%, transparent),
+    var(--aura-shadow-small);
+}
+
+.conversation-form textarea {
+  min-height: 62px;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 11px;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.conversation-form textarea:focus-visible {
+  outline: 0;
+}
+
+.send-button {
+  align-self: end;
+  min-width: max(64px, var(--aura-ui-target, 44px));
+  border-radius: 12px;
+}
+
+.memory-proposal {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 26px color-mix(in srgb, var(--aura-brand) 9%, transparent);
+}
+
+.memory-proposal::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: linear-gradient(var(--aura-gold), var(--aura-brand-bright));
+  content: "";
+}
+
+/* Make This Mine should feel consequential, not loud. */
+.primary-action {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.primary-action::before {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 16px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--aura-gold);
+  content: "";
+  transform: translateY(-50%);
+  transition:
+    box-shadow var(--aura-motion-standard) ease,
+    transform var(--aura-motion-standard) var(--aura-ease-out);
+}
+
+.primary-action:hover:not(:disabled)::before {
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--aura-gold) 18%, transparent);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.adaptation-switch {
+  transition:
+    border-color var(--aura-motion-standard) ease,
+    background-color var(--aura-motion-standard) ease,
+    box-shadow var(--aura-motion-standard) ease;
+}
+
+.adaptation-switch button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--aura-brand) 16%, transparent);
+}
+
+/* Learn Me should feel responsive to each choice. */
+.onboarding-progress i,
+.comfort-choice,
+.live-preview,
+.profile-summary {
+  transition:
+    color var(--aura-motion-standard) ease,
+    background-color var(--aura-motion-standard) ease,
+    border-color var(--aura-motion-standard) ease,
+    box-shadow var(--aura-motion-standard) ease,
+    opacity var(--aura-motion-standard) ease,
+    transform var(--aura-motion-standard) var(--aura-ease-out);
+}
+
+.comfort-choice.selected {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--aura-brand) 10%, transparent),
+    0 8px 22px color-mix(in srgb, var(--aura-brand) 8%, transparent);
+}
+
+.comfort-choice.selected::after {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--aura-gold);
+  content: "";
+}
+
+/* Reduced-motion profiles keep clarity through fades/colors, not spatial motion. */
+.shell[data-reduce-motion="true"] .icon-button,
+.shell[data-reduce-motion="true"] .aura-toggle,
+.shell[data-reduce-motion="true"] .primary-action,
+.shell[data-reduce-motion="true"] .secondary-action,
+.shell[data-reduce-motion="true"] .text-button,
+.shell[data-reduce-motion="true"] .adaptation-switch button,
+.shell[data-reduce-motion="true"] .profile-card button,
+.shell[data-reduce-motion="true"] .suggestion-row button,
+.shell[data-reduce-motion="true"] .memory-proposal button,
+.shell[data-reduce-motion="true"] .memory-item button,
+.shell[data-reduce-motion="true"] .primary-compact,
+.shell[data-reduce-motion="true"] .send-button {
+  transform: none !important;
+  transition-property: color, background-color, border-color, box-shadow, opacity !important;
+  transition-duration: 100ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aura-panel,
+  .semantic-status,
+  .adaptation-switch,
+  .memory-proposal,
+  .message,
+  .learn-me-copy,
+  .comfort-choice,
+  .brand-mark svg path,
+  .brand-mark svg circle,
+  .panel-symbol svg path,
+  .panel-symbol svg circle {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .icon-button,
+  .aura-toggle,
+  .primary-action,
+  .secondary-action,
+  .text-button,
+  .adaptation-switch button,
+  .profile-card button,
+  .suggestion-row button,
+  .memory-proposal button,
+  .memory-item button,
+  .primary-compact,
+  .send-button,
+  .comfort-choice {
+    transform: none !important;
+    transition-property: color, background-color, border-color, box-shadow, opacity !important;
+    transition-duration: 100ms !important;
+  }
+}
