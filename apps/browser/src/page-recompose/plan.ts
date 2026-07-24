@@ -30,7 +30,9 @@ function inferArchetype(page: PageModel): RecomposeArchetype {
   );
   const mainLike = page.regions.some(
     (region) =>
-      region.landmark === 'main' || region.tag === 'article' || region.role === 'article',
+      region.landmark === 'main' ||
+      region.tag === 'article' ||
+      region.role === 'article',
   );
   const repeated = page.repeatedStructures.some((item) => item.count >= 3);
   const formControls = page.forms.reduce(
@@ -39,7 +41,7 @@ function inferArchetype(page: PageModel): RecomposeArchetype {
   );
 
   if (page.forms.length > 0 && formControls >= 3) return 'form';
-  if (repeated && interactive.length >= 4) return 'listing';
+  if (repeated) return 'listing';
   if (mainLike && longText.length >= 2) return 'article';
   if (interactive.length >= 14) return 'dashboard';
   if (interactive.length >= 2) return 'detail';
@@ -63,7 +65,11 @@ function byIds(page: PageModel, ids: string[]): PageElement[] {
   return ids
     .map((id) => map.get(id))
     .filter((element): element is PageElement => {
-      if (element === undefined || !element.visible || seen.has(element.auraId)) {
+      if (
+        element === undefined ||
+        !element.visible ||
+        seen.has(element.auraId)
+      ) {
         return false;
       }
       seen.add(element.auraId);
@@ -71,7 +77,10 @@ function byIds(page: PageModel, ids: string[]): PageElement[] {
     });
 }
 
-function actionFor(element: PageElement, primary: boolean): RecomposeItem['action'] {
+function actionFor(
+  element: PageElement,
+  primary: boolean,
+): RecomposeItem['action'] {
   if (!element.interactive) {
     return {
       auraId: element.auraId,
@@ -96,7 +105,11 @@ function actionFor(element: PageElement, primary: boolean): RecomposeItem['actio
   };
 }
 
-function itemFrom(element: PageElement, index: number, primary: boolean): RecomposeItem {
+function itemFrom(
+  element: PageElement,
+  index: number,
+  primary: boolean,
+): RecomposeItem {
   const full = clean(element.text, 360);
   const title = label(element) ?? full ?? `Item ${index + 1}`;
   const meta = [
@@ -132,11 +145,20 @@ function makeSection(
 }
 
 function pageHeading(page: PageModel): string {
-  const heading = ranked(page, (element) => element.category === 'heading', 1)[0];
-  return label(heading ?? page.elements[0]!) ?? clean(page.title, 160) ?? 'This page';
+  const heading = ranked(
+    page,
+    (element) => element.category === 'heading',
+    1,
+  )[0];
+  return (
+    label(heading ?? page.elements[0]!) ?? clean(page.title, 160) ?? 'This page'
+  );
 }
 
-function deterministicTargets(page: PageModel, archetype: RecomposeArchetype) {
+function deterministicTargets(
+  page: PageModel,
+  archetype: RecomposeArchetype,
+) {
   const primary = ranked(page, (element) => element.interactive, 6);
   let results: PageElement[] = [];
   if (archetype === 'listing') {
@@ -159,7 +181,9 @@ function deterministicTargets(page: PageModel, archetype: RecomposeArchetype) {
       : primary;
   }
 
-  const used = new Set([...primary, ...results].map((element) => element.auraId));
+  const used = new Set(
+    [...primary, ...results].map((element) => element.auraId),
+  );
   const supporting = ranked(
     page,
     (element) =>
@@ -177,7 +201,8 @@ function reorder(
   if (!preferred?.length) return sections;
   const rank = new Map(preferred.map((kind, index) => [kind, index]));
   return [...sections].sort(
-    (left, right) => (rank.get(left.kind) ?? 99) - (rank.get(right.kind) ?? 99),
+    (left, right) =>
+      (rank.get(left.kind) ?? 99) - (rank.get(right.kind) ?? 99),
   );
 }
 
@@ -208,7 +233,8 @@ export function buildPageRecomposePlan({
     ? byIds(page, local.supportingTargetIds)
     : fallback.supporting;
   const primaryIds = new Set(primary.map((element) => element.auraId));
-  const maxItems = preset === 'step_by_step' ? 4 : preset === 'clear_calm' ? 5 : 8;
+  const maxItems =
+    preset === 'step_by_step' ? 4 : preset === 'clear_calm' ? 5 : 8;
   const sections: RecomposeSection[] = [];
 
   const actions = makeSection(
@@ -235,7 +261,10 @@ export function buildPageRecomposePlan({
     'content',
     'content',
     archetype === 'article' ? 'What matters' : 'Useful information',
-    supporting.slice(0, preset === 'clear_calm' || preset === 'step_by_step' ? 4 : 7),
+    supporting.slice(
+      0,
+      preset === 'clear_calm' || preset === 'step_by_step' ? 4 : 7,
+    ),
     primaryIds,
   );
   if (content) sections.push(content);
@@ -281,8 +310,10 @@ export function refinePageRecomposeWithSemantic(
   const sections = plan.sections.map((section) => ({
     ...section,
     items: [...section.items].sort((left, right) => {
-      const leftImportant = left.targetAuraId !== null && important.has(left.targetAuraId);
-      const rightImportant = right.targetAuraId !== null && important.has(right.targetAuraId);
+      const leftImportant =
+        left.targetAuraId !== null && important.has(left.targetAuraId);
+      const rightImportant =
+        right.targetAuraId !== null && important.has(right.targetAuraId);
       return Number(rightImportant) - Number(leftImportant);
     }),
   }));
@@ -319,7 +350,8 @@ export function refinePageRecomposeWithSemantic(
           auraId: step.auraId,
           behavior: 'focus' as const,
           label: index === 0 ? 'Start here' : `Go to step ${index + 1}`,
-          prominence: index === 0 ? ('primary' as const) : ('secondary' as const),
+          prominence:
+            index === 0 ? ('primary' as const) : ('secondary' as const),
         },
         description: null,
         id: `guide-${index}`,
@@ -342,14 +374,17 @@ export function refinePageRecomposeWithSemantic(
 }
 
 export function inferPresetFromSettings(settings: {
-  informationDensity: 'standard' | 'calm' | 'step_by_step';
+  informationDensity?: 'standard' | 'calm' | 'step_by_step';
   reduceMotion: boolean;
   targetSizePx: number;
   textScale: number;
 }): RecomposePreset {
-  if (settings.informationDensity === 'step_by_step') return 'step_by_step';
-  if (settings.targetSizePx >= 60 && settings.textScale >= 1.3) return 'easier_to_see';
+  const density = settings.informationDensity ?? 'standard';
+  if (density === 'step_by_step') return 'step_by_step';
+  if (settings.targetSizePx >= 60 && settings.textScale >= 1.3) {
+    return 'easier_to_see';
+  }
   if (settings.targetSizePx >= 60) return 'easy_to_control';
-  if (settings.informationDensity === 'calm' && settings.reduceMotion) return 'clear_calm';
+  if (density === 'calm' && settings.reduceMotion) return 'clear_calm';
   return 'personalized';
 }
