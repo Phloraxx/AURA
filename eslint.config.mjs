@@ -36,6 +36,15 @@ export default tseslint.config(
     },
   },
   {
+    files: ['apps/browser/src/page-recompose/runtime.ts'],
+    rules: {
+      // TypeScript's DOM library currently treats startViewTransition as required,
+      // while the event runtime still keeps this Chromium API behind an explicit
+      // compatibility boundary.
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+    },
+  },
+  {
     files: ['**/*.config.{js,cjs,mjs,ts}', '**/*.test.ts'],
     languageOptions: {
       globals: globals.node,
