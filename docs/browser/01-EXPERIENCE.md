@@ -14,75 +14,94 @@ The visible product language revolves around only:
 
 ### Entry
 
-The first screen should communicate one idea:
+The first screen communicates one idea:
 
 > **Let’s make the web work better for you.**
 
-Primary actions:
+Primary action:
 
-- `Talk with AURA`
-- `Type instead`
+`Start with AURA`
 
-A fast `Skip for now` path may create a neutral profile, but it is secondary.
+Secondary:
+
+`Skip for now`
+
+The required event path is conversational **text** plus experiential calibration. Voice may be added later but must not be implied as required by the primary flow.
+
+### Design rule
+
+Do not make onboarding an open-ended chatbot interview that can wander.
+
+Use a short deterministic backbone with AI-personalized wording/follow-ups.
+
+Target roughly four areas:
+
+1. **Reading comfort** — text size, spacing, detail preference.
+2. **Interaction comfort** — control/target size and focus visibility.
+3. **Attention/presentation** — motion and simultaneous information density.
+4. **Understanding style** — concise vs detailed explanations; preserve technical terms.
+
+AURA may skip an area already answered clearly or ask one useful follow-up. The entire judged path should stay around **60–90 seconds**.
 
 ### Conversation style
 
-AURA asks one question at a time. Questions should be experiential and concrete rather than diagnostic.
+Ask one concrete question at a time.
 
 Good:
 
 - “Does this text feel comfortable to read?”
-- “Do moving elements make pages harder to follow?”
 - “Which of these button sizes feels easiest to use?”
-- “Would you rather see all information at once or reveal it step by step?”
-- “When I simplify something, should I usually keep technical terms?”
+- “Would you rather see everything at once or reveal things step by step?”
+- “Do moving elements make pages harder to follow?”
+- “When I simplify something, should I keep technical terms?”
 
 Avoid:
 
-- “Do you have ADHD?”
-- “Are you visually impaired?”
-- exposing raw capability scores to the user.
+- diagnosis labels;
+- raw capability scores;
+- long questionnaires;
+- asking the user to understand accessibility terminology.
 
-### Live calibration
+### Live calibration — first wow moment
 
-The onboarding UI should adapt while onboarding is happening.
+The onboarding UI itself changes while the user is answering.
 
 Examples:
 
-- text scale changes immediately after the user says text is too small;
-- spacing changes as the user compares alternatives;
-- control size changes during a target-size exercise;
-- a dense and a simplified information layout are shown side by side;
-- motion can be demonstrated and disabled.
+- text/spacing update immediately after a reading choice;
+- controls resize during the target-size choice;
+- a dense and calmer layout can be compared directly;
+- a small motion example can be reduced/disabled;
+- explanation copy becomes more concise/detailed as the user chooses.
 
-The point is to make personalization tangible before the user even opens a website.
+The user should experience AURA learning them before browsing.
 
 ### Completion
 
-AURA gives a short human-readable summary such as:
+Show one short human summary, for example:
 
-> I’ll use comfortable text sizing, reduce unnecessary movement, keep important actions obvious, and simplify dense instructions without removing technical terms.
+> I’ll use comfortable text sizing, keep controls easy to reach, reduce unnecessary movement, and simplify dense instructions while keeping technical terms.
 
-Then:
+Primary action:
 
 `Start browsing`
 
-Do not show a dashboard of numeric disability dimensions.
+No numeric disability dashboard.
 
 ## Browser shell
 
-The macOS event browser should be deliberately minimal.
+The judged browser is deliberately minimal.
 
 Visible chrome:
 
-- back,
-- forward,
-- refresh,
-- address/search field,
-- AURA identity/profile control,
-- an AURA panel toggle.
+- back;
+- forward;
+- refresh;
+- address/search field;
+- AURA/profile control;
+- panel toggle.
 
-Basic tab support is optional until the flagship flow is stable.
+Tabs are not required before the flagship flow is stable.
 
 ### Default layout
 
@@ -93,8 +112,8 @@ Basic tab support is optional until the flagship flow is stable.
 |                                                  |            |
 |                                                  |   AURA     |
 |                 REAL WEBSITE                     |            |
-|                                                  |  page      |
-|                                                  |  context   |
+|                                                  |  Ready for |
+|                                                  |  this page |
 |                                                  |            |
 |                                                  | [Make this |
 |                                                  |   mine]    |
@@ -103,13 +122,13 @@ Basic tab support is optional until the flagship flow is stable.
 +--------------------------------------------------+------------+
 ```
 
-The panel may collapse to give the page more room.
+The panel can collapse; the remote PageView is resized rather than visually covered by the local shell.
 
 ## Page-ready state
 
-AURA should not overwhelm the user with a score or scanner report.
+Do not show a score/dashboard.
 
-When enough local page information is available, show:
+When local page understanding is ready:
 
 > **Ready to adapt this page for you.**
 
@@ -117,124 +136,153 @@ Primary action:
 
 `✦ Make This Mine`
 
-Secondary affordance:
+Small optional detail:
 
 `What did AURA notice?`
 
-The secondary view can summarize a few observations, but it is not a separate Lens product.
+This may show a few human observations, not a separate Lens product.
 
 ## Make This Mine
 
 ### Perceived sequence
 
 1. User presses the button.
-2. Immediate local adaptation begins within a fraction of a second.
-3. A small calm status appears: `Understanding what matters on this page…`
-4. AI refinement arrives and structural changes settle in.
+2. Profile-based changes begin immediately.
+3. Small calm status: `Understanding what matters on this page…`
+4. AI semantic refinement arrives.
 5. Status becomes: `Adapted for you`.
 
-Do not block the entire browser behind a spinner while waiting for AI.
+Never block the browser behind a full-screen AI spinner.
 
 ### Visual result
 
-Depending on the profile and page, AURA may:
+Depending on the person/page, AURA may:
 
-- improve text scale, line spacing, and reading width;
-- reduce animation;
-- enlarge or clarify controls;
-- de-emphasize or collapse secondary regions;
-- surface primary actions and deadlines;
-- simplify dense instructions;
-- reveal long forms progressively;
-- visually group related controls;
-- add a compact AURA-owned task/summary strip;
-- preserve detailed information when the profile prefers it.
+- improve text scale/spacing/reading width;
+- reduce motion;
+- enlarge targets/focus visibility;
+- emphasize primary content/actions;
+- de-emphasize or safely collapse clearly secondary regions;
+- surface deadlines/prices/status information;
+- simplify selected dense instructions;
+- reveal form sections progressively;
+- add a compact AURA-owned summary/guidance strip;
+- preserve technical detail when preferred.
+
+The visual difference should be obvious, but reliability wins over dramatic DOM surgery.
+
+### Intervention order
+
+AURA should prefer:
+
+1. presentation improvement;
+2. emphasis/de-emphasis;
+3. safe reversible collapse/text simplification;
+4. AURA-owned guidance/summary tied to original controls.
+
+Large-scale arbitrary DOM reparenting is not required for the event build.
 
 ### Comparison
 
-`Original ↔ AURA` must be available after transformation.
+After transformation, keep a persistent:
 
-The transition should be quick and visually clean. It is both a trust control and a demo device.
+`Original ↔ AURA`
+
+It is both a trust control and a primary demo device.
 
 ## Talk to AURA
 
-Conversation is always grounded in the current page, active profile, current session goal, and relevant memory.
+Conversation is grounded in the current page, profile, session goal, and explicit memory.
 
-### Supported event intents
+The user may type normal language; internally the event build optimizes four action families.
 
-The first event build should support a small, polished set:
+### 1. Adjust
 
-1. **Ease** — “Make this easier.”
-2. **Explain** — “Explain this section.”
-3. **Focus on goal** — “I’m trying to register/apply/buy/find…”
-4. **Adjust presentation** — “Make this bigger / less distracting / more detailed.”
-5. **Guide** — “Help me through this form/task.”
-6. **Remember** — “Remember that.”
+Examples:
 
-Anything outside the set may still receive a normal explanation, but these six must change the experience reliably.
+- “Make this easier.”
+- “Make the buttons bigger.”
+- “This is too distracting.”
+- “Give me more detail.”
 
-### Guidance
+Expected result: page presentation changes.
 
-When a user states a goal, AURA should guide through the original site's controls rather than pretending to have completed the task.
+### 2. Explain
 
-Example:
+Examples:
 
-> I found the registration form. There are four steps. I’ll keep the current step prominent and leave the other information available when you need it.
+- “Explain this.”
+- “What does this section mean?”
 
-AURA can scroll, highlight, collapse secondary content, and explain. The user still activates consequential controls.
+Expected result: concise personalized explanation, optionally linked/highlighted to real content.
 
-## Memory interaction
+### 3. Goal / Guide
 
-When the user makes a correction, AURA can offer:
+Examples:
+
+- “I’m trying to register.”
+- “Help me apply.”
+- “I only want to find the price.”
+
+Expected result: AURA identifies the relevant content/controls and guides the user through the actual site.
+
+AURA may scroll, highlight, collapse secondary content, and show the current step. The user still activates consequential original controls.
+
+### 4. Remember
+
+A correction may produce:
 
 > `Remember this preference?`
 
-Explicit `Remember` writes persistent memory. `Just this page` changes only the current session/site state.
+`Remember` persists it globally. `Just for now` changes only the current session.
 
-The event UI needs a small `What AURA remembers` view with edit/delete controls, but it should not dominate the main experience.
+Anything else can receive a normal answer without becoming a new mode.
 
-## Error and fallback states
+## Memory surface
+
+Provide a small `What AURA remembers` view with readable statements and edit/forget/reset actions.
+
+Global preference memory is required for the event. Per-site memory is secondary.
+
+## Error/fallback states
 
 ### AI unavailable
 
-Do not fail the product. Say:
+> `Using what I already know about you. Deeper page understanding is temporarily unavailable.`
 
-> `Using your saved preferences. Deeper page understanding is temporarily unavailable.`
-
-The local deterministic adaptation remains active.
+Keep deterministic adaptation active.
 
 ### Low page confidence
 
-Say:
+> `I can safely improve the presentation here, but this page uses an unusual interface.`
 
-> `I can safely improve presentation here, but this page uses an unusual interface.`
-
-Apply conservative transformations only.
+Use conservative transformations only.
 
 ### Canvas/WebGL-heavy page
 
-Use a companion explanation/task panel rather than pretending the canvas itself has been reconstructed.
+Keep the page functional and use the AURA panel for explanation/guidance rather than pretending the canvas was structurally rebuilt.
 
 ## Visual design principles
 
 - quiet neutral palette with one AURA accent;
-- large comfortable hit targets;
+- strong hierarchy and whitespace;
+- large comfortable targets;
+- concise copy;
 - no dashboard aesthetic;
 - no rainbow accessibility toolbar;
 - no excessive cards;
-- concise copy;
 - smooth but reduced-motion-aware transitions;
-- strong hierarchy and whitespace;
-- every primary interaction usable by keyboard;
-- the browser's own UI must remain accessible with macOS VoiceOver semantics.
+- keyboard-operable primary interactions;
+- meaningful VoiceOver semantics for the browser's own UI.
 
 ## Stretch items
 
-Only after all required flows are polished:
+Only after W7 core gates are green:
 
 - voice input;
 - basic multi-tab UI;
 - animated split-screen comparison;
-- Windows build.
+- Windows smoke build;
+- site-specific auto-memory/auto-adapt polish.
 
-Stretch items must never delay random-site reliability or Make This Mine.
+Stretch items never delay random-site reliability or Make This Mine.
