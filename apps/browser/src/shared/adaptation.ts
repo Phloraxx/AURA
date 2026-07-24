@@ -29,6 +29,12 @@ export const adaptationCommandSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     pageId: z.string().min(1),
+    revision: z.number().int().positive(),
+    settings: presentationSettingsSchema,
+    type: z.literal('update-presentation'),
+  }),
+  z.object({
+    pageId: z.string().min(1),
     type: z.literal('set-adaptation-view'),
     view: adaptationViewSchema,
   }),

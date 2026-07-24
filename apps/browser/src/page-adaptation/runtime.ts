@@ -470,6 +470,20 @@ export function createPageAdaptationRuntime(): PageAdaptationRuntime {
           view: session.view,
         };
       }
+      if (command.type === 'update-presentation') {
+        if (session === null || session.pageId !== command.pageId) {
+          throw new Error('No active AURA presentation exists for this page.');
+        }
+        session.settings = command.settings;
+        return {
+          changedTargetCount: apply(),
+          error: null,
+          operation: 'presentation',
+          pageId: command.pageId,
+          status: 'applied',
+          view: 'aura',
+        };
+      }
       if (session === null || session.pageId !== command.pageId) {
         throw new Error('The AURA presentation session is no longer current.');
       }

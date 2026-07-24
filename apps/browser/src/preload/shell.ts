@@ -7,6 +7,7 @@ import {
   type PageRuntimeEvent,
 } from '../shared/contracts';
 import type { AdaptationState } from '../shared/adaptation';
+import type { ConversationState } from '../shared/conversation';
 import type { SemanticAnalysisState } from '../shared/semantic-analysis';
 import type {
   PageIntelligenceState,
@@ -16,18 +17,24 @@ import type {
 const api: AuraShellApi = {
   applyPresentation: (profile) =>
     ipcRenderer.invoke(IPC_CHANNELS.applyPresentation, profile),
-  navigate: (address) => ipcRenderer.invoke(IPC_CHANNELS.navigate, address),
   back: () => ipcRenderer.invoke(IPC_CHANNELS.back),
+  confirmMemory: () => ipcRenderer.invoke(IPC_CHANNELS.confirmMemory),
+  conversationTurn: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.conversationTurn, request),
   debugPageTarget: (command: PageRuntimeCommand) =>
     ipcRenderer.invoke(IPC_CHANNELS.debugPageTarget, command),
+  dismissMemory: () => ipcRenderer.invoke(IPC_CHANNELS.dismissMemory),
   forward: () => ipcRenderer.invoke(IPC_CHANNELS.forward),
   getAdaptationState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getAdaptationState),
+  getConversationState: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.getConversationState),
   getPageIntelligenceState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getPageIntelligenceState),
   getProfile: () => ipcRenderer.invoke(IPC_CHANNELS.getProfile),
   getSemanticAnalysisState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getSemanticAnalysisState),
+  navigate: (address) => ipcRenderer.invoke(IPC_CHANNELS.navigate, address),
   onboardingTurn: (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.onboardingTurn, request),
   refresh: () => ipcRenderer.invoke(IPC_CHANNELS.refresh),
@@ -40,6 +47,8 @@ const api: AuraShellApi = {
     ipcRenderer.invoke(IPC_CHANNELS.setOnboardingActive, active),
   setPanelOpen: (open) =>
     ipcRenderer.invoke(IPC_CHANNELS.setPanelOpen, open),
+  updateLearnedPreferences: (preferences) =>
+    ipcRenderer.invoke(IPC_CHANNELS.updateLearnedPreferences, { preferences }),
   onAdaptationState: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
@@ -50,6 +59,25 @@ const api: AuraShellApi = {
     ipcRenderer.on(IPC_CHANNELS.adaptationState, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.adaptationState, handler);
+    };
+  },
+  onConversationState: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      state: ConversationState,
+    ): void => {
+      listener(state);
+    };
+    ipcRenderer.on(IPC_CHANNELS.conversationState, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.conversationState, handler);
+    };
+  },
+  onFocusAddress: (listener) => {
+    const handler = (): void => listener();
+    ipcRenderer.on(IPC_CHANNELS.focusAddress, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.focusAddress, handler);
     };
   },
   onNavigationState: (listener) => {

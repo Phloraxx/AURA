@@ -13,6 +13,11 @@ import type {
   AdaptationView,
 } from './adaptation';
 import type { SemanticAnalysisState } from './semantic-analysis';
+import type {
+  ConversationState,
+  ConversationTurnRequest,
+  ConversationTurnResponse,
+} from './conversation';
 
 export const IPC_CHANNELS = {
   adaptationCommand: 'aura:adaptation:command',
@@ -20,10 +25,16 @@ export const IPC_CHANNELS = {
   adaptationState: 'aura:adaptation:state',
   applyPresentation: 'aura:adaptation:apply-presentation',
   back: 'aura:navigation:back',
+  confirmMemory: 'aura:memory:confirm',
+  conversationState: 'aura:conversation:state',
+  conversationTurn: 'aura:conversation:turn',
   debugPageTarget: 'aura:page-intelligence:debug-target',
+  dismissMemory: 'aura:memory:dismiss',
+  focusAddress: 'aura:chrome:focus-address',
   forward: 'aura:navigation:forward',
   getPageIntelligenceState: 'aura:page-intelligence:get-state',
   getAdaptationState: 'aura:adaptation:get-state',
+  getConversationState: 'aura:conversation:get-state',
   getProfile: 'aura:profile:get',
   getSemanticAnalysisState: 'aura:semantic:get-state',
   navigate: 'aura:navigation:open',
@@ -40,6 +51,7 @@ export const IPC_CHANNELS = {
   setOnboardingActive: 'aura:layout:set-onboarding-active',
   setPanelOpen: 'aura:layout:set-panel-open',
   setAdaptationView: 'aura:adaptation:set-view',
+  updateLearnedPreferences: 'aura:memory:update-preferences',
 } as const;
 
 export interface BrowserNavigationState {
@@ -63,9 +75,15 @@ export interface PageRuntimeEvent {
 export interface AuraShellApi {
   applyPresentation: (profile: BrowserProfile) => Promise<boolean>;
   back: () => Promise<void>;
+  confirmMemory: () => Promise<BrowserProfile>;
+  conversationTurn: (
+    request: ConversationTurnRequest,
+  ) => Promise<ConversationTurnResponse>;
   debugPageTarget: (command: PageRuntimeCommand) => Promise<boolean>;
+  dismissMemory: () => Promise<void>;
   forward: () => Promise<void>;
   getAdaptationState: () => Promise<AdaptationState>;
+  getConversationState: () => Promise<ConversationState>;
   getPageIntelligenceState: () => Promise<PageIntelligenceState | null>;
   getProfile: () => Promise<BrowserProfile | null>;
   getSemanticAnalysisState: () => Promise<SemanticAnalysisState>;
@@ -76,6 +94,10 @@ export interface AuraShellApi {
   onAdaptationState: (
     listener: (state: AdaptationState) => void,
   ) => () => void;
+  onConversationState: (
+    listener: (state: ConversationState) => void,
+  ) => () => void;
+  onFocusAddress: (listener: () => void) => () => void;
   onNavigationState: (
     listener: (state: BrowserNavigationState) => void,
   ) => () => void;
@@ -94,6 +116,9 @@ export interface AuraShellApi {
   setAdaptationView: (view: AdaptationView) => Promise<boolean>;
   setOnboardingActive: (active: boolean) => Promise<void>;
   setPanelOpen: (open: boolean) => Promise<void>;
+  updateLearnedPreferences: (
+    preferences: string[],
+  ) => Promise<BrowserProfile>;
 }
 
 export type PageAdaptationCommand = AdaptationCommand;

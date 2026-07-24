@@ -27,3 +27,19 @@ export function normalizeAddress(input: string): string {
 
   return `https://www.google.com/search?q=${encodeURIComponent(value)}`;
 }
+
+export function friendlyNavigationError(errorCode: number | null): string {
+  if (errorCode === -106) {
+    return 'AURA cannot reach the internet. Check the connection and try again.';
+  }
+  if (errorCode === -105 || errorCode === -102) {
+    return 'AURA could not find that website. Check the address and try again.';
+  }
+  if (errorCode === -118 || errorCode === -7) {
+    return 'This website took too long to respond. Try refreshing the page.';
+  }
+  if (errorCode === -3) {
+    return 'Navigation was cancelled.';
+  }
+  return 'This page could not be loaded. Check the address or try again.';
+}

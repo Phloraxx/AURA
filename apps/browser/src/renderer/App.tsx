@@ -13,7 +13,9 @@ import type { AdaptationState, AdaptationView } from '../shared/adaptation';
 import type { PageIntelligenceState } from '../shared/page-model';
 import type { BrowserProfile } from '../shared/profile';
 import type { SemanticAnalysisState } from '../shared/semantic-analysis';
+import type { ConversationState } from '../shared/conversation';
 import { LearnMe } from './LearnMe';
+import { TalkToAura } from './TalkToAura';
 
 const EMPTY_NAVIGATION: BrowserNavigationState = {
   canGoBack: false,
@@ -45,6 +47,13 @@ const EMPTY_SEMANTIC_ANALYSIS: SemanticAnalysisState = {
   usage: null,
 };
 
+const EMPTY_CONVERSATION: ConversationState = {
+  currentIntent: null,
+  messages: [],
+  pendingMemory: null,
+  status: 'idle',
+};
+
 export function App(): React.JSX.Element {
   const [navigation, setNavigation] =
     useState<BrowserNavigationState>(EMPTY_NAVIGATION);
@@ -59,6 +68,8 @@ export function App(): React.JSX.Element {
     useState<AdaptationState>(EMPTY_ADAPTATION);
   const [semanticAnalysis, setSemanticAnalysis] =
     useState<SemanticAnalysisState>(EMPTY_SEMANTIC_ANALYSIS);
+  const [conversation, setConversation] =
+    useState<ConversationState>(EMPTY_CONVERSATION);
   const [profile, setProfile] = useState<BrowserProfile | null | undefined>(
     undefined,
   );
@@ -91,20 +102,47 @@ export function App(): React.JSX.Element {
       window.aura.onAdaptationState(setAdaptation);
     const removeSemanticListener =
       window.aura.onSemanticAnalysisState(setSemanticAnalysis);
+    const removeConversationListener =
+      window.aura.onConversationState(setConversation);
+    const removeFocusAddressListener = window.aura.onFocusAddress(() => {
+      document.querySelector<HTMLInputElement>('#aura-address')?.focus();
+    });
     void window.aura.getPageIntelligenceState().then(setPageIntelligence);
     void window.aura.getAdaptationState().then(setAdaptation);
     void window.aura
       .getSemanticAnalysisState()
       .then(setSemanticAnalysis);
+    void window.aura.getConversationState().then(setConversation);
 
     return () => {
       removeAdaptationListener();
+      removeConversationListener();
+      removeFocusAddressListener();
       removeIntelligenceListener();
       removeNavigationListener();
       removeRuntimeListener();
       removeSemanticListener();
     };
   }, []);
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent): void {
+      if (event.metaKey && event.key.toLocaleLowerCase() === 'l') {
+        event.preventDefault();
+        document.querySelector<HTMLInputElement>('#aura-address')?.focus();
+      }
+      if (
+        event.metaKey &&
+        event.shiftKey &&
+        event.key.toLocaleLowerCase() === 'a'
+      ) {
+        event.preventDefault();
+        togglePanel();
+      }
+    }
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  });
 
   useEffect(() => {
     void window.aura.getProfile().then((savedProfile) => {
@@ -149,6 +187,20 @@ export function App(): React.JSX.Element {
     await window.aura.setAdaptationView(view);
   }
 
+  async function sendConversation(message: string): Promise<void> {
+    await window.aura.conversationTurn({ userMessage: message });
+  }
+
+  async function confirmMemory(): Promise<void> {
+    const saved = await window.aura.confirmMemory();
+    setProfile(saved);
+  }
+
+  async function updateMemory(preferences: string[]): Promise<void> {
+    const saved = await window.aura.updateLearnedPreferences(preferences);
+    setProfile(saved);
+  }
+
   const pageConnectionFailed = navigation.error !== null;
   const pageConnectionReady =
     !pageConnectionFailed && runtimeEvent !== null;
@@ -172,7 +224,10 @@ export function App(): React.JSX.Element {
   }
 
   return (
-    <main className={panelOpen ? 'shell panel-open' : 'shell'}>
+    <main
+      className={panelOpen ? 'shell panel-open' : 'shell'}
+      data-reduce-motion={profile.preferences.reduceMotion ? 'true' : 'false'}
+    >
       <header className="browser-chrome">
         <div className="brand" aria-label="AURA Browser">
           <span className="brand-mark" aria-hidden="true">
@@ -217,6 +272,8 @@ export function App(): React.JSX.Element {
           />
           <input
             aria-label="Search or enter address"
+            aria-keyshortcuts="Meta+L"
+            id="aura-address"
             onBlur={() => {
               editingAddress.current = false;
             }}
@@ -244,6 +301,7 @@ export function App(): React.JSX.Element {
 
         <button
           aria-expanded={panelOpen}
+          aria-keyshortcuts="Meta+Shift+A"
           className="aura-toggle"
           onClick={togglePanel}
           type="button"
@@ -266,20 +324,17 @@ export function App(): React.JSX.Element {
           </div>
 
           <p className="panel-copy">
-            Your profile is ready. Make This Mine applies your reading,
-            interaction, focus, and motion preferences to this page.
+            Personalize this page, then ask AURA to adjust, explain, or guide
+            you.
           </p>
 
-          <div className="profile-card">
-            <p className="eyebrow">Your comfort profile</p>
+          <details className="profile-card">
+            <summary>Your comfort profile</summary>
             <p>{profile.summary}</p>
-            {profile.learnedPreferences.map((preference) => (
-              <span key={preference}>{preference}</span>
-            ))}
             <button onClick={() => void restartOnboarding()} type="button">
               Re-run Learn Me
             </button>
-          </div>
+          </details>
 
           <div className="runtime-status" aria-live="polite">
             <span
@@ -300,7 +355,7 @@ export function App(): React.JSX.Element {
                 {pageConnectionFailed
                   ? navigation.error
                   : pageConnectionReady
-                    ? `${runtimeEvent.phase} · ${runtimeEvent.readyState}`
+                    ? 'Ready to personalize and guide.'
                     : 'Waiting for the AURA page preload.'}
               </span>
             </div>
@@ -388,57 +443,19 @@ export function App(): React.JSX.Element {
             </section>
           ) : null}
 
-          {import.meta.env.DEV && pageIntelligence !== null ? (
-            <details className="page-model-inspector">
-              <summary>PageModel inspector</summary>
-              <dl>
-                <div>
-                  <dt>Revision</dt>
-                  <dd>{pageIntelligence.model.revision}</dd>
-                </div>
-                <div>
-                  <dt>Targets</dt>
-                  <dd>
-                    {pageIntelligence.model.elements.length} /{' '}
-                    {pageIntelligence.model.metrics.candidateCount}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Capture</dt>
-                  <dd>
-                    {pageIntelligence.model.metrics.captureDurationMs} ms
-                  </dd>
-                </div>
-                <div>
-                  <dt>Screenshot</dt>
-                  <dd>{pageIntelligence.screenshot.status}</dd>
-                </div>
-                <div>
-                  <dt>Health</dt>
-                  <dd>{pageIntelligence.model.extractionHealth.score}</dd>
-                </div>
-              </dl>
-              <div className="page-model-targets">
-                {pageIntelligence.model.elements.slice(0, 8).map((element) => (
-                  <button
-                    key={element.auraId}
-                    onClick={() => {
-                      void window.aura.debugPageTarget({
-                        auraId: element.auraId,
-                        pageId: pageIntelligence.model.pageId,
-                        revision: pageIntelligence.model.revision,
-                        type: 'highlight-target',
-                      });
-                    }}
-                    type="button"
-                  >
-                    <span>{element.category}</span>
-                    {element.accessibleName ?? element.text ?? element.tag}
-                  </button>
-                ))}
-              </div>
-            </details>
-          ) : null}
+          <TalkToAura
+            disabled={
+              !pageConnectionReady ||
+              pageIntelligence === null ||
+              semanticAnalysis.status === 'analyzing'
+            }
+            onConfirmMemory={confirmMemory}
+            onDismissMemory={() => window.aura.dismissMemory()}
+            onSend={sendConversation}
+            onUpdateMemory={updateMemory}
+            profile={profile}
+            state={conversation}
+          />
         </aside>
       ) : null}
     </main>

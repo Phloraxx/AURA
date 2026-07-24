@@ -101,10 +101,7 @@ export function LearnMe({
           choices,
           userResponse: note,
         });
-        learnedPreference =
-          response.learnedPreference === null
-            ? null
-            : note.trim().replace(/\s+/g, ' ').slice(0, 300);
+        learnedPreference = response.learnedPreference;
       }
 
       const withMemory: BrowserProfile = {

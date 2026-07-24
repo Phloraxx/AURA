@@ -68,7 +68,8 @@ ipcRenderer.on(
         changedTargetCount: 0,
         error: 'The page changed before AURA could apply this presentation.',
         operation:
-          command.type === 'apply-presentation'
+          command.type === 'apply-presentation' ||
+          command.type === 'update-presentation'
             ? 'presentation'
             : command.type === 'apply-semantic'
               ? 'semantic'

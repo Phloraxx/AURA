@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -36,15 +37,30 @@ import {
   type SemanticAnalysisState,
   type SemanticPlan,
 } from '../shared/semantic-analysis';
+import {
+  conversationStateSchema,
+  conversationTurnRequestSchema,
+  conversationTurnResponseSchema,
+  learnedPreferencesUpdateSchema,
+  type ConversationState,
+  type ConversationTurnResponse,
+} from '../shared/conversation';
+import { createConversationProvider } from './ai/conversation-provider';
 import { createOnboardingProvider } from './ai/onboarding-provider';
 import { createPageAnalysisProvider } from './ai/page-analysis-provider';
+import { validateConversationTurn } from './ai/validate-conversation';
 import { validatePageAnalysis } from './ai/validate-page-analysis';
 import { getPageViewBounds } from './layout';
-import { normalizeAddress } from './navigation';
+import { friendlyNavigationError, normalizeAddress } from './navigation';
 import { ProfileStore } from './profile-store';
 
-const DEFAULT_URL = 'https://www.wikipedia.org/';
+const DEFAULT_URL =
+  process.env.AURA_START_URL?.trim() || 'https://www.wikipedia.org/';
 const APP_DIRECTORY = dirname(fileURLToPath(import.meta.url));
+
+if (process.env.AURA_USER_DATA_DIR?.trim()) {
+  app.setPath('userData', process.env.AURA_USER_DATA_DIR.trim());
+}
 
 if (process.env.AURA_CDP_PORT !== undefined) {
   app.commandLine.appendSwitch(
@@ -90,11 +106,19 @@ let pendingSemanticPlan: {
   plan: SemanticPlan;
   usage: SemanticAnalysisState['usage'];
 } | null = null;
+let activeSemanticPlan: SemanticPlan | null = null;
+let conversationState: ConversationState = conversationStateSchema.parse({
+  currentIntent: null,
+  messages: [],
+  pendingMemory: null,
+  status: 'idle',
+});
 let screenshotRequest = 0;
 let profileStore: ProfileStore | null = null;
 
 const onboardingProvider = createOnboardingProvider();
 const pageAnalysisProvider = createPageAnalysisProvider();
+const conversationProvider = createConversationProvider();
 
 function getPreloadPath(name: 'page' | 'shell'): string {
   return join(APP_DIRECTORY, `../preload/${name}.cjs`);
@@ -176,10 +200,20 @@ function publishSemanticAnalysisState(): void {
   }
 }
 
+function publishConversationState(): void {
+  if (mainWindow?.isDestroyed() === false) {
+    mainWindow.webContents.send(
+      IPC_CHANNELS.conversationState,
+      conversationState,
+    );
+  }
+}
+
 function invalidateSemanticAnalysis(): void {
   semanticRequest += 1;
   latestSafeScreenshot = null;
   pendingSemanticPlan = null;
+  activeSemanticPlan = null;
   semanticAnalysisState = {
     appliedCount: 0,
     durationMs: null,
@@ -193,6 +227,171 @@ function invalidateSemanticAnalysis(): void {
     usage: null,
   };
   publishSemanticAnalysisState();
+}
+
+function appendConversationMessage(
+  role: 'assistant' | 'user',
+  content: string,
+): void {
+  conversationState = conversationStateSchema.parse({
+    ...conversationState,
+    messages: [
+      ...conversationState.messages,
+      { content, id: randomUUID(), role },
+    ].slice(-24),
+  });
+}
+
+function mergeConversationPlan(
+  response: ConversationTurnResponse,
+  model: PageModel,
+): SemanticPlan | null {
+  const patch = response.adaptationPatch;
+  const explanationTarget = response.explanation?.targetAuraId;
+  if (
+    patch === null &&
+    explanationTarget == null &&
+    activeSemanticPlan === null
+  ) {
+    return null;
+  }
+  const base: SemanticPlan = activeSemanticPlan ?? {
+    collapseTargetIds: [],
+    deemphasizeTargetIds: [],
+    guide: null,
+    highlightTargetIds: [],
+    importantFacts: [],
+    pageId: model.pageId,
+    pagePurpose: semanticAnalysisState.pagePurpose ?? model.title,
+    primaryTargetIds: [],
+    revision: model.revision,
+    simplifications: [],
+    summary:
+      semanticAnalysisState.summary ??
+      `AURA is helping with ${model.title || 'this page'}.`,
+  };
+  return {
+    ...base,
+    deemphasizeTargetIds:
+      patch?.deemphasizeTargetIds ?? base.deemphasizeTargetIds,
+    guide: patch?.guide ?? base.guide,
+    highlightTargetIds: [
+      ...(patch?.highlightTargetIds ?? base.highlightTargetIds),
+      ...(explanationTarget == null ? [] : [explanationTarget]),
+    ].filter((id, index, values) => values.indexOf(id) === index),
+    pageId: model.pageId,
+    primaryTargetIds:
+      patch?.primaryTargetIds ?? base.primaryTargetIds,
+    revision: model.revision,
+  };
+}
+
+async function runConversationTurn(
+  untrustedRequest: unknown,
+): Promise<ConversationTurnResponse> {
+  const request = conversationTurnRequestSchema.parse(untrustedRequest);
+  if (pageIntelligenceState === null || profileStore === null) {
+    throw new Error('Open a page and complete Learn Me before talking to AURA.');
+  }
+  const profile = await profileStore.load();
+  if (profile?.completedAt == null) {
+    throw new Error('Complete Learn Me before talking to AURA.');
+  }
+  const model = pageIntelligenceState.model;
+  appendConversationMessage('user', request.userMessage);
+  conversationState = { ...conversationState, status: 'responding' };
+  publishConversationState();
+
+  const providerResponse = await conversationProvider.turn({
+    currentIntent: conversationState.currentIntent,
+    page: model,
+    profile,
+    recentConversation: conversationState.messages,
+    semanticPlan: activeSemanticPlan,
+    userMessage: request.userMessage,
+  });
+  if (
+    pageIntelligenceState === null ||
+    pageIntelligenceState.model.pageId !== model.pageId
+  ) {
+    const staleResponse = conversationTurnResponseSchema.parse({
+      ...providerResponse,
+      adaptationPatch: null,
+      adjustment: null,
+      assistantMessage:
+        'The page changed while I was responding. Your goal is preserved—ask me to continue on this page.',
+      explanation: null,
+    });
+    appendConversationMessage('assistant', staleResponse.assistantMessage);
+    conversationState = {
+      ...conversationState,
+      currentIntent: providerResponse.intent ?? conversationState.currentIntent,
+      pendingMemory: providerResponse.memoryProposal,
+      status: 'idle',
+    };
+    publishConversationState();
+    return staleResponse;
+  }
+
+  const response = validateConversationTurn(providerResponse, model);
+  conversationState = {
+    ...conversationState,
+    currentIntent: response.intent ?? conversationState.currentIntent,
+    pendingMemory: response.memoryProposal,
+  };
+
+  if (response.adjustment !== null && pageView !== null) {
+    const patch = response.adjustment;
+    const adjustedProfile = browserProfileSchema.parse({
+      ...profile,
+      preferences: {
+        ...profile.preferences,
+        explanationStyle:
+          patch.explanationStyle ?? profile.preferences.explanationStyle,
+        informationDensity:
+          patch.informationDensity ?? profile.preferences.informationDensity,
+        preserveTechnicalTerms:
+          patch.preserveTechnicalTerms ??
+          profile.preferences.preserveTechnicalTerms,
+        reduceMotion: patch.reduceMotion ?? profile.preferences.reduceMotion,
+        targetSizePx: patch.targetSizePx ?? profile.preferences.targetSizePx,
+        textScale: patch.textScale ?? profile.preferences.textScale,
+      },
+    });
+    pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {
+      pageId: model.pageId,
+      revision: model.revision,
+      settings: presentationSettingsFromProfile(adjustedProfile),
+      type:
+        adaptationState.pageId === model.pageId
+          ? 'update-presentation'
+          : 'apply-presentation',
+    });
+  }
+
+  const conversationPlan = mergeConversationPlan(response, model);
+  if (conversationPlan !== null && pageView !== null) {
+    if (adaptationState.pageId !== model.pageId) {
+      pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {
+        pageId: model.pageId,
+        revision: model.revision,
+        settings: presentationSettingsFromProfile(profile),
+        type: 'apply-presentation',
+      });
+    }
+    activeSemanticPlan = conversationPlan;
+    pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {
+      pageId: model.pageId,
+      plan: conversationPlan,
+      revision: model.revision,
+      type: 'apply-semantic',
+    });
+  }
+
+  appendConversationMessage('assistant', response.assistantMessage);
+  conversationState = { ...conversationState, status: 'idle' };
+  publishConversationState();
+  return response;
 }
 
 function invalidateAdaptation(): void {
@@ -383,9 +582,8 @@ async function loadPage(address: string): Promise<void> {
 
   try {
     await pageView.webContents.loadURL(normalizeAddress(address));
-  } catch (error) {
-    navigationError =
-      error instanceof Error ? error.message : 'This page could not be loaded.';
+  } catch {
+    navigationError = friendlyNavigationError(null);
     publishNavigationState();
   }
 }
@@ -393,6 +591,18 @@ async function loadPage(address: string): Promise<void> {
 function attachPageEvents(view: WebContentsView): void {
   const { webContents } = view;
 
+  webContents.on('before-input-event', (event, input) => {
+    if (
+      input.meta &&
+      !input.alt &&
+      !input.control &&
+      input.key.toLocaleLowerCase() === 'l'
+    ) {
+      event.preventDefault();
+      mainWindow?.webContents.focus();
+      mainWindow?.webContents.send(IPC_CHANNELS.focusAddress);
+    }
+  });
   webContents.on('did-start-loading', () => {
     navigationError = null;
     invalidateSemanticAnalysis();
@@ -406,11 +616,11 @@ function attachPageEvents(view: WebContentsView): void {
   webContents.on('page-title-updated', publishNavigationState);
   webContents.on(
     'did-fail-load',
-    (_event, errorCode, errorDescription, _validatedUrl, isMainFrame) => {
+    (_event, errorCode, _errorDescription, _validatedUrl, isMainFrame) => {
       if (!isMainFrame || errorCode === -3) {
         return;
       }
-      navigationError = errorDescription;
+      navigationError = friendlyNavigationError(errorCode);
       publishNavigationState();
     },
   );
@@ -442,6 +652,7 @@ function registerIpc(): void {
     return pageIntelligenceState;
   });
   ipcMain.handle(IPC_CHANNELS.getAdaptationState, () => adaptationState);
+  ipcMain.handle(IPC_CHANNELS.getConversationState, () => conversationState);
   ipcMain.handle(
     IPC_CHANNELS.getSemanticAnalysisState,
     () => semanticAnalysisState,
@@ -511,6 +722,13 @@ function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.resetProfile, async () => {
     if (profileStore === null) throw new Error('Profile store is not ready.');
     await profileStore.reset();
+    conversationState = conversationStateSchema.parse({
+      currentIntent: null,
+      messages: [],
+      pendingMemory: null,
+      status: 'idle',
+    });
+    publishConversationState();
     onboardingActive = true;
     updatePageBounds();
   });
@@ -519,6 +737,78 @@ function registerIpc(): void {
     async (_event, untrustedRequest: unknown) => {
       const request = onboardingTurnRequestSchema.parse(untrustedRequest);
       return onboardingProvider.turn(request);
+    },
+  );
+  ipcMain.handle(
+    IPC_CHANNELS.conversationTurn,
+    async (_event, untrustedRequest: unknown) => {
+      try {
+        return await runConversationTurn(untrustedRequest);
+      } catch (error) {
+        conversationState = { ...conversationState, status: 'idle' };
+        publishConversationState();
+        throw error;
+      }
+    },
+  );
+  ipcMain.handle(IPC_CHANNELS.confirmMemory, async () => {
+    if (profileStore === null) throw new Error('Profile store is not ready.');
+    if (conversationState.pendingMemory === null) {
+      throw new Error('There is no preference waiting for confirmation.');
+    }
+    const profile = await profileStore.load();
+    if (profile === null) throw new Error('Complete Learn Me first.');
+    const preference = conversationState.pendingMemory.preference;
+    const learnedPreferences = [
+      ...profile.learnedPreferences.filter(
+        (item) => item.toLocaleLowerCase() !== preference.toLocaleLowerCase(),
+      ),
+      preference,
+    ].slice(-20);
+    const saved = await profileStore.save({
+      ...profile,
+      learnedPreferences,
+      updatedAt: new Date().toISOString(),
+    });
+    conversationState = {
+      ...conversationState,
+      pendingMemory: null,
+    };
+    appendConversationMessage('assistant', 'Remembered. I’ll use that preference on later pages.');
+    publishConversationState();
+    return saved;
+  });
+  ipcMain.handle(IPC_CHANNELS.dismissMemory, () => {
+    conversationState = {
+      ...conversationState,
+      pendingMemory: null,
+    };
+    publishConversationState();
+  });
+  ipcMain.handle(
+    IPC_CHANNELS.updateLearnedPreferences,
+    async (_event, untrustedUpdate: unknown) => {
+      if (profileStore === null) throw new Error('Profile store is not ready.');
+      const update = learnedPreferencesUpdateSchema.parse(untrustedUpdate);
+      const profile = await profileStore.load();
+      if (profile === null) throw new Error('Complete Learn Me first.');
+      const learnedPreferences = update.preferences
+        .map((preference) => preference.trim())
+        .filter(
+          (preference, index, preferences) =>
+            preference.length > 0 &&
+            preferences.findIndex(
+              (candidate) =>
+                candidate.toLocaleLowerCase() ===
+                preference.toLocaleLowerCase(),
+            ) === index,
+        )
+        .slice(-20);
+      return profileStore.save({
+        ...profile,
+        learnedPreferences,
+        updatedAt: new Date().toISOString(),
+      });
     },
   );
   ipcMain.handle(
@@ -581,6 +871,9 @@ function registerIpc(): void {
         payload.data.operation === 'semantic' &&
         pendingSemanticPlan?.plan.pageId === payload.data.pageId
       ) {
+        if (payload.data.status !== 'failed') {
+          activeSemanticPlan = pendingSemanticPlan.plan;
+        }
         semanticAnalysisState = {
           appliedCount:
             payload.data.status === 'failed'
