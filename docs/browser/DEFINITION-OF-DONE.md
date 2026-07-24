@@ -5,43 +5,48 @@ AURA is event-ready only when every required item below is true on the primary m
 ## Learn Me
 
 - First launch clearly explains what AURA does.
-- User can complete onboarding without developer guidance.
-- Onboarding asks experiential, non-diagnostic questions.
-- At least three calibration interactions visibly change the onboarding experience.
-- A meaningful profile is created in roughly 60–90 seconds on the demo path.
+- User completes onboarding without developer guidance.
+- Questions are experiential and non-diagnostic.
+- Reading, interaction, and attention/presentation calibration visibly change the onboarding UI.
+- A meaningful profile is created in roughly 60–90 seconds.
 - Profile persists after restart.
 - User can reset/re-run onboarding.
+- AI failure still leaves a usable deterministic calibration path.
 
 ## Browser
 
-- App launches reliably on macOS.
+- `darwin-arm64` app/dev launch is reliable on the event Mac.
 - Address/search field works.
 - Back, forward, and refresh work.
 - Ordinary HTTPS websites render normally.
-- Window resizing does not break page/panel layout.
-- Visible UI contains no debug panels, raw JSON, or placeholder controls.
+- Local React shell and remote PageView stay visually/architecturally separate.
+- Page preload runs after ordinary navigation/reload.
+- Window/panel resizing does not break layout.
+- Event UI contains no debug panels, raw JSON, or placeholder controls.
 
 ## Page Intelligence
 
-- AURA runtime injects idempotently.
-- Stable AURA target IDs exist for relevant page elements.
-- DOM/layout snapshot works on the pinned Electron version.
-- Accessibility tree capture works on the pinned Electron version.
+- Remote page preload assigns stable AURA target IDs idempotently.
+- Ranked runtime model captures major headings, regions, controls, forms/labels, and substantial text.
+- Geometry/selected styles are available for meaningful targets.
 - Screenshot capture works.
 - Balanced PageModel does not simply truncate DOM order.
-- SPA/navigation invalidation works for tested routes.
-- At least 20 real pages produce useful models before flagship implementation is declared complete.
+- SPA/navigation revision invalidation works for tested routes.
+- Optional CDP Accessibility/DOMSnapshot features are required only if the implementation actually depends on them.
+- At least 20 real pages produce useful models before W3/W4 are considered ready.
+- At least five of those pages are late/random rather than extractor tuning fixtures.
 
 ## Make This Mine
 
 - Clicking Make This Mine produces immediate deterministic visual change.
-- AI refinement can materially change hierarchy/focus/content presentation.
-- Same page adapts differently for at least two different profiles.
+- AI refinement materially improves hierarchy/focus/content presentation on ordinary pages.
+- Same page adapts meaningfully differently for at least two profiles.
+- Tier 0–3 interventions work without requiring arbitrary DOM reconstruction.
 - Text simplification is targeted and reversible.
-- Secondary content can be de-emphasized/collapsed without losing required primary actions on the corpus.
-- Form/task guidance can point to original controls.
+- Secondary content can be de-emphasized/collapsed without losing primary actions on the required corpus.
+- Form/task guidance points to original controls.
 - Model timeout/unavailability leaves useful local adaptation.
-- No required demo page loses entered form values because of AURA.
+- Required demo pages retain entered form values and ordinary control behavior.
 
 ## Original ↔ AURA
 
@@ -51,24 +56,22 @@ AURA is event-ready only when every required item below is true on the primary m
 
 ## Talk to AURA
 
-The following intents work reliably:
+The four action families work reliably with natural phrasing:
 
-- make this easier;
-- explain this;
-- focus on a stated goal;
-- change presentation/interaction comfort;
-- guide through a task/form;
-- remember a confirmed preference.
+- **Adjust** — easier/bigger/calmer/more or less detail;
+- **Explain** — explain relevant content;
+- **Goal / Guide** — focus on a stated goal and guide through original controls;
+- **Remember** — persist a confirmed preference.
 
-At least three different page categories have been used to demonstrate these intents.
+At least three different page categories demonstrate these actions.
 
 ## Memory
 
-- Explicit user preference can be remembered.
+- Explicit global user preference can be remembered.
 - Remembered preference changes a later interaction where relevant.
-- Site-specific preference can be stored.
-- User can inspect and forget persistent memory.
-- Session intent survives navigation during the current session.
+- User can inspect/edit/forget persistent memory.
+- Session intent survives relevant navigation during the current session.
+- Site-specific preference memory is optional for the event build.
 
 ## Product polish
 
@@ -77,8 +80,9 @@ At least three different page categories have been used to demonstrate these int
 - Make This Mine has a polished transition/state sequence.
 - Reduced-motion preference is respected by AURA UI.
 - Keyboard access covers primary AURA controls.
-- AURA controls have meaningful accessibility names for VoiceOver.
+- AURA controls have meaningful VoiceOver names.
 - Errors are presented in user language, not stack traces.
+- AI waiting states feel intentional and never freeze the whole browser.
 
 ## Real-site reliability
 
@@ -88,19 +92,19 @@ At least three different page categories have been used to demonstrate these int
 - Original restore succeeds on 100% of the required demo corpus.
 - No known crash remains on the prepared judging path.
 
-These percentages are internal engineering targets only, not accessibility/compliance claims.
+These percentages are internal engineering targets, not accessibility/compliance claims.
 
 ## Event rehearsal
 
-- Clean launch → onboarding → arbitrary website → Make This Mine → Talk to AURA → memory → Original has been rehearsed end-to-end at least three times.
-- At least three websites used in final rehearsal were not the day's primary development fixtures.
+- Clean launch → Learn Me → arbitrary website → Make This Mine → Talk to AURA → Remember → Original is rehearsed end-to-end at least three times.
+- At least three final-rehearsal sites were not primary development fixtures.
 - Packaged macOS build exists.
 - Development-launch fallback exists.
-- API credentials/config are verified on event network or hotspot.
+- OpenAI credentials/config are verified on the event network or hotspot.
 - A seeded backup profile/memory file exists.
 
 ## Scope freeze
 
-Once every required item above is green, do not add features.
+Once every required item is green, no new features.
 
 Only bug fixes, reliability improvements, copy fixes, and visual polish are allowed before the event.
