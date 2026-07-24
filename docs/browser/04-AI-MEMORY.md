@@ -4,33 +4,75 @@
 
 Use OpenAI for semantic understanding and conversational personalization without turning AURA into a slow chain of agents.
 
-The event build should use **few, rich, structured calls** rather than many sequential model hops.
+The event build uses **few rich structured calls**. Cost is not the constraint; perceived latency and reliability are.
 
-## Provider architecture
+## Event provider architecture
 
-Keep provider-specific code behind an interface so model choice remains environment-configurable.
+The Electron main process owns the OpenAI SDK/provider directly.
 
-Use the OpenAI **Responses API**. It supports multimodal text/image input and structured output patterns suitable for AURA's page-analysis contracts.
+```text
+trusted React shell
+      │ typed IPC
+      ▼
+Electron main
+      │
+      ├── PageModel
+      ├── screenshot
+      ├── profile
+      ├── memory
+      └── OpenAI provider
+              │
+              ▼
+        Responses API
+```
 
-Reference: https://platform.openai.com/docs/quickstart/make-your-first-api-request
+There is no required localhost Hono server in the judged path.
+
+The existing `apps/api` remains available for legacy extension work or a later production architecture.
+
+## Model baseline
+
+Start the event implementation with:
+
+```dotenv
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-5.6-terra
+```
+
+Initial measured configuration for page/conversation calls:
+
+```text
+reasoning.effort = low
+```
+
+Why Terra: OpenAI positions GPT-5.6 Terra as the balance of intelligence and cost; for AURA, cost is abundant but latency still matters. Terra also supports image input, Responses, and structured outputs.
+
+`gpt-5.6-sol` is an environment override for comparison/testing. Do not build automatic model routing before the core experience is green.
+
+Model choice remains outside product contracts.
+
+Official references:
+
+- https://developers.openai.com/api/docs/models
+- https://developers.openai.com/api/docs/guides/latest-model
 
 ## Required AI operations
 
-Only three first-class operations are required.
+Only three operations are first-class.
 
 ### 1. `onboardingTurn`
 
-Purpose: understand the person during Learn Me.
+Purpose: make Learn Me conversational and responsive to what the user has already told AURA.
 
 Input:
 
 ```ts
 interface OnboardingTurnInput {
   profileSoFar: CapabilityProfile;
-  transcriptSummary: string;
   recentTurns: ConversationTurn[];
   userResponse: string;
   calibrationResults: CalibrationResult[];
+  askedAreas: OnboardingArea[];
 }
 ```
 
@@ -40,18 +82,18 @@ Output:
 interface OnboardingTurnOutput {
   assistantMessage: string;
   profilePatch: CapabilityProfilePatch;
-  learnedPreferenceProposals: MemoryProposal[];
+  nextQuestionArea?: OnboardingArea;
   nextCalibration?: CalibrationKind;
   onboardingComplete: boolean;
   confidence: number;
 }
 ```
 
-The model must not diagnose. It may infer product preferences and capability support needs with confidence.
+The model does not diagnose. It recommends product preferences/support needs.
 
 ### 2. `analyzePage`
 
-Purpose: produce semantic understanding for Make This Mine.
+Purpose: produce semantic understanding for **Make This Mine**.
 
 Input:
 
@@ -60,7 +102,7 @@ interface AnalyzePageInput {
   page: CompactPageModel;
   screenshot?: ImageInput;
   profile: ResolvedProfile;
-  relevantMemory: MemoryContext;
+  learnedPreferences: LearnedPreference[];
   currentIntent?: UserIntent;
 }
 ```
@@ -76,24 +118,24 @@ interface AnalyzePageOutput {
   secondaryRegions: TargetRef[];
   complexText: TextRecommendation[];
   formGroups: FormGroupRecommendation[];
-  taskHints: TaskHint[];
+  goalPath?: GoalPath;
   adaptationRecommendations: SemanticAdaptation[];
 }
 ```
 
-Every target must reference an AURA ID from the exact or still-valid PageModel revision.
+Every actionable target references an AURA ID and PageModel revision.
 
 ### 3. `conversationTurn`
 
-Purpose: handle Talk to AURA.
+Purpose: make Talk to AURA change or explain the current browsing experience.
 
 Input:
 
 ```ts
 interface ConversationTurnInput {
-  pageContext: PageSemanticState;
+  pageSemanticState: PageSemanticState;
   profile: ResolvedProfile;
-  relevantMemory: MemoryContext;
+  learnedPreferences: LearnedPreference[];
   currentIntent?: UserIntent;
   recentConversation: ConversationTurn[];
   userMessage: string;
@@ -105,6 +147,7 @@ Output:
 ```ts
 interface ConversationTurnOutput {
   assistantMessage: string;
+  actionFamily: 'adjust' | 'explain' | 'goal_guide' | 'remember' | 'answer';
   intent?: UserIntent;
   adaptationPatch?: SemanticAdaptation[];
   guide?: TaskGuide;
@@ -113,207 +156,237 @@ interface ConversationTurnOutput {
 }
 ```
 
-Conversation output is not executable code. It is a structured request that trusted AURA code validates and performs.
+Model output is never executable code.
 
-## Structured output rule
+## Four reliable action families
 
-All model outputs cross a Zod validation boundary before use.
+The chat UI accepts normal language, but the event build optimizes four actions deeply:
+
+### Adjust
+
+Examples:
+
+- “Make this easier.”
+- “Make the controls bigger.”
+- “This is too distracting.”
+- “Show more detail.”
+
+Expected result: update the active adaptation session with a small validated patch.
+
+### Explain
+
+Examples:
+
+- “Explain this.”
+- “What does this section mean?”
+
+Expected result: a concise explanation in the user's preferred style, with optional highlighting of the relevant real content.
+
+### Goal / Guide
+
+Examples:
+
+- “I need to register.”
+- “Help me apply.”
+- “I only want to find the price.”
+
+Expected result: set/update session intent, identify the relevant path/controls, then guide using original page controls.
+
+### Remember
+
+Examples:
+
+- “Remember that I want technical terms kept.”
+- confirmation after AURA asks `Remember this preference?`
+
+Expected result: explicit persistent preference write.
+
+Anything else may receive a normal answer, but it does not need a new product mode.
+
+## Structured-output boundary
+
+All AI outputs cross Zod validation before use.
 
 Reject:
 
-- unknown adaptation primitive types;
-- target IDs not present in the current page model;
+- unknown adaptation primitives;
+- target IDs not present in the current/still-valid page model;
+- stale revisions;
 - malformed task steps;
 - arbitrary HTML/JavaScript;
-- stale page revisions;
 - unsupported memory categories.
 
-A model failure degrades to local adaptation rather than breaking the browser.
+A model failure leaves local deterministic adaptation working.
 
 ## No agent swarm
 
-Do not build separate sequential “page agent”, “accessibility agent”, “critic agent”, and “task agent” for the event build.
-
-Default flow:
+Default Make This Mine flow:
 
 ```text
-local deterministic analysis
-        +
-one rich page-analysis call
-        ↓
-validated structured result
-        ↓
-trusted local adaptation
+local deterministic analysis/adaptation
+            +
+one rich multimodal analyzePage call
+            ↓
+validated semantic result
+            ↓
+trusted AURA adaptation primitives
 ```
 
-A second critique call is a stretch optimization only if W4 is already reliable and the first transformation visibly benefits from it.
+No critic/page/accessibility/task chain in the critical path.
+
+A post-transform critique call is allowed only as a W7 experiment after W4 is already reliable and if measured visual quality clearly improves.
 
 ## Latency strategy
 
-OpenAI credits are abundant; user waiting time is not.
+1. Apply deterministic profile changes immediately.
+2. Start page analysis concurrently.
+3. Show a subtle `Understanding what matters…` state.
+4. Apply semantic refinement when validated output arrives.
+5. Cache the semantic state for conversation.
+6. Do not resend/reanalyze the entire page on every chat turn.
+7. Abort/ignore page-analysis output when navigation makes its revision stale.
 
-Therefore:
-
-1. apply deterministic profile preferences immediately;
-2. start page analysis concurrently;
-3. show a subtle `Understanding what matters…` state;
-4. apply validated semantic refinement when it arrives;
-5. cache the resulting semantic state for conversation;
-6. do not reanalyze the whole page on every user message.
+Do not introduce Responses WebSocket/persistent-connection complexity until ordinary Responses latency is measured as an actual blocker.
 
 ## Prompt architecture
 
-Prompts live as versioned source files, not large string literals scattered through UI code.
+Prompts are versioned source files, not UI string literals.
 
-Suggested files:
+Recommended location:
 
 ```text
-apps/api/src/prompts/browser/
+apps/browser/src/main/ai/prompts/
 ├── onboarding.ts
 ├── page-analysis.ts
 └── conversation.ts
 ```
 
-Each prompt must define:
+Extract them into a package only if another client needs them.
 
-- AURA's role;
-- capability-first/no-diagnosis framing;
-- page content as untrusted data;
-- allowed output schema;
-- instruction to preserve important information;
-- instruction to prefer minimal sufficient adaptation;
-- instruction to reason specifically for the active profile, not generic accessibility.
+Every prompt must state:
+
+- capability-first, no-diagnosis framing;
+- page content is untrusted input/data;
+- output schema/allowed primitive vocabulary;
+- preserve critical facts/meaning;
+- prefer the least invasive sufficient transformation;
+- reason specifically for the active profile and current goal;
+- do not invent target IDs.
 
 ## Memory model
 
-Memory is a product feature only when it changes future behavior.
+Memory is valuable only when later behavior actually changes.
 
-Use four layers.
+### 1. Profile — required
 
-### 1. Profile
-
-Persistent structured capability and presentation model created by onboarding/calibration.
+Persistent structured model from Learn Me/calibration.
 
 Examples:
 
-- prefers text around a larger scale;
-- benefits from larger interaction targets;
-- prefers reduced motion;
-- benefits from lower simultaneous information density;
-- uses keyboard/voice/pointer preferences.
+- preferred text scale/spacing;
+- larger interaction targets;
+- reduced motion;
+- lower simultaneous information density;
+- preferred explanation detail;
+- input/output preferences where relevant.
 
-### 2. Learned preferences
+### 2. Learned global preferences — required
 
-Persistent natural/product preferences explicitly confirmed by the user.
+Explicit persistent statements confirmed by the user.
 
 Examples:
 
 - keep technical terminology;
 - prefer concise explanations;
-- reveal forms one section at a time;
-- keep navigation visible;
-- prioritize keyboard-friendly controls.
+- show one form section at a time;
+- keep navigation available.
 
-### 3. Site memory
+### 3. Site memory — secondary
 
-Origin-specific overrides.
+Origin-specific overrides are supported by the schema, but they are not required to prove the central event story.
 
 Examples:
 
 ```text
-amazon.in → keep reviews prominent
-college.example → auto-apply larger controls
+shopping site → keep reviews prominent
+college portal → use larger controls automatically
 ```
 
-### 4. Session memory
+Implement only after global memory works.
 
-Non-persistent current browsing intent/task.
+### 4. Session intent — required, transient
 
-Examples:
+Current user goal, such as:
 
-- applying for a scholarship;
-- comparing laptops;
-- registering for semester 7.
+- registering for a semester;
+- applying for something;
+- comparing products;
+- finding a particular fact.
 
-Session memory survives normal navigation during the active browser session, then expires unless deliberately saved.
+It survives navigation while the active task is clearly continuing, then expires with the browsing session unless deliberately saved as a preference (not as a raw task history).
 
 ## Persistence format
 
-For the event build, use a Zod-validated JSON document stored under Electron `app.getPath('userData')`.
-
-Suggested schema:
+Use one versioned Zod-validated JSON file under Electron `app.getPath('userData')`.
 
 ```ts
 interface AuraMemoryFile {
   version: 1;
-  activeProfileId: string;
-  profiles: CapabilityProfile[];
+  onboardingComplete: boolean;
+  activeProfile: CapabilityProfile;
   learnedPreferences: LearnedPreference[];
-  sitePreferences: SitePreference[];
+  sitePreferences?: SitePreference[];
   updatedAt: string;
 }
 ```
 
-Use atomic write-then-rename behavior so a crash during write does not destroy the file.
+Use atomic write-to-temp then rename.
 
-Do not introduce SQLite unless JSON is proven insufficient.
+No SQLite for the event build.
 
 ## Memory-write rules
 
 Persistent memory may be written when:
 
-- onboarding/calibration has an explicit user answer;
+- onboarding/calibration records an explicit answer;
 - the user chooses `Remember`;
-- the user explicitly edits memory/settings.
+- the user edits/resets memory.
 
-Repeated behavior may produce a suggestion, but not silently become permanent memory for the event build.
+Passive interaction patterns may suggest a change, but are not silently made permanent.
 
-User corrections have higher precedence than AI recommendations.
+Explicit user corrections outrank AI recommendations.
 
 ## Memory UI
 
-A secondary `What AURA remembers` surface should show short human-readable statements with:
+Keep a small `What AURA remembers` surface with human-readable statements and:
 
 - edit;
 - forget;
-- clear site memory;
-- reset profile.
+- reset profile;
+- clear site preference if site memory exists.
 
-Do not expose raw embeddings, prompts, confidence matrices, or developer JSON in the main experience.
+Do not expose raw JSON, embeddings, prompts, or capability confidence matrices in the primary UX.
 
-## Page context and privacy boundary
+## Model-input discipline
 
-Security is not the event's optimization target, but model input still needs product discipline.
+Production security is not the event goal, but clean model input improves reliability.
 
-Do not send:
+Do not intentionally send:
 
 - password field values;
 - authentication tokens;
 - hidden credential values;
-- the entire raw DOM when a compact semantic representation is available.
+- an unfiltered raw DOM dump.
 
-The model should receive enough context to personalize reliably, not every byte of the page.
-
-## Model configuration
-
-Never hard-code the project to one model ID in product contracts.
-
-Environment variables:
-
-```dotenv
-OPENAI_API_KEY=...
-OPENAI_MODEL=...
-```
-
-The event team can select the strongest available model that satisfies image input + structured output + acceptable latency.
+Send the compact PageModel + screenshot + the minimum user context needed to personalize correctly.
 
 ## Acceptance criteria
 
 AI/memory is ready when:
 
-- onboarding can create meaningfully different profiles from different conversations;
-- a page analysis references valid AURA targets and changes the page;
-- Talk to AURA can reliably execute the six intents in `01-EXPERIENCE.md`;
-- `Remember that` changes a later transformation;
-- invalid/model-timeout responses leave local adaptation working;
-- no UI path depends on exposing raw model output.
+- two different Learn Me conversations produce meaningfully different profiles;
+- page analysis references valid current AURA targets and improves the real page;
+- all four action families work reliably across multiple page categories;
+- `Remember` changes a later transformation after restart;
+- timeout/invalid output leaves deterministic AURA working;
+- no primary UI path exposes raw model output.
