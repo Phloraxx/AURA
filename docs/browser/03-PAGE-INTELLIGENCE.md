@@ -4,19 +4,25 @@
 
 The Page Intelligence Engine converts an arbitrary rendered webpage into a compact, stable semantic model that AURA can personalize.
 
-This replaces the extension-era strategy of taking a small prefix of matching DOM elements. The event build must reason about the page as a whole while still fitting within practical latency and model context limits.
+The event requirement is not to perfectly model the entire browser DOM. It is to reliably answer:
 
-## Design principle
+- what is this page for?
+- what content matters?
+- what can the user act on?
+- which parts are likely to create friction for this person?
+- which real elements can AURA safely target and later restore?
 
-**Rank and summarize; do not blindly truncate DOM order.**
+## Core principle
 
-A large navigation bar, product carousel, or repeated feed must not consume the representation before AURA reaches the page's real task/content.
+**Rank and summarize; never blindly truncate DOM order.**
 
-## Inputs
+A giant navigation bar, repeated product carousel, or feed must not consume the representation before AURA reaches the page's actual task/content.
 
-### 1. AURA DOM runtime
+## Primary source — page preload runtime
 
-The injected runtime marks relevant elements with stable IDs:
+The remote PageView preload is the main extraction source.
+
+It runs on every navigation and annotates meaningful targets:
 
 ```text
 data-aura-id="aura-123"
@@ -25,104 +31,26 @@ data-aura-id="aura-123"
 Eligible elements include:
 
 - headings;
-- paragraphs/text blocks;
-- links;
-- buttons;
+- substantial text blocks;
+- links and buttons;
 - form controls and labels;
-- landmarks;
-- lists/tables where meaningful;
-- images with useful alt text;
+- semantic landmarks;
 - dialogs;
-- likely cards/sections;
-- elements with explicit ARIA roles;
+- meaningful lists/tables;
+- images with useful alt text;
+- cards/sections with clear visual or semantic boundaries;
+- explicit ARIA-role elements;
 - significant visible containers.
 
 Do not annotate every wrapper `div`.
 
-### 2. DOMSnapshot
+### Why runtime-first
 
-Use `DOMSnapshot.captureSnapshot` for a flattened DOM/layout view with a deliberately small computed-style list.
-
-Initial style whitelist:
-
-- `display`
-- `visibility`
-- `opacity`
-- `position`
-- `font-size`
-- `font-weight`
-- `line-height`
-- `color`
-- `background-color`
-- `overflow`
-- `cursor`
-
-Add fields only when a transformation or scoring rule needs them.
-
-CDP reference: https://chromedevtools.github.io/devtools-protocol/tot/DOMSnapshot/
-
-### 3. Accessibility tree
-
-Use `Accessibility.getFullAXTree` or a narrower partial query after a W2 spike confirms performance.
-
-Useful attributes include:
-
-- role;
-- accessible name;
-- value/state where relevant;
-- hierarchy;
-- ignored state;
-- focusability/interaction semantics.
-
-The Accessibility domain is experimental, so the exact Electron/CDP version used for the demo must be pinned and tested.
-
-Reference: https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/
-
-### 4. Screenshot
-
-Capture the visible PageView after load/settle and before deep adaptation.
-
-The screenshot is supporting visual context, not the sole representation. DOM/AX semantics remain primary because they map back to actionable elements.
-
-A second screenshot may be captured after adaptation for local/debug comparison or an optional AI critique pass, but this is not required for W4 completion.
-
-## Page lifecycle
-
-### Navigation start
-
-- invalidate the previous PageModel;
-- stop/debounce pending AI results for the old URL;
-- preserve the user's persistent profile and relevant site memory.
-
-### DOM ready
-
-- inject the AURA runtime;
-- establish stable AURA IDs;
-- start mutation observation.
-
-### Initial settle
-
-Wait for one of:
-
-- load completion plus a short quiet window;
-- DOM ready plus a bounded timeout for SPAs.
-
-Do not wait indefinitely for network idle because modern pages may keep connections open.
-
-### Re-analysis
-
-Trigger lightweight refresh when:
-
-- SPA route changes;
-- a major modal/page region appears;
-- the user explicitly asks AURA about newly loaded content;
-- DOM mutation volume crosses a threshold.
-
-Do not rerun full OpenAI analysis on every mutation.
+The preload can directly produce the fields AURA actually needs while preserving the exact AURA target ID used for later transformation. It avoids mandatory merging of separate DOMSnapshot node indexes back into the actionable runtime model.
 
 ## Candidate feature model
 
-For each eligible element, derive local features such as:
+For each eligible target, derive a compact feature record:
 
 ```ts
 interface ElementFeatures {
@@ -137,147 +65,273 @@ interface ElementFeatures {
   inViewport: boolean;
   rect?: { x: number; y: number; width: number; height: number };
   fontSizePx?: number;
+  fontWeight?: number | string;
+  lineHeightPx?: number;
+  display?: string;
+  position?: string;
   interactive: boolean;
   landmark?: string;
   headingLevel?: number;
   formAssociation?: string;
   textLength: number;
   childCount: number;
+  repetitionKey?: string;
 }
 ```
 
-Do not include password values or arbitrary typed form values in the AI representation.
+Computed styles should be deliberately limited to fields that influence ranking or transformations.
+
+Do not include password values or arbitrary typed form values.
+
+## Accessible semantics
+
+The runtime should derive what it can from ordinary HTML/ARIA first:
+
+- native element role;
+- `role`;
+- `aria-label` / `aria-labelledby`;
+- associated `<label>`;
+- `alt`;
+- button/link text;
+- heading/landmark structure;
+- disabled/expanded/selected state where useful.
+
+### Optional CDP Accessibility enrichment
+
+Use Chromium's Accessibility domain when W2 testing shows it adds meaningful names/roles/state for complex widgets.
+
+Do **not** make a full AX-tree request a precondition for every local PageModel.
+
+The Accessibility domain is experimental, so pin the Electron version and test exactly the methods used.
+
+Reference: https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/
+
+## Screenshot
+
+Capture the visible PageView after initial settle and before deep AI adaptation.
+
+The screenshot is a normal input to multimodal page analysis because visual prominence cannot always be inferred from DOM semantics alone.
+
+DOM/runtime semantics remain primary for actions because they map back to real targets.
+
+Use viewport screenshots for the event baseline; do not build stitched full-page capture until a measured need appears.
+
+## DOMSnapshot — fallback, not default
+
+`DOMSnapshot.captureSnapshot` is available through CDP and can expose flattened DOM/layout/style data.
+
+Use it during W2 investigation or as a targeted fallback when the runtime cannot model an important page pattern, such as a complex shadow/frame/layout case.
+
+Do not permanently add it to every page-analysis critical path without evidence from the real-site matrix that it improves reliability.
+
+Reference: https://chromedevtools.github.io/devtools-protocol/tot/DOMSnapshot/
+
+## Page lifecycle
+
+### Navigation start
+
+- invalidate the old PageModel revision;
+- cancel/ignore stale AI results;
+- preserve user profile and relevant remembered preferences;
+- keep session intent only when navigation is part of the same active user goal.
+
+### DOM ready
+
+The page preload is already present. It:
+
+- begins AURA-ID annotation;
+- establishes mutation observation;
+- emits the first local model when the page is useful enough to inspect.
+
+### Initial settle
+
+Use a bounded quiet-window strategy:
+
+- document ready/DOMContentLoaded;
+- short mutation quiet period;
+- maximum timeout so SPAs that keep loading cannot stall AURA forever.
+
+Never wait for indefinite network idle.
+
+### Re-analysis
+
+Refresh local PageModel when:
+
+- SPA route changes;
+- a major modal/region appears;
+- the user asks about newly loaded content;
+- meaningful mutation volume crosses a threshold.
+
+Do not call OpenAI for every mutation.
+
+## Stable target IDs
+
+AURA IDs are page-session target identifiers, not permanent identifiers across unrelated reloads.
+
+Rules:
+
+- existing eligible nodes keep the same ID while they remain in the document;
+- new eligible nodes receive new IDs;
+- removed IDs become invalid;
+- AURA never assumes an ID from an old navigation still refers to anything;
+- every semantic plan includes the PageModel revision it was produced against.
 
 ## Ranking
 
-The initial heuristic should reward elements likely to carry semantic or task value.
+Start with explainable heuristics and tune against real pages.
 
-Illustrative scoring, to be tuned with tests:
+Illustrative signals:
 
 ```text
 +50 inside main/article
-+40 interactive form control
-+35 heading
++45 interactive form control
++40 heading
 +30 visible in viewport
-+25 primary landmark
-+25 button/link with accessible name
-+20 substantial visible text block
-+15 explicit ARIA role
-+15 associated form label
-+10 large visual area
++30 named button/action
++25 landmark/large content region
++20 substantial text block
++20 associated form label
++15 strong visual prominence
++10 large useful region
 -20 repeated navigation/list item
--25 visually hidden/offscreen utility content
--30 tiny decorative container
+-25 utility/offscreen content
+-30 tiny decorative target
 -40 duplicate text/structure
 ```
 
-Do not treat these numbers as product truth. They are an implementation heuristic and must be tuned against the real-site corpus.
+These values are implementation heuristics, not product scores.
+
+## Repetition summarization
+
+Repeated structures are one of the biggest arbitrary-site failure risks.
+
+Detect and summarize patterns such as:
+
+- navigation links;
+- product cards;
+- feed items;
+- table rows;
+- footer link groups;
+- recommendation carousels.
+
+The compact model may keep a few representative members plus a count/summary instead of sending every repeated node.
 
 ## Representation budget
 
-Do not use one flat `slice(N)`.
+Build a balanced payload by category, not one `slice(N)`.
 
-Build a balanced payload with category quotas, for example:
+Guarantee representation for:
 
-- page metadata;
-- top landmarks/regions;
-- all important visible headings up to a cap;
-- primary forms and controls;
-- top text blocks;
-- top interactive actions;
+- page title/metadata;
+- main landmarks/regions;
+- visible headings;
+- forms and labels;
+- important interactive controls;
+- substantial text blocks;
+- visible-viewport content;
 - representative navigation;
-- repeated structures summarized rather than repeated;
-- viewport-local elements guaranteed representation.
+- representative repeated structures.
 
-Initial target: roughly **120–200 high-value nodes**, adjusted after measuring latency/context size.
+Starting target: roughly **120–200 high-value targets**, adjusted after measuring actual input size and quality.
+
+The model context window is not the reason to send noise. A smaller useful representation is easier to reason over and map back to the page.
 
 ## Canonical PageModel
-
-The output consumed by AURA Brain should resemble:
 
 ```ts
 interface PageModel {
   pageId: string;
+  revision: number;
   url: string;
   title: string;
   capturedAt: string;
   viewport: { width: number; height: number };
-  pageKindHint?: string;
   regions: PageRegion[];
   elements: PageElement[];
   forms: PageForm[];
+  repeatedStructures: RepeatedStructureSummary[];
   visibleAuraIds: string[];
-  screenshot?: ScreenshotRef;
-  revision: number;
+  extractionHealth: ExtractionHealth;
 }
 ```
 
-`PageModel` is local deterministic observation. AI output is separate.
+Screenshot bytes/reference are transported beside the compact PageModel rather than embedded as PageElement data.
 
-## AI semantic analysis output
+`PageModel` is deterministic observation. AI semantic interpretation is separate.
 
-AI may classify:
+## Semantic AI output
+
+AI may identify:
 
 - page purpose/type;
-- primary content regions;
-- primary/secondary actions;
-- important deadlines/prices/status information;
+- primary content;
+- primary and secondary actions;
+- important facts such as deadlines/prices/status;
 - secondary/distraction regions;
-- complex text worth simplifying;
-- form groups and likely order;
-- likely task paths;
+- dense text worth simplifying;
+- form groups/order;
+- likely path for the user's current goal;
 - confidence per structural recommendation.
 
-All target references must be AURA IDs present in the current PageModel revision.
+Every actionable target reference must be an AURA ID from the current or still-valid PageModel revision.
 
-Stale IDs or revision mismatches are rejected.
+## Confidence and fallback
 
-## Dynamic pages
+Keep confidence internal.
 
-The AURA runtime maintains IDs for existing elements and assigns IDs to newly eligible elements.
+`extractionHealth` may consider:
 
-A meaningful mutation increments the PageModel revision. AI results created for an older revision may still be used only if every referenced target still exists and passes validation.
+- enough semantic targets found;
+- heading/main/action structure found;
+- forms/labels modeled correctly where present;
+- screenshot success;
+- mutation/runtime health;
+- target IDs valid.
 
-For SPAs, listen to navigation events plus injected `history.pushState`/`replaceState`/`popstate` observation where required.
+Low confidence causes conservative transformation tiers. It does not produce a user-facing score.
 
-## Iframes
+## Dynamic pages / SPAs
 
-W2 requirement: correctly model the main frame.
+The preload maintains IDs and observes mutations.
 
-W7 hardening: add same-origin and CDP-visible subframe support where it materially improves the site corpus. Cross-frame transformations must never be required for the core demo.
+Listen to Electron navigation events and page-side History API route changes where necessary.
 
-## Confidence/fallback
+A semantic result for an older revision can be applied only when every referenced target still exists and passes validation; otherwise discard/reanalyze.
 
-AURA Brain should receive a local `pageConfidence` derived from basic model health:
+## Iframes and shadow DOM
 
-- enough semantic nodes found;
-- main/heading/action structure present;
-- screenshot available;
-- runtime IDs healthy;
-- no catastrophic extraction error.
+W2 core requirement is the main frame and ordinary open shadow DOM that the runtime can access.
 
-Low confidence does not create another user-facing score. It simply causes AURA to use more conservative transformation primitives.
+Do not spend W2 on universal cross-origin iframe transformation.
 
-## Performance targets
+During W7, add targeted frame/CDP handling only for failure patterns that actually appear in the judge-like site corpus.
 
-Targets are event goals, not guarantees:
+## Performance goals
 
-- runtime injection/initial local model: < 500 ms after usable DOM on ordinary pages;
-- deterministic Make This Mine response: perceived within 300 ms after click;
-- full page model capture: normally < 1.5 s;
-- AI refinement should stream/status visibly rather than freeze the UI.
+Measure rather than assume.
 
-Measure these during W2/W4 and record actual results in `STATUS.md` or test artifacts.
+Initial event targets:
 
-## W2 acceptance criteria
+- first local usable model: normally < 500 ms after usable DOM;
+- deterministic Make This Mine response: perceived < 300 ms after click;
+- rich compact model + screenshot ready: normally < 1.5 s on ordinary pages;
+- AI runs asynchronously without freezing navigation/UI.
 
-Before onboarding or new UI work proceeds, Page Intelligence must be demonstrated on at least 20 real pages across the categories in `07-TESTING-DEMO.md` and must reliably identify:
+Record measured results during W2/W4.
 
-- page title/purpose hints;
+## W2 acceptance gate
+
+Before W3 onboarding feature work begins, demonstrate Page Intelligence on at least **20 real pages** across the testing categories.
+
+It must reliably identify:
+
 - major headings/regions;
-- primary visible controls;
+- primary visible controls/actions;
 - forms and labels;
-- substantial text blocks;
-- stable IDs that can be targeted and restored.
+- substantial text;
+- visible viewport context;
+- stable targets that can be highlighted/scrolled/restored.
 
-If this is not reliable, do not hide the problem by adding more AI prompts. Fix extraction first.
+At least five pages should be chosen **after** the extractor is mostly complete so we are not merely tuning against a fixed corpus.
+
+If extraction is weak, stop and fix extraction. Do not compensate with more elaborate prompts.
