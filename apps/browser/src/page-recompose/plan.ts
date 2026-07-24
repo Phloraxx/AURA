@@ -374,7 +374,11 @@ export function refinePageRecomposeWithSemantic(
 }
 
 export function inferPresetFromSettings(settings: {
-  informationDensity?: 'standard' | 'calm' | 'step_by_step';
+  informationDensity?:
+    | 'standard'
+    | 'calm'
+    | 'step_by_step'
+    | undefined;
   reduceMotion: boolean;
   targetSizePx: number;
   textScale: number;
