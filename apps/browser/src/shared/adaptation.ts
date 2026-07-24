@@ -5,6 +5,7 @@ import { recomposePlanSchema } from './recompose';
 import { semanticPlanSchema } from './semantic-analysis';
 
 export const presentationSettingsSchema = z.object({
+  informationDensity: z.enum(['standard', 'calm', 'step_by_step']),
   lineSpacing: z.number().min(1).max(2),
   readingWidth: z.enum(['normal', 'narrow']),
   reduceMotion: z.boolean(),
@@ -74,6 +75,7 @@ export function presentationSettingsFromProfile(
   profile: BrowserProfile,
 ): PresentationSettings {
   return presentationSettingsSchema.parse({
+    informationDensity: profile.preferences.informationDensity,
     lineSpacing: profile.preferences.lineSpacing,
     readingWidth: profile.preferences.readingWidth,
     reduceMotion: profile.preferences.reduceMotion,
