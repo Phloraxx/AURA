@@ -1,10 +1,10 @@
 # AURA Browser — Source of Truth
 
-This directory is the canonical specification for the `aura-browser` branch.
+This directory is the canonical specification for the `aura-browser` branch and, after PR #2 merges, for `main`.
 
 ## Authority
 
-For this branch, `docs/browser/` overrides extension-era documents whenever they conflict. Older documents remain historical reference only.
+For this product line, `docs/browser/` overrides extension-era documents whenever they conflict. Older documents remain historical reference only.
 
 No implementation decision may silently contradict this source of truth. Material changes must be recorded in `08-DECISIONS.md` first.
 
@@ -28,9 +28,10 @@ Everything else is supporting infrastructure or a small control.
 - **Remote integration:** dedicated page preload in an isolated world.
 - **Page intelligence:** ranked runtime DOM model + geometry/styles + viewport screenshot, with selective CDP Accessibility/DOMSnapshot enrichment only when it proves useful.
 - **AI:** OpenAI Responses API called directly from Electron main for the event build.
-- **Event model baseline:** `gpt-5.6-luna`, high reasoning; model remains configurable and API usage must stay within the approximately USD 50 event budget.
+- **Event AI:** `gpt-5.6-luna`; page analysis defaults to medium reasoning and remains configurable. Total event API use must stay within the approximately USD 50 budget.
 - **Persistence:** versioned local JSON.
 - **Build/dev:** `electron-vite`; Electron Forge only for final packaging.
+- **Merge quality:** GitHub Actions must pass lint, typecheck, tests, build, and Electron E2E for PRs into `main`.
 
 ## Product-scope rule
 
@@ -56,13 +57,13 @@ Otherwise defer it.
 9. `08-DECISIONS.md`
 10. `DEFINITION-OF-DONE.md`
 
-`STATUS.md` at repository root records the active milestone.
+`STATUS.md` at repository root records the active milestone and release evidence.
 
 ## Current stage
 
-W0 planning is accepted. Implementation begins at **W1 — Browser shell**.
+W1 through W6 are implemented. W7 hardening/release work is effectively complete except for the final credentialed OpenAI smoke test on the actual event network/hotspot and any issue that test reveals.
 
-No further broad product brainstorming is required before coding. Future ideas are deferred unless they fix a core blocker.
+The feature scope is frozen. Only reliability, release, copy, and measured latency fixes belong before the event.
 
 ## Research basis
 
