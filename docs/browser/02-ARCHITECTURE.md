@@ -2,237 +2,305 @@
 
 ## Goal
 
-Build the event browser as a thin macOS Electron shell around reusable AURA intelligence. The browser is a host and integration surface; the personalized adaptation engine is the product.
+Build the event browser as a thin macOS Electron shell around reusable AURA intelligence. The browser is only the host; personalized adaptation is the product.
 
-## Platform decision
+## Locked platform choices
 
-- **Primary OS:** macOS.
-- **Runtime:** Electron.
-- **Rendering engine:** Chromium bundled with Electron.
-- **Window composition:** `BaseWindow` + `WebContentsView`.
-- **Do not use:** Chromium source fork, Firefox source fork, deprecated `BrowserView`, or Electron `<webview>` for the primary architecture.
+- **Primary OS:** macOS on the team's Apple-Silicon MacBook.
+- **Package target:** `darwin-arm64`.
+- **Runtime:** Electron + bundled Chromium.
+- **Window composition:** one `BrowserWindow` for trusted AURA UI + one child `WebContentsView` for the remote page.
+- **Build/dev:** `electron-vite`.
+- **Packaging:** Electron Forge only after the judged flow is stable.
+- **Do not use:** Chromium/Firefox source forks, deprecated `BrowserView`, or Electron `<webview>`.
 
-Electron documents `WebContentsView` as the current view API for displaying and controlling `WebContents`; `BrowserView` is deprecated and Electron recommends `WebContentsView` over `<webview>` for embedded content.
+`BrowserWindow` extends `BaseWindow`; using its built-in renderer for the local shell removes two unnecessary local `WebContents` while preserving a separate directly controlled remote page view.
 
 References:
 
+- https://www.electronjs.org/docs/latest/api/browser-window
 - https://www.electronjs.org/docs/latest/api/web-contents-view
-- https://www.electronjs.org/docs/latest/api/base-window
-- https://www.electronjs.org/docs/latest/tutorial/web-embeds
+- https://electron-vite.org/guide/
+- https://www.electronjs.org/docs/latest/tutorial/application-distribution
 
 ## Repository shape
-
-The existing monorepo remains, but browser work is isolated from the legacy extension client.
 
 ```text
 AURA/
 ├── apps/
-│   ├── browser/              # new primary event client
-│   │   ├── src/main/         # Electron lifecycle, views, navigation, IPC
-│   │   ├── src/preload/      # narrow trusted bridges for local AURA UI
-│   │   └── src/renderer/     # React UI for chrome/panel/onboarding
-│   ├── api/                  # OpenAI-facing backend; evolve/reuse
-│   └── extension/            # legacy/reference client; not event priority
+│   ├── browser/                # primary event client
+│   │   ├── src/main/           # Electron lifecycle, page view, AI, memory, IPC
+│   │   ├── src/preload/
+│   │   │   ├── shell.ts        # narrow bridge for trusted local React UI
+│   │   │   └── page.ts         # AURA runtime for arbitrary remote pages
+│   │   └── src/renderer/       # one React shell: chrome + panel + onboarding
+│   ├── api/                    # legacy/extension backend; not required by browser demo
+│   └── extension/              # legacy/reference client
 │
 ├── packages/
-│   ├── shared/               # shared Zod contracts/types
-│   ├── profile/              # capability model + preference resolution
-│   ├── memory/               # persistent user/site memory
-│   ├── page-intelligence/    # DOM/AX/layout/screenshot modeling
-│   ├── adaptation/           # reversible page transforms
-│   └── aura-brain/           # orchestration of page + person + intent
+│   ├── shared/                 # common types/Zod contracts
+│   ├── profile/                # capability/preference model when extraction is useful
+│   ├── memory/                 # optional extracted memory package
+│   ├── page-intelligence/      # optional extracted PageModel logic
+│   ├── adaptation/             # optional extracted transformation logic
+│   └── ai/                     # optional provider/prompt package
 │
-├── docs/browser/             # canonical source of truth
+├── docs/browser/               # canonical source of truth
 └── STATUS.md
 ```
 
-Not all packages must exist on day one. Extract code only when a boundary is useful; do not perform a large refactor before W1 works.
+Do **not** create every package before it is needed. Start W1 inside `apps/browser`; extract a package only when two subsystems genuinely need the same logic.
 
-## Electron window composition
-
-Use one `BaseWindow` with three controlled views:
-
-1. **ChromeView** — local AURA React UI containing navigation/address/profile controls.
-2. **PageView** — remote webpage in a `WebContentsView`.
-3. **AuraPanelView** — local AURA React UI for Learn Me / page context / conversation.
-
-The main process owns their bounds and z-order.
+## Window composition
 
 ```text
-BaseWindow
-├── ChromeView      local AURA UI
-├── PageView        remote Chromium page
-└── AuraPanelView   local AURA UI
+BrowserWindow
+│
+├── Local shell renderer
+│   ├── navigation chrome
+│   ├── Learn Me
+│   ├── AURA panel / conversation
+│   ├── Original ↔ AURA
+│   └── memory/settings surfaces
+│
+└── child WebContentsView
+    └── arbitrary remote webpage
 ```
 
-This avoids trying to punch a webpage-shaped hole in one renderer and keeps direct access to the page's `webContents`.
+The local shell reserves the top-bar and optional right-panel areas. The main process resizes the child PageView into the remaining page rectangle.
 
-## Browser process responsibilities
+This gives us:
+
+- one local UI codebase;
+- one remote page process;
+- fewer IPC/layout/focus problems than three separate local/remote views;
+- direct access to `pageView.webContents`.
+
+## Main-process responsibilities
 
 `apps/browser/src/main` owns:
 
-- app/window lifecycle;
+- application/window lifecycle;
 - PageView creation/destruction;
-- navigation and history actions;
-- URL normalization/search fallback;
-- view bounds;
-- page load/navigation events;
-- CDP attachment and page snapshot requests;
+- address navigation and history actions;
+- URL/search normalization;
+- view bounds and panel resizing;
+- page title/loading/navigation state;
 - screenshots;
-- injection of the AURA page runtime;
+- optional CDP attachment/enrichment;
+- PageModel orchestration;
 - adaptation apply/revert commands;
-- persisted local browser/profile state;
-- typed IPC with local AURA UI.
+- local memory persistence;
+- OpenAI provider and calls for the event build;
+- typed IPC with the trusted local shell.
 
-The browser main process is the authority for which page is active.
+The main process is the authority for the active page and current PageModel revision.
 
-## Local renderer responsibilities
+## Trusted local shell
 
-ChromeView and AuraPanelView are trusted local UI only. They must not directly own remote webpage logic.
+The BrowserWindow renderer is local AURA UI only. It never loads arbitrary websites.
 
-They render:
+It renders:
 
-- onboarding;
-- browser chrome;
+- Learn Me;
+- navigation/address UI;
 - profile summary;
 - Make This Mine state;
-- conversation;
+- Talk to AURA;
 - Original/AURA toggle;
-- small memory/editor views;
-- loading/error states.
+- small memory editor;
+- loading/fallback/error states.
 
-All privileged operations are requested over a narrow typed IPC contract.
+A narrow shell preload exposes typed operations to the React renderer.
 
-## Page runtime
+## Remote PageView and AURA page preload
 
-The active PageView receives a lightweight AURA runtime injected by the browser.
+Create the remote `WebContentsView` with a dedicated local preload script.
 
-Responsibilities:
+Recommended preferences:
 
-- assign stable `data-aura-id` identifiers to relevant page elements;
-- observe meaningful DOM additions/removals using a debounced `MutationObserver`;
-- apply/remove trusted AURA classes/styles/attributes;
-- store original values needed for reversal;
-- expose element-level actions such as highlight, scroll, collapse, simplify text, enlarge, group, and restore;
-- report mutation/navigation invalidation back to the main process.
+```ts
+{
+  preload: PAGE_PRELOAD_PATH,
+  contextIsolation: true,
+  nodeIntegration: false,
+  sandbox: true
+}
+```
 
-The runtime must be idempotent: reinjection must not duplicate wrappers/styles/listeners.
+The preload executes before each remote document, has DOM access in its isolated world, and communicates with the Electron main process without exposing Electron APIs to the loaded site's page scripts.
+
+Page-preload responsibilities:
+
+- assign stable `data-aura-id` identifiers to meaningful elements;
+- derive local semantic/geometry/style features;
+- observe meaningful DOM mutations using a debounced `MutationObserver`;
+- apply/remove trusted AURA classes, attributes, text substitutions, and owned UI;
+- maintain the current adaptation/original-state registry;
+- support target actions: emphasize, deemphasize, collapse/restore, simplify/restore, highlight, scroll, enlarge;
+- notify the main process of major model invalidation.
+
+The runtime must be idempotent across ordinary navigation/reload behavior.
+
+References:
+
+- https://www.electronjs.org/docs/latest/tutorial/tutorial-preload
+- https://www.electronjs.org/docs/latest/tutorial/context-isolation
 
 ## Page intelligence inputs
 
-The browser may combine four sources:
+The default event pipeline is deliberately simpler than the first draft.
 
-1. **DOM annotation/runtime data** — stable AURA IDs and useful local features.
-2. **CDP DOMSnapshot** — DOM, layout, bounding geometry, selected computed styles, iframe structure.
-3. **CDP Accessibility tree** — accessible role/name/state structure.
-4. **Screenshot** — visible visual context for the AI model.
+### Always / primary
 
-Electron exposes `webContents.debugger` as a transport to Chrome DevTools Protocol.
+1. **AURA page-preload model** — stable target IDs, DOM semantics, geometry, selected computed styles, forms, headings, landmarks, text blocks.
+2. **Visible screenshot** — visual hierarchy/context for multimodal AI.
+
+### Selective enrichment
+
+3. **CDP Accessibility tree** — when useful for accessible roles/names/state or complex semantics.
+4. **CDP DOMSnapshot** — diagnostic/fallback for cases where W2 tests show the runtime misses important layout/frame/shadow structure.
+
+Do not merge a full DOMSnapshot into every PageModel merely because the API exists. W2 must prove that any extra source improves real-site reliability enough to justify complexity/latency.
+
+Electron exposes `webContents.debugger` as a CDP transport.
 
 References:
 
 - https://www.electronjs.org/docs/latest/api/debugger
-- https://chromedevtools.github.io/devtools-protocol/tot/DOMSnapshot/
 - https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/
+- https://chromedevtools.github.io/devtools-protocol/tot/DOMSnapshot/
 
 ## Core data flow
 
 ```text
-Page navigation
+Navigation
     │
     ▼
-Inject/refresh AURA page runtime
+remote page preload starts
     │
-    ├── local element model
-    ├── CDP DOM/layout snapshot
-    ├── CDP AX tree
-    └── screenshot
+    ├── stable AURA IDs
+    ├── semantic DOM features
+    ├── geometry/styles
+    └── mutation lifecycle
     │
-    ▼
-Page Intelligence Engine
-    │
-    ▼
-Canonical PageModel
-    │
-    ├── active Profile
-    ├── relevant Memory
-    └── current Intent
+    ├──────────────┐
+    │              │
+    ▼              ▼
+PageModel       Screenshot
+    │              │
+    ├──── optional AX/CDP enrichment
     │
     ▼
-AURA Brain
+Local deterministic policy
     │
-    ├── immediate deterministic plan
-    └── OpenAI semantic refinement
+    ├──────────────► immediate adaptation
     │
-    ▼
-Validated AdaptationPlan
-    │
-    ▼
-AURA page runtime
-    │
-    ▼
-Real webpage
+    └── profile + memory + current intent + screenshot
+                       │
+                       ▼
+                OpenAI Responses API
+                       │
+                       ▼
+             validated semantic plan
+                       │
+                       ▼
+               page-preload runtime
+                       │
+                       ▼
+                  real webpage
 ```
 
 ## Immediate vs AI path
 
-Make This Mine is intentionally two-phase.
-
 ### Immediate path
 
-Profile-derived local adaptations should apply without waiting for the network:
+Apply known user preferences without network latency:
 
 - text scale;
-- line spacing;
-- reading width;
+- line/paragraph spacing;
+- reading width where applicable;
 - motion reduction;
-- target sizing;
+- control target sizing;
 - focus visibility;
-- other deterministic preferences already known about the user.
+- other deterministic resolved preferences.
 
-### AI refinement path
+### AI path
 
-One richer page-analysis request then reasons over page semantics, user profile, current goal, relevant memory, and optionally a screenshot. It returns structured data that is validated before any transform is applied.
+One rich analysis request considers:
 
-This architecture optimizes perceived latency even when OpenAI latency varies.
+- compact PageModel;
+- visible screenshot;
+- resolved user profile;
+- relevant explicit memory;
+- current goal if present.
 
-## API/backend
+It returns structured semantic recommendations only. Trusted AURA primitives perform the changes.
 
-The existing `apps/api` can be evolved instead of replaced if its contracts remain useful.
+## OpenAI architecture for the event
 
-Required browser-era API operations:
+The Browser calls OpenAI directly from the Electron **main process**.
 
-- `POST /v1/onboarding/turn`
-- `POST /v1/page/analyze`
-- `POST /v1/conversation/turn`
+There is no required localhost API server in the judged path.
 
-Exact route names may differ during implementation, but there should be only a small number of coherent operations rather than one endpoint per UI feature.
+```text
+React shell
+   │ typed IPC
+   ▼
+Electron main
+   │
+   ├── profile/memory/PageModel
+   └── OpenAI SDK
+          │
+          ▼
+     Responses API
+```
 
-Provider model names must remain environment-configurable.
+The API key stays in local environment/config and is never placed in the remote page or shell renderer bundle.
+
+Keep provider code behind a small interface so moving it back to `apps/api` later remains straightforward.
+
+### Event baseline model
+
+Start measurement with:
+
+```text
+OPENAI_MODEL=gpt-5.6-terra
+reasoning.effort=low
+```
+
+Use structured outputs and image input. Model choice remains configurable; test `gpt-5.6-sol` only if a measured page-quality problem justifies the latency.
+
+Do not implement automatic model routing before core reliability is finished.
 
 ## Persistence
 
-For the event build use a simple local JSON store under Electron's `app.getPath('userData')` rather than introducing a native SQLite dependency unless JSON becomes a measured blocker.
+Use one versioned Zod-validated JSON document under Electron `app.getPath('userData')`.
 
-Persist:
+Persist only what matters:
 
+- onboarding completion;
 - active profile;
-- profile preferences/capabilities;
-- explicit learned preferences;
-- site-specific preferences;
-- onboarding completion.
+- capability/presentation preferences;
+- explicitly remembered global preferences;
+- optional site preferences when implemented.
 
-Session goal and transient page state remain in memory.
+Keep the current session goal/page state in memory.
 
-## Packaging/tooling
+Use write-to-temp + rename for atomic updates.
+
+## Tooling
 
 Use the existing pnpm workspace, TypeScript strict mode, React, Zod, Vitest, and Playwright where practical.
 
-For the Electron app, use Electron Forge with the Vite + TypeScript path for rapid event development and pin exact versions in the lockfile. Forge currently labels its Vite plugin experimental, which is acceptable for this prototype but must be validated in W1.
+For `apps/browser`:
 
-Reference: https://www.electronforge.io/templates/vite-%2B-typescript
+- `electron-vite` handles main/preload/renderer dev and build;
+- Electron Forge is introduced only for packaging the stable macOS build;
+- pin exact Electron/tool versions in the lockfile during W1;
+- do not replace the toolchain during W2–W7 unless it blocks the project.
 
-If Forge/Vite causes material instability during W1, record a decision and switch before feature work begins; do not carry tooling instability into W2+.
+Electron Forge's own Vite plugin is intentionally not used because it is currently marked experimental.
 
 ## Compatibility target
 
@@ -246,13 +314,13 @@ Expected strong categories:
 - forms/portals;
 - documentation;
 - most React/Vue/Angular SPAs;
-- dashboards with accessible DOM structure.
+- dashboards with meaningful DOM/ARIA structure.
 
 Known partial-support categories:
 
-- canvas/WebGL-dominant applications;
+- Canvas/WebGL-dominant applications;
 - DRM-heavy media;
 - some embedded authentication/user-agent-restricted flows;
 - browser-internal pages.
 
-For partial-support pages, AURA should remain useful through presentation changes and companion guidance rather than pretending full structural transformation is available.
+For partial-support pages, AURA should remain useful through presentation changes and companion explanation/guidance instead of pretending full structural transformation is available.
