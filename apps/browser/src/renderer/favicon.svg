@@ -1,8 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="15" fill="#245F43"/>
-  <rect x="2" y="2" width="60" height="60" rx="13" fill="none" stroke="#347E5A" stroke-width="1.5"/>
-  <path d="M17.5 46.5C19.9 32.3 25.1 20.2 32 13.5" fill="none" stroke="#FBF8EF" stroke-linecap="round" stroke-width="7"/>
-  <path d="M46.5 46.5C44.1 32.3 38.9 20.2 32 13.5" fill="none" stroke="#FBF8EF" stroke-linecap="round" stroke-width="7"/>
-  <path d="M24.5 35.5H39.5" fill="none" stroke="#DCEBDF" stroke-linecap="round" stroke-width="6"/>
-  <circle cx="32" cy="13.5" r="3.5" fill="#E8C978"/>
+  <defs>
+    <linearGradient id="halo" x1="12" x2="52" y1="12" y2="52">
+      <stop offset="0" stop-color="#C59BFF"/>
+      <stop offset="0.46" stop-color="#8A63FF"/>
+      <stop offset="0.78" stop-color="#5B8CFF"/>
+      <stop offset="1" stop-color="#66C8FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#080711"/>
+  <circle cx="32" cy="32" r="20.5" fill="none" stroke="#D8D1FF" stroke-opacity="0.12" stroke-width="3"/>
+  <circle cx="32" cy="32" r="20.5" fill="none" stroke="url(#halo)" stroke-dasharray="112 17" stroke-linecap="round" stroke-width="3.4" transform="rotate(-78 32 32)"/>
+  <circle cx="42.8" cy="49.1" r="1.9" fill="#74C8FF"/>
 </svg>
