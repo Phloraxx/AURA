@@ -75,6 +75,35 @@ function extensionForMimeType(mimeType: string): string {
   return 'webm';
 }
 
+function sendRecomposePlan(
+  request: ReturnType<typeof localRecomposeRequestSchema.parse>,
+  plan: ReturnType<typeof buildPageRecomposePlan>,
+): boolean {
+  const target = findPageWebContents(request.page.url);
+  if (target === null) return false;
+  target.send(IPC_CHANNELS.adaptationCommand, {
+    pageId: request.page.pageId,
+    plan,
+    reduceMotion: request.profile.preferences.reduceMotion,
+    revision: request.page.revision,
+    type: 'apply-recompose',
+  });
+  return true;
+}
+
+ipcMain.handle(IPC_CHANNELS.startRecompose, (_event, untrusted) => {
+  const request = localRecomposeRequestSchema.parse(untrusted);
+  const plan = buildPageRecomposePlan({
+    currentGoal: request.currentGoal,
+    page: request.page,
+    preset: request.preset,
+    source: 'deterministic',
+    subtitle:
+      'AURA is rebuilding this real page now while local and cloud intelligence refine it.',
+  });
+  return sendRecomposePlan(request, plan);
+});
+
 ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
   const request = localRecomposeRequestSchema.parse(untrusted);
   const result = await localProvider.analyze(request);
@@ -94,8 +123,7 @@ ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
     subtitle:
       'AURA used the local model to choose the parts of this real page that matter most.',
   });
-  const target = findPageWebContents(request.page.url);
-  if (target === null) {
+  if (!sendRecomposePlan(request, plan)) {
     return localRecomposeResultSchema.parse({
       ...result,
       applied: false,
@@ -103,12 +131,6 @@ ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
         'The current webpage changed before local personalization could be applied.',
     });
   }
-  target.send(IPC_CHANNELS.adaptationCommand, {
-    pageId: request.page.pageId,
-    plan,
-    revision: request.page.revision,
-    type: 'apply-recompose',
-  });
   return localRecomposeResultSchema.parse({
     ...result,
     applied: true,
