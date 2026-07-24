@@ -4,13 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "corepack pnpm --filter @aura/shared build",
+    "predev": "pnpm --filter @aura/shared build",
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.build.json",
-    "prestart": "corepack pnpm --filter @aura/shared build",
+    "prestart": "pnpm --filter @aura/shared build",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "pretest": "corepack pnpm --filter @aura/shared build",
+    "pretest": "pnpm --filter @aura/shared build",
     "test": "vitest run --exclude 'dist/**'"
   },
   "dependencies": {

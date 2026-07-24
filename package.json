@@ -8,13 +8,16 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "corepack pnpm --filter @aura/shared build && corepack pnpm --parallel --filter @aura/extension --filter @aura/api dev",
+    "browser:dev": "pnpm --filter @aura/browser dev",
+    "browser:build": "pnpm --filter @aura/browser build",
+    "browser:package:mac": "pnpm --filter @aura/browser package:mac",
+    "dev": "pnpm --filter @aura/shared build && pnpm --parallel --filter @aura/extension --filter @aura/api dev",
     "demo:fixtures": "node scripts/serve-fixtures.mjs",
-    "build": "corepack pnpm -r --if-present build",
+    "build": "pnpm -r --if-present build",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit && corepack pnpm -r --if-present typecheck",
-    "test": "corepack pnpm -r --if-present test",
-    "test:e2e": "cross-env AURA_E2E=1 corepack pnpm build && playwright test"
+    "typecheck": "tsc --noEmit && pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "cross-env AURA_E2E=1 pnpm build && playwright test"
   },
   "devDependencies": {
     "@eslint/js": "9.39.2",

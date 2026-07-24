@@ -1,0 +1,187 @@
+import {
+  type FormEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
+import type {
+  BrowserNavigationState,
+  PageRuntimeEvent,
+} from '../shared/contracts';
+
+const EMPTY_NAVIGATION: BrowserNavigationState = {
+  canGoBack: false,
+  canGoForward: false,
+  error: null,
+  isLoading: true,
+  title: 'AURA',
+  url: '',
+};
+
+export function App(): React.JSX.Element {
+  const [navigation, setNavigation] =
+    useState<BrowserNavigationState>(EMPTY_NAVIGATION);
+  const [address, setAddress] = useState('');
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [runtimeEvent, setRuntimeEvent] = useState<PageRuntimeEvent | null>(
+    null,
+  );
+  const editingAddress = useRef(false);
+
+  useEffect(() => {
+    const removeNavigationListener = window.aura.onNavigationState((state) => {
+      setNavigation(state);
+      if (!editingAddress.current) {
+        setAddress(state.url);
+      }
+    });
+    const removeRuntimeListener = window.aura.onPageRuntimeEvent((event) => {
+      setRuntimeEvent(event);
+    });
+
+    return () => {
+      removeNavigationListener();
+      removeRuntimeListener();
+    };
+  }, []);
+
+  function submitAddress(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    editingAddress.current = false;
+    void window.aura.navigate(address);
+  }
+
+  function togglePanel(): void {
+    const nextOpen = !panelOpen;
+    setPanelOpen(nextOpen);
+    void window.aura.setPanelOpen(nextOpen);
+  }
+
+  return (
+    <main className={panelOpen ? 'shell panel-open' : 'shell'}>
+      <header className="browser-chrome">
+        <div className="brand" aria-label="AURA Browser">
+          <span className="brand-mark" aria-hidden="true">
+            A
+          </span>
+          <span>AURA</span>
+        </div>
+
+        <nav className="navigation-controls" aria-label="Page navigation">
+          <button
+            aria-label="Go back"
+            className="icon-button"
+            disabled={!navigation.canGoBack}
+            onClick={() => void window.aura.back()}
+            type="button"
+          >
+            ←
+          </button>
+          <button
+            aria-label="Go forward"
+            className="icon-button"
+            disabled={!navigation.canGoForward}
+            onClick={() => void window.aura.forward()}
+            type="button"
+          >
+            →
+          </button>
+          <button
+            aria-label="Refresh page"
+            className="icon-button"
+            onClick={() => void window.aura.refresh()}
+            type="button"
+          >
+            ↻
+          </button>
+        </nav>
+
+        <form className="address-form" onSubmit={submitAddress}>
+          <span
+            className={navigation.isLoading ? 'load-dot active' : 'load-dot'}
+            aria-hidden="true"
+          />
+          <input
+            aria-label="Search or enter address"
+            onBlur={() => {
+              editingAddress.current = false;
+            }}
+            onChange={(event) => {
+              editingAddress.current = true;
+              setAddress(event.target.value);
+            }}
+            onFocus={(event) => {
+              editingAddress.current = true;
+              event.currentTarget.select();
+            }}
+            placeholder="Search or enter address"
+            spellCheck={false}
+            value={address}
+          />
+        </form>
+
+        <div className="page-status" aria-live="polite">
+          {navigation.error === null ? (
+            <span>{navigation.title}</span>
+          ) : (
+            <span className="error-message">{navigation.error}</span>
+          )}
+        </div>
+
+        <button
+          aria-expanded={panelOpen}
+          className="aura-toggle"
+          onClick={togglePanel}
+          type="button"
+        >
+          <span aria-hidden="true">✦</span>
+          {panelOpen ? 'Close AURA' : 'Open AURA'}
+        </button>
+      </header>
+
+      {panelOpen ? (
+        <aside className="aura-panel" aria-label="AURA panel">
+          <div className="panel-header">
+            <div className="panel-symbol" aria-hidden="true">
+              ✦
+            </div>
+            <div>
+              <p className="eyebrow">AURA</p>
+              <h1>Ready for this page.</h1>
+            </div>
+          </div>
+
+          <p className="panel-copy">
+            The browser shell is connected. Personal page adaptation arrives
+            in the next milestone.
+          </p>
+
+          <div className="runtime-status" aria-live="polite">
+            <span
+              className={runtimeEvent === null ? 'status-light' : 'status-light ready'}
+              aria-hidden="true"
+            />
+            <div>
+              <strong>
+                {runtimeEvent === null
+                  ? 'Connecting to page'
+                  : 'Page connection ready'}
+              </strong>
+              <span>
+                {runtimeEvent === null
+                  ? 'Waiting for the AURA page preload.'
+                  : `${runtimeEvent.phase} · ${runtimeEvent.readyState}`}
+              </span>
+            </div>
+          </div>
+
+          <button className="primary-action" disabled type="button">
+            Make This Mine
+          </button>
+          <p className="milestone-note">Available after Page Intelligence.</p>
+        </aside>
+      ) : null}
+    </main>
+  );
+}
