@@ -41,6 +41,9 @@ function installAuraEventTheme(): void {
     return;
   }
 
+  const host = document.head ?? document.documentElement;
+  if (host === null) return;
+
   const style = document.createElement('style');
   style.setAttribute(AURA_EVENT_THEME_ATTRIBUTE, '');
   style.textContent = `
@@ -105,7 +108,7 @@ html[data-aura-presentation="on"] body [data-aura-owned="restore"] {
 }
 `.trim();
 
-  (document.head ?? document.documentElement).append(style);
+  host.append(style);
 }
 
 function report(phase: PageRuntimePhase): void {
