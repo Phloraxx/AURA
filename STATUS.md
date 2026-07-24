@@ -2,12 +2,14 @@
 
 **Branch:** `aura-browser`
 
-**Current milestone:** W5 — Talk to AURA + memory
+**Current milestone:** W7 — Judge-proofing / freeze
 
 **Planning state:** W0 accepted. Canonical product and architecture decisions are locked in `docs/browser/`.
 
-**Implementation state:** W1 through W4 are complete. W5 has not started. The
-development and packaged browser have been verified on the event Mac.
+**Implementation state:** W1 through W6 are implemented and verified. W7
+hardening, release rehearsal, and native packaging are complete except for the
+final credentialed event-network check. The development and packaged browser
+have been verified on the event Mac.
 
 ## W0 — accepted decisions
 
@@ -236,7 +238,96 @@ Mac on 24 July 2026:
 - the refined Next.js rerun returned user-facing copy, passed exact restoration,
   and used 24,524 tokens in 23.6 seconds.
 
-W4 acceptance is complete. W5 is the next milestone.
+W4 acceptance is complete.
+
+## W5 — implemented and verified
+
+- contextual Talk to AURA panel with suggestions, conversation history,
+  intentional waiting state, error recovery, and keyboard submission;
+- one versioned, Zod-validated conversation contract covering Adjust, Explain,
+  Goal/Guide, Remember, and ordinary answers;
+- direct Responses API conversation provider using configurable
+  `gpt-5.6-luna` with high reasoning and structured output;
+- compact reuse of the cached PageModel and current semantic plan rather than a
+  second full-page analysis;
+- deterministic natural-language fallback for missing, failed, invalid, or
+  timed-out provider calls;
+- small validated presentation and semantic patches linked only to current
+  AURA target IDs;
+- session intent that survives ordinary navigation and is protected against
+  stale-page responses;
+- explicit memory proposal and confirmation rather than silent learning;
+- persisted global learned preferences with inspect, edit, forget, reset, and
+  case-insensitive deduplication;
+- conversation errors always return the UI from responding to idle;
+- semantic-analysis and conversation mutations cannot race in the panel.
+
+Verified on the Apple Silicon event Mac on 24 July 2026:
+
+- natural phrasing exercised all four action families on an article, a form,
+  and an e-commerce listing;
+- goal intent remained visible after navigation from the article to the form;
+- a confirmed preference survived a full Electron process restart and appeared
+  in `What AURA remembers`;
+- unavailable-provider and forced 25 ms timeout tests both retained useful
+  deterministic behavior;
+- browser unit coverage is 45 passed with two opt-in live-provider tests
+  skipped by default;
+- no API key or page form value is persisted in source, profile, or memory.
+
+The W5 provider follows the same live-validated Luna/high structured Responses
+API path used by W3 and W4. The final event-network credential check remains an
+operational release step because no API key is currently present in the Codex
+process environment.
+
+## W6 — implemented and verified
+
+- compact, intentional browser chrome and AURA panel hierarchy;
+- no PageModel inspector, raw JSON, or other developer UI in the judged path;
+- primary AURA text is at least 14 px, controls use large targets, and focus
+  states are visible;
+- profile-driven and operating-system reduced motion are respected;
+- address and AURA-panel keyboard shortcuts work from both the trusted shell
+  and remote page (`Command-L`, `Command-Shift-A`);
+- page navigation failures are translated into concise user-facing messages;
+- Talk to AURA, memory confirmation, and memory editing expose failure states
+  without unhandled promises;
+- scrollable conversation history is keyboard-focusable;
+- serious/critical Axe audit passes, including color contrast and keyboard
+  access;
+- the judged 1440 × 920 layout was visually reviewed with onboarding,
+  adaptation, conversation, and memory visible without clipping.
+
+## W7 — hardening and release evidence
+
+- `tests/sites.md` contains 27 real sites across article/news, commerce,
+  universities, public services, technical documentation, forms, SPAs,
+  listings, and public-information sites;
+- all 27 load and produce useful local personalized adaptation;
+- all 27 restore Original successfully;
+- six representative sites have live Luna/high semantic-refinement evidence,
+  including all five late/random W4 sites;
+- three categories have all four Talk to AURA action families verified;
+- two additional final-set sites, UNICEF and Mozilla, produced 105 and 118
+  targets respectively and restored exactly;
+- semantic audit now fails if all visible controls disappear or form state
+  changes during adaptation/restoration;
+- clean-launch and seeded-profile Playwright Electron tests cover Learn Me,
+  Make This Mine, Talk, Remember, cross-navigation intent, Original, restart,
+  and persistent memory;
+- the full Electron journey passed three consecutive automated rehearsals
+  (six tests total);
+- deterministic event backup exists at
+  `fixtures/aura-event-profile.json` and is schema-validated by test;
+- repository lint, typecheck, 107 unit/integration tests, browser E2E, legacy
+  Chromium extension smoke, and all application builds pass;
+- Electron Forge produces
+  `apps/browser/out/AURA-darwin-arm64/AURA.app`;
+- the packaged executable is Mach-O arm64 and successfully launched a trusted
+  AURA renderer plus a separate remote HTTPS page through `WebContentsView`.
+
+The scope is frozen. Only the credentialed event-network smoke check and any
+bugs it reveals remain before the final event handoff.
 
 ## Source of truth
 

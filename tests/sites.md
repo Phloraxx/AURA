@@ -15,33 +15,33 @@ Use the actual primary macOS event machine. Do not mark a site PASS from memory 
 
 | Category | Site / URL | Loads | PageModel | Primary content/action | Local adapt | AI refine | Talk/goal | Original restore | Status | Notes | Commit |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Article/news | Wikipedia accessibility article | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | 180/1126 targets; 76.5 ms extraction | W2 local |
-| Article/news | BBC News | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | 180/264; repeated stories retained as useful actions | W2 local |
-| Article/news | The Guardian | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | 180/953; 47.3 ms extraction | W2 local |
-| Article/news | NPR | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | 180/660; 46.8 ms extraction | W2 local |
-| E-commerce | Apple Mac store | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Product controls and shopping guides represented | W2 local |
-| E-commerce | eBay laptop listing | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Listing cards/actions represented; 69.3 ms | W2 local |
-| E-commerce | IKEA desks listing | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Products, prices, listing controls represented | W2 local |
-| University/college | MIT | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | 94/109 targets; spotlight and audience links found | W2 local |
-| University/college | Stanford | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | 180/298; carousel and content actions found | W2 local |
-| University/college | Sahrdaya | PASS | PASS | PARTIAL | W4 | W4 | W5 | W4 | PASS | Useful admission/actions found; site lacks a clear main landmark; 401.5 ms | W2 local |
-| Government/public service | GOV.UK passport | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Start action and supporting requirements represented | W2 local |
-| Government/public service | USA.gov passports | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Major passport tasks represented | W2 local |
-| Government/public service | India.gov.in | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Cookie, accessibility, language, search controls represented | W2 local |
-| Documentation/technical | Electron webContents | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | 178/1608; late API content survives dense navigation | W2 local |
-| Documentation/technical | React Learn | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Tutorials, editors, and next action represented | W2 local |
-| Documentation/technical | TypeScript Docs | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | 71/253; handbook structure retained | W2 local |
-| Form/application | W3C Forms tutorial | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Stable heading target highlight verified | W2 local |
-| Form/application | GOV.UK contact form | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Form labels, fields, warning, and submit action found | W2 local |
-| SPA/dashboard | GitHub Electron repository | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Repository navigation and code actions represented | W2 local |
-| Search/listing | MDN accessibility search | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Search results and page structure represented | W2 local |
-| Article/news | NASA News (late set) | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Chosen after extractor completion; 78/190 | W2 local |
-| University/college | Harvard (late set) | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Chosen after extractor completion; 159/203 | W2 local |
-| Government/public service | Canada benefits (late set) | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Chosen after extractor completion; benefit actions found | W2 local |
-| Documentation/technical | Python tutorial (late set) | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Chosen after extractor completion; 88/362 | W2 local |
-| SPA/dashboard | Next.js Docs (late set) | PASS | PASS | PASS | W4 | W4 | W5 | W4 | PASS | Chosen after extractor completion; 136/482 | W2 local |
-| Misc judge-like | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | Reserved for W7 | |
-| Misc judge-like | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | Reserved for W7 | |
+| Article/news | Wikipedia accessibility article | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | Live semantic and all four conversation families verified | W5 local |
+| Article/news | BBC News | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | 180/264; local adaptation and exact restore verified | W4 local |
+| Article/news | The Guardian | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | 180/953; local adaptation and exact restore verified | W4 local |
+| Article/news | NPR | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | 180/660; local adaptation and exact restore verified | W4 local |
+| E-commerce | Apple Mac store | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Product controls preserved through local adaptation | W4 local |
+| E-commerce | eBay laptop listing | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Listing cards/actions and exact restore verified | W4 local |
+| E-commerce | IKEA desks listing | PASS | PASS | PASS | PASS | TODO | PASS | PASS | PASS | All four conversation families verified | W5 local |
+| University/college | MIT | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Spotlight/actions and exact restore verified | W4 local |
+| University/college | Stanford | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Passed isolated retry after initial settle timeout | W4 local |
+| University/college | Sahrdaya | PASS | PASS | PARTIAL | PASS | TODO | TODO | PASS | PASS | Site lacks a clear main landmark; useful actions preserved | W4 local |
+| Government/public service | GOV.UK passport | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Start action and requirements preserved | W4 local |
+| Government/public service | USA.gov passports | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Major passport tasks preserved | W4 local |
+| Government/public service | India.gov.in | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Language, search, and accessibility controls preserved | W4 local |
+| Documentation/technical | Electron webContents | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Dense navigation and late API content survived | W4 local |
+| Documentation/technical | React Learn | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Tutorials, editors, and next action preserved | W4 local |
+| Documentation/technical | TypeScript Docs | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Handbook structure and exact restore verified | W4 local |
+| Form/application | W3C Forms tutorial | PASS | PASS | PASS | PASS | TODO | PASS | PASS | PASS | All four conversation families verified | W5 local |
+| Form/application | GOV.UK contact form | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Labels, fields, warning, submit, and values preserved | W4 local |
+| SPA/dashboard | GitHub Electron repository | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Repository navigation and code actions preserved | W4 local |
+| Search/listing | MDN accessibility search | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Search results and exact restore verified | W4 local |
+| Article/news | NASA News (late set) | PASS | PASS | PASS | PASS | PASS | TODO | PASS | PASS | Late/random live semantic pass | W4 Luna |
+| University/college | Harvard (late set) | PASS | PASS | PASS | PASS | PASS | TODO | PASS | PASS | Late/random live semantic pass | W4 Luna |
+| Government/public service | Canada benefits (late set) | PASS | PASS | PASS | PASS | PASS | TODO | PASS | PASS | Late/random live semantic pass | W4 Luna |
+| Documentation/technical | Python tutorial (late set) | PASS | PASS | PASS | PASS | PASS | TODO | PASS | PASS | Late/random live semantic pass | W4 Luna |
+| SPA/dashboard | Next.js Docs (late set) | PASS | PASS | PASS | PASS | PASS | TODO | PASS | PASS | Refined live semantic copy and restore verified | W4 Luna |
+| Nonprofit/public information | UNICEF (final set) | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Chosen during W7; 105 targets and exact restore | W7 local |
+| Technology/public information | Mozilla (final set) | PASS | PASS | PASS | PASS | TODO | TODO | PASS | PASS | Chosen during W7; 118 targets and exact restore | W7 local |
 
 ## Release gates
 
