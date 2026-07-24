@@ -1,0 +1,31 @@
+{
+  "capabilities": {
+    "attention": "important",
+    "auditory": "default",
+    "cognitive": "helpful",
+    "language": "helpful",
+    "motor": "helpful",
+    "visual": "helpful"
+  },
+  "completedAt": "2026-07-24T00:00:01.000Z",
+  "createdAt": "2026-07-24T00:00:00.000Z",
+  "id": "aura-event-backup",
+  "learnedPreferences": [
+    "Keep technical terms, but explain them briefly.",
+    "Keep important navigation available."
+  ],
+  "preferences": {
+    "explanationStyle": "concise",
+    "informationDensity": "calm",
+    "lineSpacing": 1.65,
+    "preserveTechnicalTerms": true,
+    "readingWidth": "narrow",
+    "reduceMotion": true,
+    "strongFocus": true,
+    "targetSizePx": 52,
+    "textScale": 1.2
+  },
+  "summary": "Comfortable text and spacing, 52px interaction targets, reduced movement, a calmer information layout, concise explanations, and technical terms preserved.",
+  "updatedAt": "2026-07-24T00:00:01.000Z",
+  "version": 1
+}

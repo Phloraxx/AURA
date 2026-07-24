@@ -39,12 +39,25 @@ const lateSites = [
   ['SPA/dashboard', 'Next.js Docs', 'https://nextjs.org/docs'],
 ];
 
+const finalSites = [
+  ['Nonprofit/public information', 'UNICEF', 'https://www.unicef.org/'],
+  ['Technology/public information', 'Mozilla', 'https://www.mozilla.org/en-US/'],
+];
+
 const sites =
-  process.env.AURA_AUDIT_SET === 'late' ? lateSites : baselineSites;
+  process.env.AURA_AUDIT_SET === 'late'
+    ? lateSites
+    : process.env.AURA_AUDIT_SET === 'final'
+      ? finalSites
+      : baselineSites;
 
 const browser = await chromium.connectOverCDP(endpoint);
 const pages = browser.contexts().flatMap((context) => context.pages());
-const shell = pages.find((page) => page.url().startsWith('file:'));
+const shell = pages.find(
+  (page) =>
+    page.url().startsWith('file:') ||
+    page.url().startsWith('http://localhost:5173'),
+);
 
 if (shell === undefined) {
   throw new Error('The AURA shell page was not found.');

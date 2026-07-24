@@ -9,7 +9,7 @@ const outputPath =
   process.env.AURA_ADAPTATION_AUDIT_OUTPUT ??
   '/tmp/aura-adaptation-audit.json';
 
-const sites = [
+const baselineSites = [
   ['Article/news', 'Wikipedia', 'https://en.wikipedia.org/wiki/Accessibility'],
   ['Article/news', 'BBC', 'https://www.bbc.com/news'],
   ['Article/news', 'The Guardian', 'https://www.theguardian.com/international'],
@@ -31,6 +31,12 @@ const sites = [
   ['SPA/dashboard', 'GitHub', 'https://github.com/electron/electron'],
   ['Search/listing', 'MDN Search', 'https://developer.mozilla.org/en-US/search?q=accessibility'],
 ];
+const finalSites = [
+  ['Nonprofit/public information', 'UNICEF', 'https://www.unicef.org/'],
+  ['Technology/public information', 'Mozilla', 'https://www.mozilla.org/en-US/'],
+];
+const sites =
+  process.env.AURA_AUDIT_SET === 'final' ? finalSites : baselineSites;
 
 const browser = await chromium.connectOverCDP(endpoint);
 const context = browser.contexts()[0];

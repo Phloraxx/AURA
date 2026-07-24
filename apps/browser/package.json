@@ -7,11 +7,13 @@
   "scripts": {
     "audit:page-intelligence": "node scripts/audit-page-intelligence.mjs",
     "audit:adaptation": "node scripts/audit-adaptation.mjs",
+    "audit:conversation": "node scripts/audit-conversation.mjs",
     "audit:semantic": "node scripts/audit-semantic.mjs",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "test:e2e": "playwright test -c playwright.config.ts",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "test": "vitest run",
+    "test": "vitest run src",
     "package:mac": "pnpm build && electron-forge package --platform=darwin --arch=arm64"
   },
   "devDependencies": {

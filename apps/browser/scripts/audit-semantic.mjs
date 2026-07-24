@@ -1,4 +1,4 @@
-/* global document, URL, process, setTimeout, window */
+/* global document, HTMLInputElement, HTMLSelectElement, URL, process, setTimeout, window */
 
 import { writeFile } from 'node:fs/promises';
 
@@ -106,6 +106,60 @@ function findRemote(url) {
   });
 }
 
+async function captureSafetyState(remote) {
+  return remote.evaluate(() => {
+    const controls = [
+      ...document.querySelectorAll('input, select, textarea'),
+    ].slice(0, 30);
+    const formState = controls.map((element) => {
+      if (element instanceof HTMLInputElement) {
+        return {
+          checked: element.checked,
+          disabled: element.disabled,
+          selectedIndex: null,
+          tag: element.tagName,
+          type: element.type,
+          value: element.type === 'password' ? null : element.value,
+        };
+      }
+      if (element instanceof HTMLSelectElement) {
+        return {
+          checked: null,
+          disabled: element.disabled,
+          selectedIndex: element.selectedIndex,
+          tag: element.tagName,
+          type: null,
+          value: null,
+        };
+      }
+      return {
+        checked: null,
+        disabled: element.disabled,
+        selectedIndex: null,
+        tag: element.tagName,
+        type: null,
+        value: element.value,
+      };
+    });
+    const visibleInteractiveCount = [
+      ...document.querySelectorAll(
+        'a[href], button, input:not([type="hidden"]), select, textarea, [role="button"]',
+      ),
+    ].filter((element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return (
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        style.pointerEvents !== 'none' &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    }).length;
+    return { formState, visibleInteractiveCount };
+  });
+}
+
 const results = [];
 for (const [category, name, url] of sites) {
   const startedAt = Date.now();
@@ -114,6 +168,7 @@ for (const [category, name, url] of sites) {
     const intelligence = await waitForModel(url);
     const remote = findRemote(url);
     if (remote === undefined) throw new Error('Remote page target not found.');
+    const before = await captureSafetyState(remote);
     const accepted = await shell.evaluate(
       (savedProfile) => window.aura.applyPresentation(savedProfile),
       profile,
@@ -140,6 +195,16 @@ for (const [category, name, url] of sites) {
     if (!applied.rootActive || applied.summaryCount !== 1) {
       throw new Error('Validated semantic presentation was not applied.');
     }
+    const during = await captureSafetyState(remote);
+    if (
+      before.visibleInteractiveCount > 0 &&
+      during.visibleInteractiveCount === 0
+    ) {
+      throw new Error('Semantic adaptation hid every visible interactive control.');
+    }
+    if (JSON.stringify(during.formState) !== JSON.stringify(before.formState)) {
+      throw new Error('Semantic adaptation changed form-control state.');
+    }
 
     const restored = await shell.evaluate(() =>
       window.aura.setAdaptationView('original'),
@@ -160,6 +225,10 @@ for (const [category, name, url] of sites) {
       residue.semanticStyles !== 0
     ) {
       throw new Error('Semantic adaptation left residue after Original.');
+    }
+    const after = await captureSafetyState(remote);
+    if (JSON.stringify(after.formState) !== JSON.stringify(before.formState)) {
+      throw new Error('Original did not restore form-control state exactly.');
     }
     results.push({
       applied,
