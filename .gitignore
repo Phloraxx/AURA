@@ -1,4 +1,7 @@
 node_modules/
+.cache/
+.vite/
+out/
 .wxt/
 .output/
 dist/
@@ -8,3 +11,4 @@ coverage/
 playwright-report/
 test-results/
 *.log
+*.tsbuildinfo

@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "target": "ES2022",
+    "types": ["node", "electron", "vite/client"]
+  },
+  "include": [
+    "electron.vite.config.ts",
+    "playwright.config.ts",
+    "e2e/**/*.ts",
+    "src/main/**/*.ts",
+    "src/page-adaptation/**/*.ts",
+    "src/page-intelligence/**/*.ts",
+    "src/preload/**/*.ts",
+    "src/shared/**/*.ts"
+  ]
+}

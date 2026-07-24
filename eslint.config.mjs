@@ -6,6 +6,7 @@ export default tseslint.config(
   {
     ignores: [
       '**/.output/**',
+      '**/.vite/**',
       '**/.wxt/**',
       '**/coverage/**',
       '**/dist/**',
@@ -35,7 +36,10 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.config.{js,mjs,ts}', '**/*.test.ts'],
+    files: ['**/*.config.{js,cjs,mjs,ts}', '**/*.test.ts'],
+    languageOptions: {
+      globals: globals.node,
+    },
     rules: {
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
