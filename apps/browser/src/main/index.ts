@@ -15,6 +15,13 @@ import {
   type PageRuntimeEvent,
 } from '../shared/contracts';
 import {
+  adaptationEventSchema,
+  adaptationStateSchema,
+  adaptationViewSchema,
+  presentationSettingsFromProfile,
+  type AdaptationState,
+} from '../shared/adaptation';
+import {
   pageModelSchema,
   pageRuntimeCommandSchema,
   type PageIntelligenceState,
@@ -45,6 +52,13 @@ let panelOpen = true;
 let onboardingActive = true;
 let navigationError: string | null = null;
 let pageIntelligenceState: PageIntelligenceState | null = null;
+let adaptationState: AdaptationState = adaptationStateSchema.parse({
+  changedTargetCount: 0,
+  error: null,
+  pageId: null,
+  status: 'idle',
+  view: 'original',
+});
 let screenshotRequest = 0;
 let profileStore: ProfileStore | null = null;
 
@@ -110,6 +124,26 @@ function publishPageIntelligenceState(): void {
       pageIntelligenceState,
     );
   }
+}
+
+function publishAdaptationState(): void {
+  if (mainWindow?.isDestroyed() === false) {
+    mainWindow.webContents.send(
+      IPC_CHANNELS.adaptationState,
+      adaptationState,
+    );
+  }
+}
+
+function invalidateAdaptation(): void {
+  adaptationState = {
+    changedTargetCount: 0,
+    error: null,
+    pageId: null,
+    status: 'idle',
+    view: 'original',
+  };
+  publishAdaptationState();
 }
 
 function invalidatePageIntelligence(): void {
@@ -216,6 +250,7 @@ function attachPageEvents(view: WebContentsView): void {
 
   webContents.on('did-start-loading', () => {
     navigationError = null;
+    invalidateAdaptation();
     invalidatePageIntelligence();
     publishNavigationState();
   });
@@ -260,6 +295,57 @@ function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.getPageIntelligenceState, () => {
     return pageIntelligenceState;
   });
+  ipcMain.handle(IPC_CHANNELS.getAdaptationState, () => adaptationState);
+  ipcMain.handle(
+    IPC_CHANNELS.applyPresentation,
+    (_event, untrustedProfile: unknown) => {
+      const profile = browserProfileSchema.safeParse(untrustedProfile);
+      if (
+        !profile.success ||
+        pageView === null ||
+        pageIntelligenceState === null
+      ) {
+        return false;
+      }
+      const { model } = pageIntelligenceState;
+      adaptationState = {
+        changedTargetCount: 0,
+        error: null,
+        pageId: model.pageId,
+        status: 'applying',
+        view: 'original',
+      };
+      publishAdaptationState();
+      pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {
+        pageId: model.pageId,
+        revision: model.revision,
+        settings: presentationSettingsFromProfile(profile.data),
+        type: 'apply-presentation',
+      });
+      return true;
+    },
+  );
+  ipcMain.handle(
+    IPC_CHANNELS.setAdaptationView,
+    (_event, untrustedView: unknown) => {
+      const view = adaptationViewSchema.safeParse(untrustedView);
+      if (
+        !view.success ||
+        pageView === null ||
+        pageIntelligenceState === null ||
+        adaptationState.pageId === null ||
+        adaptationState.pageId !== pageIntelligenceState.model.pageId
+      ) {
+        return false;
+      }
+      pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {
+        pageId: adaptationState.pageId,
+        type: 'set-adaptation-view',
+        view: view.data,
+      });
+      return true;
+    },
+  );
   ipcMain.handle(IPC_CHANNELS.getProfile, async () => {
     return profileStore?.load() ?? null;
   });
@@ -318,6 +404,28 @@ function registerIpc(): void {
       onboardingActive = active;
       if (!active) panelOpen = true;
       updatePageBounds();
+    },
+  );
+  ipcMain.on(
+    IPC_CHANNELS.adaptationEvent,
+    (event: IpcMainEvent, untrustedPayload: unknown) => {
+      if (event.sender !== pageView?.webContents) return;
+      const payload = adaptationEventSchema.safeParse(untrustedPayload);
+      if (
+        !payload.success ||
+        pageIntelligenceState === null ||
+        payload.data.pageId !== pageIntelligenceState.model.pageId
+      ) {
+        return;
+      }
+      adaptationState = {
+        changedTargetCount: payload.data.changedTargetCount,
+        error: payload.data.error,
+        pageId: payload.data.pageId,
+        status: payload.data.status === 'failed' ? 'idle' : 'ready',
+        view: payload.data.view,
+      };
+      publishAdaptationState();
     },
   );
   ipcMain.on(
@@ -385,6 +493,7 @@ async function createWindow(): Promise<void> {
     pageView?.webContents.close();
     pageView = null;
     pageIntelligenceState = null;
+    invalidateAdaptation();
     mainWindow = null;
   });
 

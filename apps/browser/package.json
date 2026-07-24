@@ -6,6 +6,7 @@
   "main": ".vite/main/index.js",
   "scripts": {
     "audit:page-intelligence": "node scripts/audit-page-intelligence.mjs",
+    "audit:adaptation": "node scripts/audit-adaptation.mjs",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",

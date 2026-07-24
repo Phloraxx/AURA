@@ -9,6 +9,7 @@ import type {
   BrowserNavigationState,
   PageRuntimeEvent,
 } from '../shared/contracts';
+import type { AdaptationState, AdaptationView } from '../shared/adaptation';
 import type { PageIntelligenceState } from '../shared/page-model';
 import type { BrowserProfile } from '../shared/profile';
 import { LearnMe } from './LearnMe';
@@ -22,6 +23,14 @@ const EMPTY_NAVIGATION: BrowserNavigationState = {
   url: '',
 };
 
+const EMPTY_ADAPTATION: AdaptationState = {
+  changedTargetCount: 0,
+  error: null,
+  pageId: null,
+  status: 'idle',
+  view: 'original',
+};
+
 export function App(): React.JSX.Element {
   const [navigation, setNavigation] =
     useState<BrowserNavigationState>(EMPTY_NAVIGATION);
@@ -32,6 +41,8 @@ export function App(): React.JSX.Element {
   );
   const [pageIntelligence, setPageIntelligence] =
     useState<PageIntelligenceState | null>(null);
+  const [adaptation, setAdaptation] =
+    useState<AdaptationState>(EMPTY_ADAPTATION);
   const [profile, setProfile] = useState<BrowserProfile | null | undefined>(
     undefined,
   );
@@ -60,9 +71,13 @@ export function App(): React.JSX.Element {
         setPageIntelligence(state);
       },
     );
+    const removeAdaptationListener =
+      window.aura.onAdaptationState(setAdaptation);
     void window.aura.getPageIntelligenceState().then(setPageIntelligence);
+    void window.aura.getAdaptationState().then(setAdaptation);
 
     return () => {
+      removeAdaptationListener();
       removeIntelligenceListener();
       removeNavigationListener();
       removeRuntimeListener();
@@ -103,9 +118,23 @@ export function App(): React.JSX.Element {
     setProfile(null);
   }
 
+  async function makeThisMine(): Promise<void> {
+    if (profile === null || profile === undefined) return;
+    await window.aura.applyPresentation(profile);
+  }
+
+  async function setAdaptationView(view: AdaptationView): Promise<void> {
+    await window.aura.setAdaptationView(view);
+  }
+
   const pageConnectionFailed = navigation.error !== null;
   const pageConnectionReady =
     !pageConnectionFailed && runtimeEvent !== null;
+  const canAdapt =
+    pageConnectionReady &&
+    !navigation.isLoading &&
+    pageIntelligence !== null &&
+    adaptation.status !== 'applying';
 
   if (profile === undefined) {
     return (
@@ -215,8 +244,8 @@ export function App(): React.JSX.Element {
           </div>
 
           <p className="panel-copy">
-            Your profile is ready. AURA understands this page and will use your
-            comfort choices when Make This Mine arrives.
+            Your profile is ready. Make This Mine applies your reading,
+            interaction, focus, and motion preferences to this page.
           </p>
 
           <div className="profile-card">
@@ -255,10 +284,56 @@ export function App(): React.JSX.Element {
             </div>
           </div>
 
-          <button className="primary-action" disabled type="button">
-            Make This Mine
-          </button>
-          <p className="milestone-note">Arriving in the next milestone.</p>
+          {adaptation.status === 'ready' ? (
+            <div
+              aria-label="Page presentation"
+              className="adaptation-switch"
+              role="group"
+            >
+              <button
+                aria-pressed={adaptation.view === 'original'}
+                onClick={() => void setAdaptationView('original')}
+                type="button"
+              >
+                Original
+              </button>
+              <button
+                aria-pressed={adaptation.view === 'aura'}
+                onClick={() => void setAdaptationView('aura')}
+                type="button"
+              >
+                AURA
+              </button>
+            </div>
+          ) : (
+            <button
+              className="primary-action"
+              disabled={!canAdapt}
+              onClick={() => void makeThisMine()}
+              type="button"
+            >
+              {adaptation.status === 'applying'
+                ? 'Making this yours…'
+                : 'Make This Mine'}
+            </button>
+          )}
+          <p
+            className={
+              adaptation.error === null
+                ? 'adaptation-note'
+                : 'adaptation-note error-message'
+            }
+            role={adaptation.error === null ? undefined : 'alert'}
+          >
+            {adaptation.error ??
+              (adaptation.status === 'ready'
+                ? adaptation.view === 'aura'
+                  ? 'Your presentation is active. You can return to the original at any time.'
+                  : 'The original presentation is restored. Your AURA version is preserved.'
+                : pageIntelligence === null
+                  ? 'AURA is understanding this page before making changes.'
+                  : 'Only presentation changes are applied. Page content and form values stay intact.')}
+          </p>
 
           {import.meta.env.DEV && pageIntelligence !== null ? (
             <details className="page-model-inspector">

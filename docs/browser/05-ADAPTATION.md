@@ -30,6 +30,41 @@ Apply known profile preferences immediately:
 
 This creates the instant response and remains useful if AI fails.
 
+### Part A implementation contract
+
+The first W4 gate uses one page-owned presentation session:
+
+1. Electron main validates the current profile and PageModel identity.
+2. The remote preload creates one generated AURA stylesheet.
+3. AURA marks at most one validated primary reading region.
+4. `Original` removes only that stylesheet and AURA presentation attributes.
+5. `AURA` reapplies the already-resolved session without another model call.
+
+Tier 0 must not:
+
+- rewrite text;
+- hide or collapse regions;
+- reparent page DOM;
+- touch form values, checked state, selection, or focus;
+- enlarge ordinary inline text links;
+- apply reading width to both a parent primary region and its nested article;
+- reload the page to restore it.
+
+The initial selector policy is deliberately conservative:
+
+- scale from the page's computed root font size rather than assuming 16 px;
+- apply line spacing to semantic reading blocks;
+- enlarge native form controls, buttons, summaries, and button-like roles;
+- leave ordinary inline anchors unchanged;
+- apply a reading-width constraint to one substantial `main`, `[role=main]`,
+  or `article` target only;
+- reduce animation, transition, and smooth scrolling only when requested;
+- add a strong `:focus-visible` treatment only when requested.
+
+The presentation session is idempotent. Repeated `Make This Mine` and
+`Original ↔ AURA` operations must never add duplicate styles, wrappers, or
+listeners.
+
 ### Phase B — semantic refinement
 
 After validated page analysis, AURA may:
@@ -147,6 +182,21 @@ Prefer CSS variables/classes over rewriting many inline styles.
 `AURA` reapplies the latest validated plan.
 
 The toggle must remain fast enough to use repeatedly in front of judges.
+
+### Part A acceptance matrix
+
+Before semantic AI begins:
+
+- two profiles must produce measurably different root type scale, target size,
+  motion policy, and reading presentation on the same fixture;
+- text inputs, checkboxes, selects, textareas, and ordinary page actions retain
+  their values/states through at least five AURA/Original cycles;
+- host inline styles and classes are byte-for-byte unchanged after Original;
+- no AURA presentation style or attribute remains after Original;
+- new navigation invalidates the old session;
+- at least 20 existing real-site corpus pages apply and restore without crash,
+  missing primary content, or lost primary controls;
+- restoration succeeds on 100% of the required corpus before Part B starts.
 
 ## Text simplification
 

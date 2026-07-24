@@ -7,12 +7,22 @@ import type {
   OnboardingTurnRequest,
   OnboardingTurnResponse,
 } from './profile';
+import type {
+  AdaptationCommand,
+  AdaptationState,
+  AdaptationView,
+} from './adaptation';
 
 export const IPC_CHANNELS = {
+  adaptationCommand: 'aura:adaptation:command',
+  adaptationEvent: 'aura:adaptation:event',
+  adaptationState: 'aura:adaptation:state',
+  applyPresentation: 'aura:adaptation:apply-presentation',
   back: 'aura:navigation:back',
   debugPageTarget: 'aura:page-intelligence:debug-target',
   forward: 'aura:navigation:forward',
   getPageIntelligenceState: 'aura:page-intelligence:get-state',
+  getAdaptationState: 'aura:adaptation:get-state',
   getProfile: 'aura:profile:get',
   navigate: 'aura:navigation:open',
   navigationState: 'aura:navigation:state',
@@ -26,6 +36,7 @@ export const IPC_CHANNELS = {
   saveProfile: 'aura:profile:save',
   setOnboardingActive: 'aura:layout:set-onboarding-active',
   setPanelOpen: 'aura:layout:set-panel-open',
+  setAdaptationView: 'aura:adaptation:set-view',
 } as const;
 
 export interface BrowserNavigationState {
@@ -47,15 +58,20 @@ export interface PageRuntimeEvent {
 }
 
 export interface AuraShellApi {
+  applyPresentation: (profile: BrowserProfile) => Promise<boolean>;
   back: () => Promise<void>;
   debugPageTarget: (command: PageRuntimeCommand) => Promise<boolean>;
   forward: () => Promise<void>;
+  getAdaptationState: () => Promise<AdaptationState>;
   getPageIntelligenceState: () => Promise<PageIntelligenceState | null>;
   getProfile: () => Promise<BrowserProfile | null>;
   navigate: (address: string) => Promise<void>;
   onboardingTurn: (
     request: OnboardingTurnRequest,
   ) => Promise<OnboardingTurnResponse>;
+  onAdaptationState: (
+    listener: (state: AdaptationState) => void,
+  ) => () => void;
   onNavigationState: (
     listener: (state: BrowserNavigationState) => void,
   ) => () => void;
@@ -68,6 +84,9 @@ export interface AuraShellApi {
   refresh: () => Promise<void>;
   resetProfile: () => Promise<void>;
   saveProfile: (profile: BrowserProfile) => Promise<BrowserProfile>;
+  setAdaptationView: (view: AdaptationView) => Promise<boolean>;
   setOnboardingActive: (active: boolean) => Promise<void>;
   setPanelOpen: (open: boolean) => Promise<void>;
 }
+
+export type PageAdaptationCommand = AdaptationCommand;

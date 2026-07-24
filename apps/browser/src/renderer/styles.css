@@ -290,11 +290,39 @@ h1 {
   background: #dce4dc;
 }
 
-.milestone-note {
+.adaptation-note {
   margin: 10px 0 0;
   color: #737c76;
   font-size: 12px;
+  line-height: 1.45;
   text-align: center;
+}
+
+.adaptation-switch {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  margin-top: 24px;
+  padding: 5px;
+  border: 1px solid #cfd8d1;
+  border-radius: 16px;
+  background: #e9eee9;
+}
+
+.adaptation-switch button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 11px;
+  color: #536059;
+  background: transparent;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.adaptation-switch button[aria-pressed="true"] {
+  color: #173d2b;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(38, 62, 47, 0.12);
 }
 
 .profile-card {
