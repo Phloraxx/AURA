@@ -2,13 +2,12 @@
 
 **Branch:** `aura-browser`
 
-**Current milestone:** W1 — Browser shell verification
+**Current milestone:** W2 — Page Intelligence
 
 **Planning state:** W0 accepted. Canonical product and architecture decisions are locked in `docs/browser/`.
 
-**Implementation state:** W1 is scaffolded and passes automated build/quality
-checks. Live GUI and real-site acceptance still require verification from a
-normal interactive macOS terminal session.
+**Implementation state:** W1 is complete. The development and packaged browser
+have been verified on the event Mac. W2 has not started.
 
 ## W0 — accepted decisions
 
@@ -57,29 +56,29 @@ normal interactive macOS terminal session.
 - packaged executable inspected as Mach-O `arm64`, with the required main,
   preload, and renderer bundles present in `app.asar`.
 
-## W1 — acceptance still pending
+## W1 — live acceptance verified
 
-Run from a normal interactive terminal on the event Mac:
+Verified on the Apple Silicon event Mac on 24 July 2026:
 
-```bash
-pnpm browser:dev
-```
+- `pnpm browser:dev` launches the Electron GUI from the repository root;
+- the packaged arm64 `AURA.app` launches normally;
+- Wikipedia, GitHub, eBay, and the Sahrdaya College site render in the remote
+  `WebContentsView`;
+- direct addresses and free-text search navigate through the shell;
+- back, forward, and refresh work, with refresh recorded as a browser reload;
+- the remote preload reports `dom-ready` after each tested navigation and
+  reload;
+- closing the AURA panel expands the page from 1080 px to 1440 px and reopening
+  it restores the original bounds;
+- resizing the window from 1440 × 920 to 1100 × 760 resizes both the trusted
+  shell and remote PageView, and restoring the window restores both exactly;
+- failed navigation displays a clear unavailable/error state instead of stale
+  preload readiness, and a subsequent valid navigation recovers to
+  `dom-ready`;
+- repository lint, typecheck, all 69 unit/integration tests, full build, and
+  `darwin-arm64` packaging pass.
 
-Then verify:
-
-- the Electron GUI launches in the user's interactive macOS session;
-- Wikipedia, GitHub, one e-commerce page, and the college site render;
-- address, back, forward, and refresh work against those sites;
-- panel and window resizing remain visually stable;
-- the panel reports the page preload as ready after each navigation/reload;
-- the packaged `.app` launches on the event Mac.
-
-The Codex shell can compile and package native macOS output, but its
-non-interactive process context aborts at AppKit application registration.
-Therefore, live GUI/site checks are intentionally not marked verified here.
-
-No W2 Page Intelligence, AI, onboarding, or adaptation work has started. Do not
-start W2 until the live checks above pass.
+No W2 implementation, AI, onboarding, or adaptation work has started.
 
 ## Source of truth
 

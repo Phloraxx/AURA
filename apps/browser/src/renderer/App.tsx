@@ -28,10 +28,18 @@ export function App(): React.JSX.Element {
     null,
   );
   const editingAddress = useRef(false);
+  const navigationInProgress = useRef(false);
 
   useEffect(() => {
     const removeNavigationListener = window.aura.onNavigationState((state) => {
       setNavigation(state);
+      if (
+        (state.isLoading && !navigationInProgress.current) ||
+        state.error !== null
+      ) {
+        setRuntimeEvent(null);
+      }
+      navigationInProgress.current = state.isLoading;
       if (!editingAddress.current) {
         setAddress(state.url);
       }
@@ -57,6 +65,10 @@ export function App(): React.JSX.Element {
     setPanelOpen(nextOpen);
     void window.aura.setPanelOpen(nextOpen);
   }
+
+  const pageConnectionFailed = navigation.error !== null;
+  const pageConnectionReady =
+    !pageConnectionFailed && runtimeEvent !== null;
 
   return (
     <main className={panelOpen ? 'shell panel-open' : 'shell'}>
@@ -159,19 +171,25 @@ export function App(): React.JSX.Element {
 
           <div className="runtime-status" aria-live="polite">
             <span
-              className={runtimeEvent === null ? 'status-light' : 'status-light ready'}
+              className={
+                pageConnectionReady ? 'status-light ready' : 'status-light'
+              }
               aria-hidden="true"
             />
             <div>
               <strong>
-                {runtimeEvent === null
-                  ? 'Connecting to page'
-                  : 'Page connection ready'}
+                {pageConnectionFailed
+                  ? 'Page connection unavailable'
+                  : pageConnectionReady
+                    ? 'Page connection ready'
+                    : 'Connecting to page'}
               </strong>
               <span>
-                {runtimeEvent === null
-                  ? 'Waiting for the AURA page preload.'
-                  : `${runtimeEvent.phase} · ${runtimeEvent.readyState}`}
+                {pageConnectionFailed
+                  ? navigation.error
+                  : pageConnectionReady
+                    ? `${runtimeEvent.phase} · ${runtimeEvent.readyState}`
+                    : 'Waiting for the AURA page preload.'}
               </span>
             </div>
           </div>
