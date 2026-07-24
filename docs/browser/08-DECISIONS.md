@@ -103,23 +103,9 @@ Provider code still sits behind a small interface so the architecture can move b
 
 ## ADR-011 — Use GPT-5.6 Luna with high reasoning as the event baseline
 
-**Status:** Accepted
+**Status:** Superseded by ADR-027
 
-Baseline:
-
-- model: `gpt-5.6-luna`;
-- Responses API;
-- structured outputs;
-- image input for page screenshots;
-- high reasoning effort.
-
-Reason: this is the explicit event configuration selected by the project owner.
-The event API budget is approximately USD 50, so AURA records usage, avoids
-duplicate analysis, and keeps deterministic fallbacks. Model configuration
-remains external so the choice can be changed without altering product
-contracts.
-
-Do not implement dynamic multi-model routing before W7.
+This was the first live-tested event configuration. W4 evidence showed useful output but page-analysis latency around 10–24 seconds, so the release configuration now follows ADR-027.
 
 ## ADR-012 — AI plans; trusted AURA code transforms
 
@@ -248,6 +234,33 @@ Keep the low-cost boundaries that improve reliability anyway: isolate the remote
 **Status:** Accepted
 
 No further product brainstorming is required before implementation. New ideas are deferred unless they directly fix a blocker in Learn Me, Make This Mine, Talk to AURA, or judge-site reliability.
+
+## ADR-027 — Release AI configuration prioritizes latency within the USD 50 budget
+
+**Status:** Accepted
+
+Keep `gpt-5.6-luna` as the event model. The event API budget is approximately **USD 50**.
+
+For the flagship `analyzePage` call, use `reasoning.effort = medium` by default. W4 live evidence with high reasoning produced useful semantic plans but took roughly 10–24 seconds, which is too slow for the judged interaction. OpenAI's current GPT-5.6 guidance recommends comparing one reasoning level lower than a working baseline and identifies `medium` as a balanced starting point.
+
+The page effort remains externally configurable through `AURA_PAGE_REASONING_EFFORT` (or the global `AURA_REASONING_EFFORT` fallback), so `high` can be restored without a code change if the final credentialed Mac test shows a material quality loss.
+
+Onboarding and conversation keep their already-verified configuration until measured evidence justifies changing them. Do not add dynamic model routing.
+
+## ADR-028 — GitHub CI is a merge gate for the browser product
+
+**Status:** Accepted
+
+Every pull request into `main` and every push to `main` runs repository verification on GitHub Actions:
+
+- install from the frozen pnpm lockfile through Corepack;
+- lint;
+- typecheck;
+- unit/integration tests;
+- build all applications;
+- Electron Playwright E2E under Xvfb.
+
+Reason: local Mac verification remains essential for native packaging and real-site behavior, but merge health must also be independently reproducible in GitHub.
 
 ## Decision template
 
