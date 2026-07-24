@@ -6,7 +6,7 @@ This directory is the canonical specification for the AURA Browser product line 
 
 For this product line, `docs/browser/` overrides extension-era documents whenever they conflict. Older documents remain historical reference only.
 
-No implementation decision may silently contradict this source of truth. Material changes must be recorded in `08-DECISIONS.md` first.
+No implementation decision may silently contradict this source of truth. Material changes must be recorded in the canonical browser documentation before merge.
 
 ## Product in one sentence
 
@@ -32,6 +32,7 @@ Everything else is supporting infrastructure or a small control.
 - **Persistence:** versioned local JSON.
 - **Build/dev:** `electron-vite`; Electron Forge only for final packaging.
 - **Merge quality:** GitHub Actions must pass lint, typecheck, tests, build, and Electron E2E for PRs into `main`.
+- **Event visual identity:** the near-black violet/blue AURA promo-film language and AURA Halo defined by `11-VIDEO-IDENTITY.md`.
 
 ## Product-scope rule
 
@@ -57,7 +58,8 @@ Otherwise defer it.
 9. `08-DECISIONS.md`
 10. `09-DESIGN-SYSTEM.md`
 11. `10-MOTION-PERSONALITY.md`
-12. `DEFINITION-OF-DONE.md`
+12. `11-VIDEO-IDENTITY.md`
+13. `DEFINITION-OF-DONE.md`
 
 `STATUS.md` at repository root records the active milestone and release evidence.
 
@@ -81,5 +83,7 @@ Current architecture was checked against primary documentation:
 - Electron packaging recommendation: https://www.electronjs.org/docs/latest/tutorial/application-distribution
 - OpenAI model guidance: https://developers.openai.com/api/docs/models and https://developers.openai.com/api/docs/guides/latest-model
 - W3C personalization direction: https://www.w3.org/WAI/adapt/
+- Apple HIG motion/feedback/materials: https://developer.apple.com/design/human-interface-guidelines/
+- Perplexity Comet contextual assistant patterns: https://www.perplexity.ai/help-center/comet/en/articles/11734688-assistant-panel
 
 CDP experimental APIs and model behavior are version-sensitive. Pin the event toolchain/model configuration and test the exact operations instead of relying on unverified future compatibility.
