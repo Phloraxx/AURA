@@ -126,6 +126,12 @@ function combineEvents(
   };
 }
 
+function sourceRank(source: RecomposePlan['source']): number {
+  if (source === 'cloud') return 2;
+  if (source === 'local') return 1;
+  return 0;
+}
+
 let currentPageId: string | null = null;
 let currentRevision: number | null = null;
 let currentPageModel: PageModel | null = null;
@@ -172,6 +178,23 @@ ipcRenderer.on(ADAPTATION_COMMAND_CHANNEL, (_event, untrustedCommand: Adaptation
   }
 
   if (command.type === 'apply-recompose') {
+    if (
+      currentRecomposePlan !== null &&
+      sourceRank(command.plan.source) < sourceRank(currentRecomposePlan.source)
+    ) {
+      ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, {
+        changedTargetCount: currentRecomposePlan.sections.reduce(
+          (count, section) => count + section.items.length,
+          0,
+        ),
+        error: null,
+        operation: 'recompose',
+        pageId: command.pageId,
+        status: 'applied',
+        view: 'aura',
+      });
+      return;
+    }
     currentRecomposePlan = command.plan;
     ipcRenderer.send(
       ADAPTATION_EVENT_CHANNEL,
@@ -202,7 +225,8 @@ ipcRenderer.on(ADAPTATION_COMMAND_CHANNEL, (_event, untrustedCommand: Adaptation
         page: currentPageModel,
         preset,
         source: 'deterministic',
-        subtitle: 'AURA is rebuilding this real page while deeper understanding arrives.',
+        subtitle:
+          'AURA is rebuilding this real page while deeper understanding arrives.',
       });
       events.push(recomposeRuntime.applyPlan(currentRecomposePlan, currentReduceMotion));
     }
