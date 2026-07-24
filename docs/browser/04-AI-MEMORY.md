@@ -34,23 +34,28 @@ The existing `apps/api` remains available for legacy extension work or a later p
 
 ## Model baseline
 
-Start the event implementation with:
+Event configuration:
 
 ```dotenv
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-5.6-luna
+AURA_PAGE_REASONING_EFFORT=medium
 ```
 
-Initial measured configuration for page/conversation calls:
+`gpt-5.6-luna` remains the selected event model. The approximately USD 50 event
+budget is sufficient for the judged flow, but usage and latency must be measured.
 
-```text
-reasoning.effort = high
-```
+The flagship `analyzePage` call defaults to `reasoning.effort = medium`. Earlier
+W4 live tests with `high` reasoning produced useful plans but typically took
+roughly 10–24 seconds. OpenAI's current GPT-5.6 guidance recommends comparing
+one reasoning level lower than a working baseline and describes `medium` as a
+balanced starting point. The page effort remains externally configurable via
+`AURA_PAGE_REASONING_EFFORT` (or `AURA_REASONING_EFFORT` as a global fallback),
+so the event Mac can return to `high` without a code change if final live testing
+shows a material quality regression.
 
-This event configuration is an explicit product decision. Luna supports image
-input, Responses, and structured outputs. The approximately USD 50 event budget
-is sufficient for the judged flow, but usage and latency must be measured.
-Do not build automatic model routing before the core experience is green.
+Onboarding and conversation keep their already-verified reasoning settings until
+measured evidence justifies changing them. Do not build automatic model routing.
 
 Model choice remains outside product contracts.
 
