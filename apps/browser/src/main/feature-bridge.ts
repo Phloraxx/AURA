@@ -39,17 +39,17 @@ function sameDocument(left: string, right: string): boolean {
 }
 
 function findPageWebContents(url: string): WebContents | null {
-  const candidates = webContents
-    .getAllWebContents()
-    .filter((contents) => !contents.isDestroyed())
-    .filter((contents) => {
-      const current = contents.getURL();
-      return current.startsWith('http://') || current.startsWith('https://');
-    });
   return (
-    candidates.find((contents) => sameDocument(contents.getURL(), url)) ??
-    candidates[0] ??
-    null
+    webContents
+      .getAllWebContents()
+      .filter((contents) => !contents.isDestroyed())
+      .find((contents) => {
+        const current = contents.getURL();
+        return (
+          (current.startsWith('http://') || current.startsWith('https://')) &&
+          sameDocument(current, url)
+        );
+      }) ?? null
   );
 }
 
@@ -91,14 +91,16 @@ ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
     page: request.page,
     preset: request.preset,
     source: 'local',
-    subtitle: 'AURA used the local model to choose the parts of this real page that matter most.',
+    subtitle:
+      'AURA used the local model to choose the parts of this real page that matter most.',
   });
   const target = findPageWebContents(request.page.url);
   if (target === null) {
     return localRecomposeResultSchema.parse({
       ...result,
       applied: false,
-      error: 'The current webpage changed before local personalization could be applied.',
+      error:
+        'The current webpage changed before local personalization could be applied.',
     });
   }
   target.send(IPC_CHANNELS.adaptationCommand, {
