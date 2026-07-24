@@ -16,23 +16,26 @@ The visible product language revolves around only:
 
 The first screen communicates one idea:
 
-> **Let’s make the web work better for you.**
+> **Let’s find your comfortable web.**
 
 Primary action:
 
-`Start with AURA`
+`Find my comfort`
 
 Secondary:
 
-`Skip for now`
+`Use comfortable defaults`
 
-The required event path is conversational **text** plus experiential calibration. Voice may be added later but must not be implied as required by the primary flow.
+The required event path is experiential calibration plus one optional
+free-text preference. Voice may be added later but must not be implied as
+required by the primary flow.
 
 ### Design rule
 
 Do not make onboarding an open-ended chatbot interview that can wander.
 
-Use a short deterministic backbone with AI-personalized wording/follow-ups.
+Use a short deterministic backbone. OpenAI is reserved for converting the
+user's optional final note into at most one explicit learned preference.
 
 Target roughly four areas:
 
@@ -41,7 +44,8 @@ Target roughly four areas:
 3. **Attention/presentation** — motion and simultaneous information density.
 4. **Understanding style** — concise vs detailed explanations; preserve technical terms.
 
-AURA may skip an area already answered clearly or ask one useful follow-up. The entire judged path should stay around **60–90 seconds**.
+The entire judged path should stay around **60–90 seconds**. It must remain
+fully useful without the optional note or an OpenAI response.
 
 ### Conversation style
 

@@ -164,7 +164,9 @@ Real OpenAI provider for development and final event build.
 
 Simulated timeout/unavailable API to verify local deterministic adaptation remains useful.
 
-Unlimited credits do not remove the need to test latency/failure.
+The event API budget is approximately USD 50. Record request usage, avoid
+duplicate analysis, and test latency/failure even when the remaining budget is
+comfortable.
 
 ## Performance logging
 

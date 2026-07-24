@@ -265,11 +265,13 @@ Keep provider code behind a small interface so moving it back to `apps/api` late
 Start measurement with:
 
 ```text
-OPENAI_MODEL=gpt-5.6-terra
-reasoning.effort=low
+OPENAI_MODEL=gpt-5.6-luna
+reasoning.effort=high
 ```
 
-Use structured outputs and image input. Model choice remains configurable; test `gpt-5.6-sol` only if a measured page-quality problem justifies the latency.
+Use structured outputs and image input. Model choice remains configurable. The
+event budget is approximately USD 50, so record request usage and avoid
+re-analyzing an unchanged page.
 
 Do not implement automatic model routing before core reliability is finished.
 

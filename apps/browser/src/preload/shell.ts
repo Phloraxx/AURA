@@ -19,7 +19,15 @@ const api: AuraShellApi = {
   forward: () => ipcRenderer.invoke(IPC_CHANNELS.forward),
   getPageIntelligenceState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getPageIntelligenceState),
+  getProfile: () => ipcRenderer.invoke(IPC_CHANNELS.getProfile),
+  onboardingTurn: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.onboardingTurn, request),
   refresh: () => ipcRenderer.invoke(IPC_CHANNELS.refresh),
+  resetProfile: () => ipcRenderer.invoke(IPC_CHANNELS.resetProfile),
+  saveProfile: (profile) =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveProfile, profile),
+  setOnboardingActive: (active) =>
+    ipcRenderer.invoke(IPC_CHANNELS.setOnboardingActive, active),
   setPanelOpen: (open) =>
     ipcRenderer.invoke(IPC_CHANNELS.setPanelOpen, open),
   onNavigationState: (listener) => {

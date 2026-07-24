@@ -4,7 +4,9 @@
 
 Use OpenAI for semantic understanding and conversational personalization without turning AURA into a slow chain of agents.
 
-The event build uses **few rich structured calls**. Cost is not the constraint; perceived latency and reliability are.
+The event build uses **few rich structured calls**. Perceived latency and
+reliability are primary, and total use must stay within the approximately
+USD 50 event budget.
 
 ## Event provider architecture
 
@@ -36,18 +38,19 @@ Start the event implementation with:
 
 ```dotenv
 OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-5.6-terra
+OPENAI_MODEL=gpt-5.6-luna
 ```
 
 Initial measured configuration for page/conversation calls:
 
 ```text
-reasoning.effort = low
+reasoning.effort = high
 ```
 
-Why Terra: OpenAI positions GPT-5.6 Terra as the balance of intelligence and cost; for AURA, cost is abundant but latency still matters. Terra also supports image input, Responses, and structured outputs.
-
-`gpt-5.6-sol` is an environment override for comparison/testing. Do not build automatic model routing before the core experience is green.
+This event configuration is an explicit product decision. Luna supports image
+input, Responses, and structured outputs. The approximately USD 50 event budget
+is sufficient for the judged flow, but usage and latency must be measured.
+Do not build automatic model routing before the core experience is green.
 
 Model choice remains outside product contracts.
 
@@ -62,17 +65,16 @@ Only three operations are first-class.
 
 ### 1. `onboardingTurn`
 
-Purpose: make Learn Me conversational and responsive to what the user has already told AURA.
+Purpose: turn one optional user-written note into at most one explicit,
+human-readable learned preference. The four required calibration areas remain
+deterministic and do not wait for OpenAI.
 
 Input:
 
 ```ts
 interface OnboardingTurnInput {
-  profileSoFar: CapabilityProfile;
-  recentTurns: ConversationTurn[];
+  deterministicChoices: CalibrationChoice[];
   userResponse: string;
-  calibrationResults: CalibrationResult[];
-  askedAreas: OnboardingArea[];
 }
 ```
 
@@ -81,15 +83,13 @@ Output:
 ```ts
 interface OnboardingTurnOutput {
   assistantMessage: string;
-  profilePatch: CapabilityProfilePatch;
-  nextQuestionArea?: OnboardingArea;
-  nextCalibration?: CalibrationKind;
-  onboardingComplete: boolean;
+  learnedPreference: string | null;
   confidence: number;
 }
 ```
 
-The model does not diagnose. It recommends product preferences/support needs.
+The model does not diagnose or invent needs. Failure, refusal, timeout, or a
+missing API key uses a deterministic path and never blocks profile completion.
 
 ### 2. `analyzePage`
 
@@ -330,12 +330,15 @@ It survives navigation while the active task is clearly continuing, then expires
 Use one versioned Zod-validated JSON file under Electron `app.getPath('userData')`.
 
 ```ts
-interface AuraMemoryFile {
+interface BrowserProfile {
   version: 1;
-  onboardingComplete: boolean;
-  activeProfile: CapabilityProfile;
-  learnedPreferences: LearnedPreference[];
-  sitePreferences?: SitePreference[];
+  id: string;
+  completedAt: string | null;
+  capabilities: CapabilitySupportLevels;
+  preferences: ResolvedComfortPreferences;
+  learnedPreferences: string[];
+  summary: string;
+  createdAt: string;
   updatedAt: string;
 }
 ```
@@ -384,7 +387,7 @@ Send the compact PageModel + screenshot + the minimum user context needed to per
 
 AI/memory is ready when:
 
-- two different Learn Me conversations produce meaningfully different profiles;
+- two different Learn Me calibration paths produce meaningfully different profiles;
 - page analysis references valid current AURA targets and improves the real page;
 - all four action families work reliably across multiple page categories;
 - `Remember` changes a later transformation after restart;

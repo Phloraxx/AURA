@@ -10,6 +10,8 @@ import type {
   PageRuntimeEvent,
 } from '../shared/contracts';
 import type { PageIntelligenceState } from '../shared/page-model';
+import type { BrowserProfile } from '../shared/profile';
+import { LearnMe } from './LearnMe';
 
 const EMPTY_NAVIGATION: BrowserNavigationState = {
   canGoBack: false,
@@ -30,6 +32,9 @@ export function App(): React.JSX.Element {
   );
   const [pageIntelligence, setPageIntelligence] =
     useState<PageIntelligenceState | null>(null);
+  const [profile, setProfile] = useState<BrowserProfile | null | undefined>(
+    undefined,
+  );
   const editingAddress = useRef(false);
   const navigationInProgress = useRef(false);
 
@@ -64,6 +69,13 @@ export function App(): React.JSX.Element {
     };
   }, []);
 
+  useEffect(() => {
+    void window.aura.getProfile().then((savedProfile) => {
+      setProfile(savedProfile);
+      void window.aura.setOnboardingActive(savedProfile?.completedAt == null);
+    });
+  }, []);
+
   function submitAddress(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     editingAddress.current = false;
@@ -76,9 +88,37 @@ export function App(): React.JSX.Element {
     void window.aura.setPanelOpen(nextOpen);
   }
 
+  async function completeOnboarding(
+    completedProfile: BrowserProfile,
+  ): Promise<void> {
+    const savedProfile = await window.aura.saveProfile(completedProfile);
+    setProfile(savedProfile);
+    setPanelOpen(true);
+    await window.aura.setOnboardingActive(false);
+    await window.aura.setPanelOpen(true);
+  }
+
+  async function restartOnboarding(): Promise<void> {
+    await window.aura.resetProfile();
+    setProfile(null);
+  }
+
   const pageConnectionFailed = navigation.error !== null;
   const pageConnectionReady =
     !pageConnectionFailed && runtimeEvent !== null;
+
+  if (profile === undefined) {
+    return (
+      <main className="profile-loading" aria-live="polite">
+        <span className="brand-mark" aria-hidden="true">A</span>
+        <p>Preparing AURA…</p>
+      </main>
+    );
+  }
+
+  if (profile === null || profile.completedAt === null) {
+    return <LearnMe initialProfile={profile ?? undefined} onComplete={completeOnboarding} />;
+  }
 
   return (
     <main className={panelOpen ? 'shell panel-open' : 'shell'}>
@@ -175,9 +215,20 @@ export function App(): React.JSX.Element {
           </div>
 
           <p className="panel-copy">
-            The browser shell is connected. Personal page adaptation arrives
-            in the next milestone.
+            Your profile is ready. AURA understands this page and will use your
+            comfort choices when Make This Mine arrives.
           </p>
+
+          <div className="profile-card">
+            <p className="eyebrow">Your comfort profile</p>
+            <p>{profile.summary}</p>
+            {profile.learnedPreferences.map((preference) => (
+              <span key={preference}>{preference}</span>
+            ))}
+            <button onClick={() => void restartOnboarding()} type="button">
+              Re-run Learn Me
+            </button>
+          </div>
 
           <div className="runtime-status" aria-live="polite">
             <span
@@ -207,7 +258,7 @@ export function App(): React.JSX.Element {
           <button className="primary-action" disabled type="button">
             Make This Mine
           </button>
-          <p className="milestone-note">Available after Page Intelligence.</p>
+          <p className="milestone-note">Arriving in the next milestone.</p>
 
           {import.meta.env.DEV && pageIntelligence !== null ? (
             <details className="page-model-inspector">

@@ -101,19 +101,23 @@ Reason: on one controlled Mac, a local backend process adds startup, CORS, deplo
 
 Provider code still sits behind a small interface so the architecture can move back to a server later.
 
-## ADR-011 — Use GPT-5.6 Terra as the event baseline, but keep model configuration external
+## ADR-011 — Use GPT-5.6 Luna with high reasoning as the event baseline
 
 **Status:** Accepted
 
 Baseline:
 
-- model: `gpt-5.6-terra`;
+- model: `gpt-5.6-luna`;
 - Responses API;
 - structured outputs;
 - image input for page screenshots;
-- low reasoning effort on latency-sensitive page/conversation calls as the first measured configuration.
+- high reasoning effort.
 
-Reason: OpenAI positions Terra as the balance of intelligence and cost; cost is not the event constraint, but latency is. `gpt-5.6-sol` remains an environment override for difficult pages if measured quality justifies the latency.
+Reason: this is the explicit event configuration selected by the project owner.
+The event API budget is approximately USD 50, so AURA records usage, avoids
+duplicate analysis, and keeps deterministic fallbacks. Model configuration
+remains external so the choice can be changed without altering product
+contracts.
 
 Do not implement dynamic multi-model routing before W7.
 

@@ -1,4 +1,5 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   app,
@@ -19,26 +20,47 @@ import {
   type PageIntelligenceState,
   type PageModel,
 } from '../shared/page-model';
+import {
+  browserProfileSchema,
+  onboardingTurnRequestSchema,
+} from '../shared/profile';
+import { createOnboardingProvider } from './ai/onboarding-provider';
 import { getPageViewBounds } from './layout';
 import { normalizeAddress } from './navigation';
+import { ProfileStore } from './profile-store';
 
 const DEFAULT_URL = 'https://www.wikipedia.org/';
+const APP_DIRECTORY = dirname(fileURLToPath(import.meta.url));
+
+if (process.env.AURA_CDP_PORT !== undefined) {
+  app.commandLine.appendSwitch(
+    'remote-debugging-port',
+    process.env.AURA_CDP_PORT,
+  );
+}
 
 let mainWindow: BrowserWindow | null = null;
 let pageView: WebContentsView | null = null;
 let panelOpen = true;
+let onboardingActive = true;
 let navigationError: string | null = null;
 let pageIntelligenceState: PageIntelligenceState | null = null;
 let screenshotRequest = 0;
+let profileStore: ProfileStore | null = null;
+
+const onboardingProvider = createOnboardingProvider();
 
 function getPreloadPath(name: 'page' | 'shell'): string {
-  return join(__dirname, `../preload/${name}.cjs`);
+  return join(APP_DIRECTORY, `../preload/${name}.cjs`);
 }
 
 function updatePageBounds(): void {
   if (mainWindow === null || pageView === null) {
     return;
   }
+
+  pageView.setVisible(!onboardingActive);
+  if (onboardingActive) return;
 
   const [width = 0, height = 0] = mainWindow.getContentSize();
   pageView.setBounds(getPageViewBounds(width, height, panelOpen));
@@ -238,6 +260,30 @@ function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.getPageIntelligenceState, () => {
     return pageIntelligenceState;
   });
+  ipcMain.handle(IPC_CHANNELS.getProfile, async () => {
+    return profileStore?.load() ?? null;
+  });
+  ipcMain.handle(
+    IPC_CHANNELS.saveProfile,
+    async (_event, untrustedProfile: unknown) => {
+      if (profileStore === null) throw new Error('Profile store is not ready.');
+      const profile = browserProfileSchema.parse(untrustedProfile);
+      return profileStore.save(profile);
+    },
+  );
+  ipcMain.handle(IPC_CHANNELS.resetProfile, async () => {
+    if (profileStore === null) throw new Error('Profile store is not ready.');
+    await profileStore.reset();
+    onboardingActive = true;
+    updatePageBounds();
+  });
+  ipcMain.handle(
+    IPC_CHANNELS.onboardingTurn,
+    async (_event, untrustedRequest: unknown) => {
+      const request = onboardingTurnRequestSchema.parse(untrustedRequest);
+      return onboardingProvider.turn(request);
+    },
+  );
   ipcMain.handle(
     IPC_CHANNELS.debugPageTarget,
     (_event, untrustedCommand: unknown) => {
@@ -266,6 +312,14 @@ function registerIpc(): void {
     panelOpen = open;
     updatePageBounds();
   });
+  ipcMain.handle(
+    IPC_CHANNELS.setOnboardingActive,
+    (_event, active: boolean) => {
+      onboardingActive = active;
+      if (!active) panelOpen = true;
+      updatePageBounds();
+    },
+  );
   ipcMain.on(
     IPC_CHANNELS.pageRuntimeEvent,
     (event: IpcMainEvent, payload: PageRuntimeEvent) => {
@@ -294,6 +348,9 @@ function registerIpc(): void {
 }
 
 async function createWindow(): Promise<void> {
+  const savedProfile = await profileStore?.load();
+  onboardingActive = savedProfile?.completedAt == null;
+
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 920,
@@ -334,7 +391,7 @@ async function createWindow(): Promise<void> {
   if (process.env.ELECTRON_RENDERER_URL !== undefined) {
     await mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    await mainWindow.loadFile(join(APP_DIRECTORY, '../renderer/index.html'));
   }
 
   await loadPage(DEFAULT_URL);
@@ -343,6 +400,7 @@ async function createWindow(): Promise<void> {
 registerIpc();
 
 void app.whenReady().then(async () => {
+  profileStore = new ProfileStore(app.getPath('userData'));
   await createWindow();
 
   app.on('activate', () => {

@@ -26,7 +26,9 @@ On a normal webpage selected by the user, AURA should be able to:
 
 ### 1. Learn Me
 
-A first-run conversation and calibration experience. AURA asks a small number of relevant questions, shows examples, and adapts the onboarding UI itself so the user experiences preferences instead of configuring a medical-style settings form.
+A first-run experiential calibration with one optional conversational note. AURA
+shows concrete alternatives and adapts the onboarding UI itself so the user
+experiences preferences instead of configuring a medical-style settings form.
 
 Required outcome: a useful persistent profile in roughly 60–90 seconds for a judge.
 

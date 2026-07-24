@@ -28,7 +28,7 @@ Everything else is supporting infrastructure or a small control.
 - **Remote integration:** dedicated page preload in an isolated world.
 - **Page intelligence:** ranked runtime DOM model + geometry/styles + viewport screenshot, with selective CDP Accessibility/DOMSnapshot enrichment only when it proves useful.
 - **AI:** OpenAI Responses API called directly from Electron main for the event build.
-- **Baseline model to measure first:** `gpt-5.6-terra`, low reasoning for latency-sensitive calls; model remains configurable.
+- **Event model baseline:** `gpt-5.6-luna`, high reasoning; model remains configurable and API usage must stay within the approximately USD 50 event budget.
 - **Persistence:** versioned local JSON.
 - **Build/dev:** `electron-vite`; Electron Forge only for final packaging.
 
