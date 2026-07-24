@@ -10,6 +10,7 @@ import {
   WebContentsView,
   type IpcMainEvent,
 } from 'electron';
+import { z } from 'zod';
 
 import {
   IPC_CHANNELS,
@@ -59,6 +60,12 @@ const DEFAULT_URL =
   process.env.AURA_START_URL?.trim() || 'https://www.wikipedia.org/';
 const APP_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const BRAND_ICON_PATH = join(APP_DIRECTORY, '../../resources/aura.png');
+const pageRuntimeEventSchema = z.object({
+  phase: z.enum(['preload-started', 'dom-ready']),
+  readyState: z.enum(['loading', 'interactive', 'complete']),
+  title: z.string(),
+  url: z.string(),
+});
 
 if (process.env.AURA_USER_DATA_DIR?.trim()) {
   app.setPath('userData', process.env.AURA_USER_DATA_DIR.trim());
@@ -76,6 +83,7 @@ let pageView: WebContentsView | null = null;
 let panelOpen = true;
 let onboardingActive = true;
 let navigationError: string | null = null;
+let pageRuntimeState: PageRuntimeEvent | null = null;
 let pageIntelligenceState: PageIntelligenceState | null = null;
 let adaptationState: AdaptationState = adaptationStateSchema.parse({
   changedTargetCount: 0,
@@ -169,9 +177,12 @@ function publishNavigationState(): void {
   }
 }
 
-function publishPageRuntimeEvent(event: PageRuntimeEvent): void {
+function publishPageRuntimeState(): void {
   if (mainWindow?.isDestroyed() === false) {
-    mainWindow.webContents.send(IPC_CHANNELS.pageRuntimeEvent, event);
+    mainWindow.webContents.send(
+      IPC_CHANNELS.pageRuntimeEvent,
+      pageRuntimeState,
+    );
   }
 }
 
@@ -617,15 +628,28 @@ function attachPageEvents(view: WebContentsView): void {
       mainWindow?.webContents.send(IPC_CHANNELS.focusAddress);
     }
   });
+  webContents.on(
+    'did-start-navigation',
+    (_event, _url, isInPlace, isMainFrame) => {
+      if (!isMainFrame || isInPlace) {
+        return;
+      }
+
+      pageRuntimeState = null;
+      publishPageRuntimeState();
+      navigationError = null;
+      if (conversationState.currentIntent?.preserveAcrossNavigation === false) {
+        conversationState = { ...conversationState, currentIntent: null };
+        publishConversationState();
+      }
+      invalidateSemanticAnalysis();
+      invalidateAdaptation();
+      invalidatePageIntelligence();
+      publishNavigationState();
+    },
+  );
   webContents.on('did-start-loading', () => {
     navigationError = null;
-    if (conversationState.currentIntent?.preserveAcrossNavigation === false) {
-      conversationState = { ...conversationState, currentIntent: null };
-      publishConversationState();
-    }
-    invalidateSemanticAnalysis();
-    invalidateAdaptation();
-    invalidatePageIntelligence();
     publishNavigationState();
   });
   webContents.on('did-stop-loading', publishNavigationState);
@@ -638,6 +662,8 @@ function attachPageEvents(view: WebContentsView): void {
       if (!isMainFrame || errorCode === -3) {
         return;
       }
+      pageRuntimeState = null;
+      publishPageRuntimeState();
       navigationError = friendlyNavigationError(errorCode);
       publishNavigationState();
     },
@@ -669,6 +695,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.getPageIntelligenceState, () => {
     return pageIntelligenceState;
   });
+  ipcMain.handle(IPC_CHANNELS.getPageRuntimeState, () => pageRuntimeState);
   ipcMain.handle(IPC_CHANNELS.getAdaptationState, () => adaptationState);
   ipcMain.handle(IPC_CHANNELS.getConversationState, () => conversationState);
   ipcMain.handle(
@@ -915,10 +942,20 @@ function registerIpc(): void {
   );
   ipcMain.on(
     IPC_CHANNELS.pageRuntimeEvent,
-    (event: IpcMainEvent, payload: PageRuntimeEvent) => {
-      if (event.sender === pageView?.webContents) {
-        publishPageRuntimeEvent(payload);
+    (event: IpcMainEvent, untrustedPayload: unknown) => {
+      if (event.sender !== pageView?.webContents) return;
+      const payload = pageRuntimeEventSchema.safeParse(untrustedPayload);
+      if (
+        !payload.success ||
+        !urlsReferToCurrentDocument(
+          payload.data.url,
+          pageView.webContents.getURL(),
+        )
+      ) {
+        return;
       }
+      pageRuntimeState = payload.data;
+      publishPageRuntimeState();
     },
   );
   ipcMain.on(
@@ -977,6 +1014,7 @@ async function createWindow(): Promise<void> {
   mainWindow.on('closed', () => {
     pageView?.webContents.close();
     pageView = null;
+    pageRuntimeState = null;
     pageIntelligenceState = null;
     invalidateSemanticAnalysis();
     invalidateAdaptation();

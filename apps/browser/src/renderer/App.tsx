@@ -84,18 +84,10 @@ export function App(): React.JSX.Element {
     undefined,
   );
   const editingAddress = useRef(false);
-  const navigationInProgress = useRef(false);
 
   useEffect(() => {
     const removeNavigationListener = window.aura.onNavigationState((state) => {
       setNavigation(state);
-      if (
-        (state.isLoading && !navigationInProgress.current) ||
-        state.error !== null
-      ) {
-        setRuntimeEvent(null);
-      }
-      navigationInProgress.current = state.isLoading;
       if (!editingAddress.current) {
         setAddress(state.url);
       }
@@ -118,6 +110,7 @@ export function App(): React.JSX.Element {
       document.querySelector<HTMLInputElement>('#aura-address')?.focus();
     });
     void window.aura.getPageIntelligenceState().then(setPageIntelligence);
+    void window.aura.getPageRuntimeState().then(setRuntimeEvent);
     void window.aura.getAdaptationState().then(setAdaptation);
     void window.aura
       .getSemanticAnalysisState()

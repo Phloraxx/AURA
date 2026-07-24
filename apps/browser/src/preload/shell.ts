@@ -31,6 +31,8 @@ const api: AuraShellApi = {
     ipcRenderer.invoke(IPC_CHANNELS.getConversationState),
   getPageIntelligenceState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getPageIntelligenceState),
+  getPageRuntimeState: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.getPageRuntimeState),
   getProfile: () => ipcRenderer.invoke(IPC_CHANNELS.getProfile),
   getSemanticAnalysisState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getSemanticAnalysisState),
@@ -107,7 +109,7 @@ const api: AuraShellApi = {
   onPageRuntimeEvent: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
-      runtimeEvent: PageRuntimeEvent,
+      runtimeEvent: PageRuntimeEvent | null,
     ): void => {
       listener(runtimeEvent);
     };

@@ -125,6 +125,10 @@ The final audit-driven pass closes the remaining product-story gaps without expa
 - explicit requests to keep technical details remove active additive simplifications for the current page;
 - “Use comfortable defaults” now applies the same comfortable choices shown in Learn Me;
 - screenshot privacy checks cover all supported contenteditable spellings;
+- page-preload readiness is cached per document in Electron main, replayed to a
+  remounted shell, and invalidated only when a full main-frame navigation
+  begins; Electron regression coverage now exercises both shell reload and
+  remote-page refresh;
 - the app has one AURA visual identity across native icon, favicon, browser wordmark, panel mark, and custom interface glyphs;
 - light/dark appearance, keyboard focus, reduced motion, and profile-sized controls are part of the shell design system.
 

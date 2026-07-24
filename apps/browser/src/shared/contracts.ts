@@ -36,6 +36,7 @@ export const IPC_CHANNELS = {
   getAdaptationState: 'aura:adaptation:get-state',
   getConversationState: 'aura:conversation:get-state',
   getProfile: 'aura:profile:get',
+  getPageRuntimeState: 'aura:page-runtime:get-state',
   getSemanticAnalysisState: 'aura:semantic:get-state',
   navigate: 'aura:navigation:open',
   navigationState: 'aura:navigation:state',
@@ -85,6 +86,7 @@ export interface AuraShellApi {
   getAdaptationState: () => Promise<AdaptationState>;
   getConversationState: () => Promise<ConversationState>;
   getPageIntelligenceState: () => Promise<PageIntelligenceState | null>;
+  getPageRuntimeState: () => Promise<PageRuntimeEvent | null>;
   getProfile: () => Promise<BrowserProfile | null>;
   getSemanticAnalysisState: () => Promise<SemanticAnalysisState>;
   navigate: (address: string) => Promise<void>;
@@ -105,7 +107,7 @@ export interface AuraShellApi {
     listener: (state: PageIntelligenceState | null) => void,
   ) => () => void;
   onPageRuntimeEvent: (
-    listener: (event: PageRuntimeEvent) => void,
+    listener: (event: PageRuntimeEvent | null) => void,
   ) => () => void;
   onSemanticAnalysisState: (
     listener: (state: SemanticAnalysisState) => void,

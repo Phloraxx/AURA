@@ -114,6 +114,39 @@ test('rehearses clean launch through Learn Me, Talk, Remember, and Original', as
   }
 });
 
+test('keeps the page runtime connected across shell and page reloads', async () => {
+  const userData = await mkdtemp(join(tmpdir(), 'aura-browser-runtime-e2e-'));
+  await seedProfile(userData);
+  const app = await electron.launch({
+    args: [resolve('.vite/main/index.js')],
+    env: {
+      ...PROCESS_ENV,
+      AURA_START_URL: ARTICLE_URL,
+      AURA_USER_DATA_DIR: userData,
+      OPENAI_API_KEY: '',
+    },
+  });
+
+  try {
+    const shell = await app.firstWindow();
+    const readyStatus = shell.getByText('Page connection ready');
+
+    await expect(readyStatus).toBeVisible({ timeout: 20_000 });
+
+    await shell.reload();
+    await expect(readyStatus).toBeVisible({ timeout: 20_000 });
+
+    await shell.getByRole('button', { name: 'Refresh page' }).click();
+    await expect(readyStatus).toBeVisible({ timeout: 20_000 });
+    await expect(
+      shell.getByRole('button', { name: 'Make This Mine' }),
+    ).toBeEnabled({ timeout: 20_000 });
+  } finally {
+    await app.close();
+    await rm(userData, { force: true, recursive: true });
+  }
+});
+
 test('runs Make This Mine, conversation, memory, navigation, and Original in Electron', async () => {
   const userData = await mkdtemp(join(tmpdir(), 'aura-browser-e2e-'));
   await seedProfile(userData);
