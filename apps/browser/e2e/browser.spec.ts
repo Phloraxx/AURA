@@ -39,7 +39,7 @@ async function seedProfile(userData: string): Promise<void> {
   );
 }
 
-test('rehearses clean launch through Learn Me, Talk, Remember, and Original', async () => {
+test('rehearses clean launch through Learn Me, Recompose, voice UI, Talk, Remember, and Original', async () => {
   const userData = await mkdtemp(join(tmpdir(), 'aura-browser-clean-e2e-'));
   const app = await electron.launch({
     args: [resolve('.vite/main/index.js')],
@@ -66,11 +66,33 @@ test('rehearses clean launch through Learn Me, Talk, Remember, and Original', as
     await shell.getByRole('button', { name: 'Continue' }).click();
     await shell.getByRole('button', { name: 'Start browsing' }).click();
 
+    await expect(shell.getByText('Same website · different interface')).toBeVisible();
+    await expect(shell.getByRole('button', { name: 'Speak to AURA' })).toBeVisible();
+    await shell.getByRole('radio', { name: /Clear & Calm/ }).click();
     await expect(shell.getByRole('button', { name: 'Make This Mine' })).toBeEnabled({
       timeout: 20_000,
     });
     await shell.getByRole('button', { name: 'Make This Mine' }).click();
     await expect(shell.getByRole('button', { name: 'Original' })).toBeVisible();
+
+    const remote = app
+      .context()
+      .pages()
+      .find((page) => page.url().startsWith(ARTICLE_URL));
+    expect(remote).toBeDefined();
+    await expect
+      .poll(() =>
+        remote?.evaluate(() => {
+          const root = document.querySelector<HTMLElement>(
+            '[data-aura-recompose-root]',
+          );
+          return {
+            active: document.documentElement.getAttribute('data-aura-recomposed'),
+            preset: root?.dataset.preset ?? null,
+          };
+        }),
+      )
+      .toEqual({ active: 'on', preset: 'clear_calm' });
 
     const message = shell.getByRole('textbox', { name: 'Ask or tell AURA' });
     await message.fill('The page is too distracting.');
@@ -83,9 +105,16 @@ test('rehearses clean launch through Learn Me, Talk, Remember, and Original', as
     await expect(shell.getByText('Remember this preference?')).toBeVisible();
     await shell.getByRole('button', { name: 'Remember', exact: true }).click();
     await shell.getByRole('button', { name: 'Original' }).click();
-    await expect(
-      shell.getByText('The original presentation is restored.'),
-    ).toBeVisible();
+    await expect(shell.getByText(/The original .* is restored/)).toBeVisible();
+    await expect
+      .poll(() =>
+        remote?.evaluate(
+          () =>
+            document.querySelector('[data-aura-recompose-root]') === null &&
+            !document.documentElement.hasAttribute('data-aura-recomposed'),
+        ),
+      )
+      .toBe(true);
 
     await shell.addScriptTag({ path: AXE_CORE_PATH });
     const seriousViolations = await shell.evaluate(async () => {
@@ -147,7 +176,7 @@ test('keeps the page runtime connected across shell and page reloads', async () 
   }
 });
 
-test('runs Make This Mine, conversation, memory, navigation, and Original in Electron', async () => {
+test('runs Step by Step, conversation, memory, navigation, and Original in Electron', async () => {
   const userData = await mkdtemp(join(tmpdir(), 'aura-browser-e2e-'));
   await seedProfile(userData);
   const app = await electron.launch({
@@ -163,6 +192,7 @@ test('runs Make This Mine, conversation, memory, navigation, and Original in Ele
   try {
     const shell = await app.firstWindow();
     await expect(shell.getByRole('heading', { name: 'Ready for this page.' })).toBeVisible();
+    await shell.getByRole('radio', { name: /Step by Step/ }).click();
     await expect(shell.getByRole('button', { name: 'Make This Mine' })).toBeEnabled({
       timeout: 20_000,
     });
@@ -176,12 +206,26 @@ test('runs Make This Mine, conversation, memory, navigation, and Original in Ele
     expect(remote).toBeDefined();
     await expect
       .poll(() =>
+        remote?.evaluate(() => {
+          const root = document.querySelector<HTMLElement>(
+            '[data-aura-recompose-root]',
+          );
+          return {
+            preset: root?.dataset.preset ?? null,
+            stepText: root?.querySelector('.aura-r-step-nav')?.textContent ?? '',
+          };
+        }),
+      )
+      .toEqual(expect.objectContaining({ preset: 'step_by_step' }));
+    await expect
+      .poll(() =>
         remote?.evaluate(
           () =>
-            document.documentElement.getAttribute('data-aura-presentation'),
+            document.querySelector('.aura-r-step-nav')?.textContent?.includes('Step 1 of') ??
+            false,
         ),
       )
-      .toBe('on');
+      .toBe(true);
 
     const message = shell.getByRole('textbox', { name: 'Ask or tell AURA' });
     await message.fill('These controls still feel too small.');
@@ -212,7 +256,7 @@ test('runs Make This Mine, conversation, memory, navigation, and Original in Ele
       shell.getByText('Remembered. I’ll use that preference on later pages.'),
     ).toBeVisible();
 
-    await shell.getByRole('button', { name: 'Make This Mine' }).click();
+    await shell.getByRole('button', { name: /Make This Mine|Remake as/ }).click();
     await expect(shell.getByRole('button', { name: 'Original' })).toBeVisible();
     await shell.getByRole('button', { name: 'Original' }).click();
     const formRemote = app
@@ -228,6 +272,13 @@ test('runs Make This Mine, conversation, memory, navigation, and Original in Ele
         ),
       )
       .toBe(false);
+    await expect
+      .poll(() =>
+        formRemote?.evaluate(
+          () => document.querySelector('[data-aura-recompose-root]') === null,
+        ),
+      )
+      .toBe(true);
   } finally {
     await app.close();
   }
