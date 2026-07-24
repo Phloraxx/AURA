@@ -1,112 +1,127 @@
 # AGENTS.md
 
-This file defines the default instructions for coding agents working in this repository.
+This file defines the default instructions for coding agents working on the `aura-browser` branch.
 
 ## Mission
 
-Build the hackathon MVP described in `README.md` and `docs/` as a reliable vertical slice. The goal is a working adaptive accessibility extension, not a broad prototype with many unfinished features.
+Build the macOS AURA Browser event prototype defined by `docs/browser/`.
 
-## Before editing code
+The goal is not a broad browser or a collection of accessibility features. The goal is one polished experience in which AURA:
 
-Read, in order:
+1. learns the person,
+2. transforms a real judge-selected webpage through **Make This Mine**,
+3. lets the user talk naturally to AURA to change or guide that page.
 
-1. `docs/00-PRODUCT-BRIEF.md`
-2. `docs/01-MVP-SCOPE.md`
-3. `docs/02-ARCHITECTURE.md`
-4. `docs/03-DATA-MODEL.md`
-5. `docs/04-ONBOARDING-CALIBRATION.md`
-6. `docs/05-ADAPTATION-ENGINE.md`
-7. `docs/06-AI-CONTRACTS.md`
-8. `docs/07-API-CONTRACTS.md`
-9. `docs/08-SECURITY-PRIVACY.md`
-10. `docs/15-PREFLIGHT-REVIEW.md`
-11. `docs/10-IMPLEMENTATION-PLAN.md`
-12. `docs/11-TESTING.md`
-13. `docs/DEFINITION-OF-DONE.md`
+## Source of truth
 
-Then inspect `docs/09-RESEARCH.md` for verified platform constraints and `docs/13-DECISIONS.md` for architectural decisions that must not be silently reversed.
+Before editing code, read in order:
 
-`docs/15-PREFLIGHT-REVIEW.md` contains corrections and implementation guardrails from the final architecture review. Where it is more specific than an earlier document, follow the preflight review.
+1. `docs/browser/README.md`
+2. `docs/browser/00-PRODUCT.md`
+3. `docs/browser/01-EXPERIENCE.md`
+4. `docs/browser/02-ARCHITECTURE.md`
+5. `docs/browser/03-PAGE-INTELLIGENCE.md`
+6. `docs/browser/04-AI-MEMORY.md`
+7. `docs/browser/05-ADAPTATION.md`
+8. `docs/browser/06-IMPLEMENTATION-PLAN.md`
+9. `docs/browser/07-TESTING-DEMO.md`
+10. `docs/browser/08-DECISIONS.md`
+11. `docs/browser/DEFINITION-OF-DONE.md`
+12. `STATUS.md`
+
+For this branch, older extension-era documents under `docs/` are historical and non-authoritative unless a browser source-of-truth document explicitly references them.
+
+When architecture, scope, or product behavior changes, update the relevant browser document and `08-DECISIONS.md` before or with the code change.
 
 ## Execution rules
 
-- Implement in the phases defined in `docs/10-IMPLEMENTATION-PLAN.md`.
-- Complete and verify one phase before starting the next.
-- Prefer a working vertical slice over adding extra features.
-- Do not redesign the architecture without documenting a concrete technical reason in `docs/13-DECISIONS.md`.
-- When uncertain about a current Chrome Extension, WXT, Web Speech, or provider API, research the latest official documentation before implementing.
-- Record material research discoveries or changed assumptions in `docs/09-RESEARCH.md`.
-- Keep all AI responses behind Zod validation.
-- Never execute model-generated code.
-- Never put LLM or STT secrets in the extension bundle.
-- Never infer or present a medical diagnosis.
-- Capability scores are product signals, not clinical measurements.
-- Explicit user preferences must override inferred or capability-derived recommendations.
-- Deterministic adaptations must continue to work when the backend is unavailable.
-- Semantic AI page analysis must be user-triggered in the MVP and use a minimized network payload.
-- Never pass raw audio `Blob` objects through Chrome runtime messaging; upload voice recordings directly from the side-panel extension page to the fixed AURA API endpoint.
-- Content scripts must not perform arbitrary cross-origin fetches. Route semantic page-analysis requests through a fixed/configured background API client.
-- Every DOM adaptation must be reversible.
-- Avoid permanent deletion of host-page elements.
-- Avoid replacing the entire `document.body` or regenerating arbitrary pages.
-- Preserve existing form values, event handlers, and application state whenever possible.
+- Work milestone-by-milestone according to `06-IMPLEMENTATION-PLAN.md`.
+- Do not begin a later milestone while an earlier milestone's acceptance criteria are materially failing.
+- W4 **Make This Mine** and real-site reliability outrank secondary features.
+- No new named product mode without revising the product source of truth.
+- Do not reintroduce AURA Fit, Lens, Rescue, Reader, Focus, Simplify, or Task Mode as independent primary UI concepts.
+- Do not build Windows parity before the macOS event build is polished.
+- Do not build browser-engine, sync, password-manager, updater, bookmark-ecosystem, or extension-store work for the event.
+- Voice is stretch work; text conversation is required.
+- Prefer a complete vertical experience over subsystem rewrites.
+
+## Architecture rules
+
+- Primary client is `apps/browser` once W1 begins.
+- Use Electron `BaseWindow` + `WebContentsView`; do not base new work on deprecated `BrowserView` or `<webview>`.
+- Page intelligence combines AURA DOM IDs, CDP DOM/layout, CDP accessibility semantics, and optional screenshots.
+- Do not return to a first-N DOM element extractor.
+- Keep page target IDs and PageModel revisions explicit.
+- AI returns typed structured data; trusted local code performs page changes.
+- Never execute model-generated JavaScript or arbitrary generated HTML.
+- Every adaptation primitive must be reversible and idempotent.
+- Preserve original controls and page state wherever practical.
+- `Original ↔ AURA` is a hard requirement.
+- Deterministic profile adaptation must work when AI is slow or unavailable.
+- Do not run a chain of multiple sequential agents when one rich structured call can do the job.
+
+## Memory rules
+
+Persistent memory is limited to:
+
+- profile;
+- explicit learned preferences;
+- site preferences.
+
+Current task/intent is session memory.
+
+Persistent learning comes from onboarding/calibration answers or explicit `Remember`/edit actions. Do not silently turn behavior into a diagnosis or permanent preference.
 
 ## Coding standards
 
 - TypeScript strict mode.
-- Prefer small pure functions for policy logic.
-- Use discriminated unions and Zod schemas at process/network boundaries.
-- Keep Chrome APIs behind small adapters where practical.
-- Keep provider-specific SDKs behind provider interfaces.
-- Do not use `any` except at a narrow third-party boundary with an explanatory comment.
-- Do not use `eval`, `new Function`, remotely supplied scripts, or dynamic code execution.
-- Avoid global CSS rules that can permanently damage host pages; scope injected styles under an AURA marker where possible.
-- Use idempotent transformations. Reapplying the same plan should not repeatedly wrap or mutate the same node.
-- Debounce MutationObserver processing.
-- Log useful diagnostics in development mode without logging sensitive page content in production mode.
+- Zod at process/network/model boundaries.
+- Small typed IPC contracts.
+- Provider-specific OpenAI code behind provider interfaces.
+- No `any` except narrow documented third-party boundaries.
+- Prefer pure functions for ranking, policy, validation, and memory resolution.
+- AURA page runtime injection must be idempotent.
+- Debounce DOM mutation processing.
+- Do not expose debug JSON/logs in event builds.
 
-## Validation after meaningful changes
+## Validation
 
-Run the relevant commands once they exist:
+After meaningful changes run the relevant repository commands once they exist:
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+corepack pnpm lint
+corepack pnpm typecheck
+corepack pnpm test
+corepack pnpm build
 ```
 
-Run focused tests during development and the full suite before declaring a phase complete.
+Browser work must also satisfy the milestone-specific acceptance criteria and the real-site matrix in `07-TESTING-DEMO.md`.
 
-For extension changes, also verify the unpacked extension manually in Chrome or Chromium.
-
-## Definition of a good Codex task
-
-A task should have:
-
-- one clear outcome,
-- explicit files or subsystem boundaries,
-- acceptance criteria,
-- commands to validate,
-- no unrelated cleanup.
+For each real-world failure that can be reduced to a stable pattern, add a local regression fixture/test.
 
 ## Commit discipline
 
-Keep commits phase-oriented and understandable. Suggested messages:
+Keep commits aligned with milestone/subsystem boundaries, for example:
 
-- `chore: scaffold extension and api workspace`
-- `feat: add capability profile and local storage`
-- `feat: add reversible adaptation primitives`
-- `feat: add multimodal onboarding flow`
-- `feat: add semantic page analysis contracts`
-- `test: add extension fixtures and policy tests`
+```text
+chore(browser): scaffold Electron shell
+feat(intelligence): capture DOM and AX page model
+feat(profile): add browser onboarding and memory
+feat(adaptation): add reversible presentation profile
+feat(ai): analyze page with multimodal structured output
+feat(aura): implement Make This Mine
+feat(conversation): add contextual page commands
+style(browser): polish judged experience
+test(browser): harden real-site regression cases
+```
 
 ## Stop conditions
 
-Stop and document the blocker instead of guessing when:
+Stop and update the source of truth rather than guessing when:
 
-- a browser API cannot be verified,
-- an implementation would require unsafe arbitrary code execution,
-- a change would violate the privacy model,
-- a transformation consistently breaks core website behavior,
-- a requested feature requires medical diagnosis or unsupported claims.
+- a required Electron/CDP capability cannot be verified on the pinned version;
+- the proposed approach consistently breaks primary website functionality;
+- Page Intelligence is weak and implementation is trying to hide it with prompt complexity;
+- a new feature competes with W4/W7 without clear product value;
+- a change conflicts with an accepted ADR;
+- an implementation would make Original/AURA restoration unreliable.
