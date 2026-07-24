@@ -16,7 +16,7 @@ interface RecomposeSession {
 }
 
 interface ViewTransitionDocument extends Document {
-  startViewTransition?: (callback: () => void) => ViewTransition;
+  startViewTransition: (callback: () => void) => ViewTransition;
 }
 
 function findAuraTarget(auraId: string): HTMLElement | null {
@@ -533,10 +533,7 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
 
   function renderWithTransition(plan: RecomposePlan): void {
     const transitionDocument = document as ViewTransitionDocument;
-    if (
-      !reduceMotion &&
-      typeof transitionDocument.startViewTransition === 'function'
-    ) {
+    if (!reduceMotion) {
       transitionDocument.startViewTransition(() => render(plan));
       return;
     }
