@@ -1,10 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect x="34" y="34" width="956" height="956" rx="220" fill="#245F43"/>
-  <rect x="52" y="52" width="920" height="920" rx="204" fill="none" stroke="#347E5A" stroke-width="16"/>
-  <g fill="none" stroke-linecap="round">
-    <path d="M278 760C316 529 401 331 512 222" stroke="#FBF8EF" stroke-width="112"/>
-    <path d="M746 760C708 529 623 331 512 222" stroke="#FBF8EF" stroke-width="112"/>
-    <path d="M391 581H633" stroke="#DCEBDF" stroke-width="96"/>
-  </g>
-  <circle cx="512" cy="222" r="58" fill="#E8C978"/>
+  <defs>
+    <linearGradient id="bg" x1="110" x2="900" y1="80" y2="940">
+      <stop offset="0" stop-color="#0B0916"/>
+      <stop offset="1" stop-color="#05050B"/>
+    </linearGradient>
+    <linearGradient id="halo" x1="250" x2="780" y1="240" y2="790">
+      <stop offset="0" stop-color="#D6B6FF"/>
+      <stop offset="0.43" stop-color="#936CFF"/>
+      <stop offset="0.75" stop-color="#5A89FF"/>
+      <stop offset="1" stop-color="#69D0FF"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="24" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect x="34" y="34" width="956" height="956" rx="220" fill="url(#bg)"/>
+  <rect x="52" y="52" width="920" height="920" rx="204" fill="none" stroke="#8A63FF" stroke-opacity="0.16" stroke-width="12"/>
+  <circle cx="512" cy="512" r="262" fill="none" stroke="#CFC8FF" stroke-opacity="0.11" stroke-width="36"/>
+  <circle cx="512" cy="512" r="262" fill="none" stroke="url(#halo)" stroke-dasharray="1425 222" stroke-linecap="round" stroke-width="42" transform="rotate(-78 512 512)" filter="url(#glow)"/>
+  <circle cx="650" cy="730" r="24" fill="#74C8FF"/>
 </svg>
