@@ -6,6 +6,7 @@ import {
   app,
   BrowserWindow,
   ipcMain,
+  nativeTheme,
   WebContentsView,
   type IpcMainEvent,
 } from 'electron';
@@ -948,7 +949,7 @@ async function createWindow(): Promise<void> {
     height: 920,
     minWidth: 760,
     minHeight: 560,
-    backgroundColor: '#f4f2ec',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#101612' : '#f4f2ec',
     title: 'AURA',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 18, y: 24 },

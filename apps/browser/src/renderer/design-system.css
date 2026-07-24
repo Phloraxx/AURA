@@ -487,6 +487,10 @@ summary:focus-visible,
   background: var(--aura-brand-soft);
 }
 
+.note-field {
+  color: var(--aura-ink);
+}
+
 .learn-me-copy > p,
 .comfort-choice small,
 .live-preview span,
