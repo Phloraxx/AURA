@@ -325,6 +325,63 @@ h1 {
   box-shadow: 0 2px 8px rgba(38, 62, 47, 0.12);
 }
 
+.semantic-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-top: 17px;
+  padding: 14px;
+  border: 1px solid #d8dfd9;
+  border-radius: 14px;
+  color: #455149;
+  background: #ffffff;
+}
+
+.semantic-status > span {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #477a5a;
+  font-weight: 800;
+}
+
+.semantic-status.analyzing > span {
+  animation: aura-pulse 1.4s ease-in-out infinite;
+}
+
+.semantic-status div {
+  display: grid;
+  gap: 4px;
+}
+
+.semantic-status strong {
+  font-size: 13px;
+}
+
+.semantic-status p {
+  margin: 0;
+  color: #667169;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@keyframes aura-pulse {
+  50% {
+    opacity: 0.48;
+    transform: scale(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .semantic-status.analyzing > span {
+    animation: none;
+  }
+}
+
 .profile-card {
   display: grid;
   gap: 10px;

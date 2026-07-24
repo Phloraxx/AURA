@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { BrowserProfile } from './profile';
+import { semanticPlanSchema } from './semantic-analysis';
 
 export const presentationSettingsSchema = z.object({
   lineSpacing: z.number().min(1).max(2),
@@ -22,6 +23,12 @@ export const adaptationCommandSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     pageId: z.string().min(1),
+    plan: semanticPlanSchema,
+    revision: z.number().int().positive(),
+    type: z.literal('apply-semantic'),
+  }),
+  z.object({
+    pageId: z.string().min(1),
     type: z.literal('set-adaptation-view'),
     view: adaptationViewSchema,
   }),
@@ -30,6 +37,7 @@ export const adaptationCommandSchema = z.discriminatedUnion('type', [
 export const adaptationEventSchema = z.object({
   changedTargetCount: z.number().int().nonnegative(),
   error: z.string().nullable(),
+  operation: z.enum(['presentation', 'semantic', 'view']),
   pageId: z.string().min(1),
   status: z.enum(['applied', 'failed', 'restored']),
   view: adaptationViewSchema,

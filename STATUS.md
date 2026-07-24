@@ -6,8 +6,10 @@
 
 **Planning state:** W0 accepted. Canonical product and architecture decisions are locked in `docs/browser/`.
 
-**Implementation state:** W1, W2, and W3 are complete. The development and
-packaged browser have been verified on the event Mac. W4 is next.
+**Implementation state:** W1, W2, W3, and W4 Part A are complete. W4 Part B is
+implemented and locally verified; its live Luna/high late-site audit remains
+pending. The development and packaged browser have been verified on the event
+Mac.
 
 ## W0 — accepted decisions
 
@@ -161,7 +163,66 @@ Verified on the Apple Silicon event Mac on 24 July 2026:
   was verified as Mach-O arm64 and whose remote page/panel layout rendered
   correctly.
 
-W4 adaptation and `Original ↔ AURA` have not started.
+## W4 — Part A implemented and verified
+
+- one deterministic, page-owned presentation session driven by the active
+  profile;
+- immediate text scale, line spacing, reading width, motion, target-size, and
+  focus presentation;
+- one conservative semantic reading region rather than nested width changes;
+- no form-value, checked-state, selected-state, focus, host-class, or inline
+  style mutation;
+- fast `Original ↔ AURA` without reload;
+- exact removal of AURA presentation styles and attributes;
+- same-page reapplication and new-page invalidation;
+- idempotent restore/reapply behavior with bounded session bookkeeping.
+
+Verified on the Apple Silicon event Mac on 24 July 2026:
+
+- two profiles produced measurably different presentation CSS on the same
+  fixture;
+- inputs, checkboxes, selects, and textareas retained state through five
+  Original/AURA cycles;
+- the 20-site real-page matrix applied and restored without loss of primary
+  content or controls;
+- one batch produced 19/20 because Stanford did not settle within the initial
+  30-second PageModel window; its HTTP response, 180-target healthy PageModel,
+  presentation, and exact restoration all passed immediately on isolated
+  retry;
+- local adaptation remains active when semantic analysis falls back.
+
+## W4 — Part B implemented; live model verification pending
+
+- one bounded `analyzePage` Responses API request per Make This Mine;
+- configurable `gpt-5.6-luna` with high reasoning, structured Zod output,
+  low-detail screenshot input when privacy gates allow, and no response
+  storage;
+- compact PageModel serialization that excludes form values;
+- screenshot suppression when a password or non-empty editable control is
+  present;
+- same-page and current-revision revalidation of every model target;
+- confidence-gated primary emphasis, deemphasis, highlight, safe collapse,
+  additive simpler explanations, important facts, and target-linked guidance;
+- local runtime rechecks collapse safety in both primary-content containment
+  directions before hiding anything;
+- AURA-owned summary, explanation, restore, and guidance nodes are excluded
+  from later PageModels and removed exactly by Original;
+- model failure, missing key, invalid output, timeout, stale page, or stale
+  revision leaves the deterministic Part A presentation usable;
+- 36 browser tests pass, with one optional live-provider test skipped by
+  default;
+- repository lint, typecheck, tests, production build, and native
+  `darwin-arm64` packaging pass.
+
+Remaining W4 acceptance work:
+
+- launch the app with the temporary event key provided through the local
+  process environment;
+- verify one end-to-end Luna/high semantic transformation and its token/latency
+  record;
+- run the five-site late/random semantic audit;
+- visually inspect the semantic summary/refinement and exact Original restore;
+- do not mark W4 complete until those live checks pass.
 
 ## Source of truth
 

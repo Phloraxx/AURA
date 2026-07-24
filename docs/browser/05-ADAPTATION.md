@@ -198,6 +198,31 @@ Before semantic AI begins:
   missing primary content, or lost primary controls;
 - restoration succeeds on 100% of the required corpus before Part B starts.
 
+### Part B implementation contract
+
+The event implementation uses one bounded semantic request per Make This Mine.
+It does not add an agent chain.
+
+1. Main snapshots the current PageModel, resolved profile, explicit learned
+   preferences, and a viewport screenshot when the page has no password field
+   and no non-empty editable control.
+2. Luna returns only the structured `PageAnalysisModelOutput` contract.
+3. Main ignores the result after navigation, then revalidates every AURA ID
+   against the latest PageModel for the same page session.
+4. Global model confidence below `0.6` produces summary-only output. It cannot
+   change page targets.
+5. Collapse is allowed only for high-confidence, locally validated
+   `aside`/`footer` or complementary/content-info regions and only for a profile
+   that asked for lower information density.
+6. Targeted simpler wording is additive: AURA places a labeled explanation
+   next to the original block rather than destroying or replacing the original
+   DOM/content.
+7. AURA-owned summaries, explanations, restore controls, and guidance are
+   marked `data-aura-owned`, excluded from later PageModels, and removed by
+   Original.
+8. Model timeout, refusal, invalid output, missing key, or stale targets leave
+   Part A active and usable.
+
 ## Text simplification
 
 Simplify only targeted blocks.

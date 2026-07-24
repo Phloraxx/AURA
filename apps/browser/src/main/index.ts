@@ -31,7 +31,14 @@ import {
   browserProfileSchema,
   onboardingTurnRequestSchema,
 } from '../shared/profile';
+import {
+  semanticAnalysisStateSchema,
+  type SemanticAnalysisState,
+  type SemanticPlan,
+} from '../shared/semantic-analysis';
 import { createOnboardingProvider } from './ai/onboarding-provider';
+import { createPageAnalysisProvider } from './ai/page-analysis-provider';
+import { validatePageAnalysis } from './ai/validate-page-analysis';
 import { getPageViewBounds } from './layout';
 import { normalizeAddress } from './navigation';
 import { ProfileStore } from './profile-store';
@@ -59,10 +66,35 @@ let adaptationState: AdaptationState = adaptationStateSchema.parse({
   status: 'idle',
   view: 'original',
 });
+let semanticAnalysisState: SemanticAnalysisState =
+  semanticAnalysisStateSchema.parse({
+    appliedCount: 0,
+    durationMs: null,
+    error: null,
+    pageId: null,
+    pagePurpose: null,
+    revision: null,
+    source: null,
+    status: 'idle',
+    summary: null,
+    usage: null,
+  });
+let latestSafeScreenshot: {
+  dataUrl: string;
+  pageId: string;
+  revision: number;
+} | null = null;
+let semanticRequest = 0;
+let pendingSemanticPlan: {
+  durationMs: number;
+  plan: SemanticPlan;
+  usage: SemanticAnalysisState['usage'];
+} | null = null;
 let screenshotRequest = 0;
 let profileStore: ProfileStore | null = null;
 
 const onboardingProvider = createOnboardingProvider();
+const pageAnalysisProvider = createPageAnalysisProvider();
 
 function getPreloadPath(name: 'page' | 'shell'): string {
   return join(APP_DIRECTORY, `../preload/${name}.cjs`);
@@ -135,6 +167,34 @@ function publishAdaptationState(): void {
   }
 }
 
+function publishSemanticAnalysisState(): void {
+  if (mainWindow?.isDestroyed() === false) {
+    mainWindow.webContents.send(
+      IPC_CHANNELS.semanticAnalysisState,
+      semanticAnalysisState,
+    );
+  }
+}
+
+function invalidateSemanticAnalysis(): void {
+  semanticRequest += 1;
+  latestSafeScreenshot = null;
+  pendingSemanticPlan = null;
+  semanticAnalysisState = {
+    appliedCount: 0,
+    durationMs: null,
+    error: null,
+    pageId: null,
+    pagePurpose: null,
+    revision: null,
+    source: null,
+    status: 'idle',
+    summary: null,
+    usage: null,
+  };
+  publishSemanticAnalysisState();
+}
+
 function invalidateAdaptation(): void {
   adaptationState = {
     changedTargetCount: 0,
@@ -168,6 +228,7 @@ async function capturePageScreenshot(model: PageModel): Promise<void> {
   if (pageView === null) return;
   const request = screenshotRequest + 1;
   screenshotRequest = request;
+  latestSafeScreenshot = null;
   const startedAt = performance.now();
 
   pageIntelligenceState = {
@@ -208,6 +269,17 @@ async function capturePageScreenshot(model: PageModel): Promise<void> {
         width: size.width,
       },
     };
+    if (
+      !image.isEmpty() &&
+      !model.privacy.hasNonEmptyEditableControl &&
+      !model.privacy.hasPasswordControl
+    ) {
+      latestSafeScreenshot = {
+        dataUrl: `data:image/png;base64,${png.toString('base64')}`,
+        pageId: model.pageId,
+        revision: model.revision,
+      };
+    }
   } catch (error) {
     if (request !== screenshotRequest) return;
     pageIntelligenceState = {
@@ -226,6 +298,79 @@ async function capturePageScreenshot(model: PageModel): Promise<void> {
     };
   }
   publishPageIntelligenceState();
+}
+
+async function runPageAnalysis(
+  profile: ReturnType<typeof browserProfileSchema.parse>,
+  initialModel: PageModel,
+): Promise<void> {
+  const request = semanticRequest + 1;
+  semanticRequest = request;
+  const startedAt = performance.now();
+  const screenshotDataUrl =
+    latestSafeScreenshot?.pageId === initialModel.pageId &&
+    latestSafeScreenshot.revision === initialModel.revision
+      ? latestSafeScreenshot.dataUrl
+      : null;
+  semanticAnalysisState = {
+    appliedCount: 0,
+    durationMs: null,
+    error: null,
+    pageId: initialModel.pageId,
+    pagePurpose: null,
+    revision: initialModel.revision,
+    source: null,
+    status: 'analyzing',
+    summary: null,
+    usage: null,
+  };
+  publishSemanticAnalysisState();
+
+  const result = await pageAnalysisProvider.analyze({
+    page: initialModel,
+    profile,
+    screenshotDataUrl,
+  });
+  if (
+    request !== semanticRequest ||
+    pageView === null ||
+    pageIntelligenceState === null ||
+    pageIntelligenceState.model.pageId !== initialModel.pageId
+  ) {
+    return;
+  }
+  const durationMs =
+    Math.round((performance.now() - startedAt) * 10) / 10;
+  if (result.source === 'fallback' || result.output === null) {
+    semanticAnalysisState = {
+      appliedCount: 0,
+      durationMs,
+      error: result.error,
+      pageId: initialModel.pageId,
+      pagePurpose: null,
+      revision: pageIntelligenceState.model.revision,
+      source: 'fallback',
+      status: 'fallback',
+      summary: null,
+      usage: result.usage,
+    };
+    publishSemanticAnalysisState();
+    return;
+  }
+
+  const currentModel = pageIntelligenceState.model;
+  const plan = validatePageAnalysis(result.output, currentModel, profile);
+  pendingSemanticPlan = {
+    durationMs,
+    plan,
+    usage: result.usage,
+  };
+  pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {
+    pageId: currentModel.pageId,
+    plan,
+    revision: currentModel.revision,
+    type: 'apply-semantic',
+  });
 }
 
 async function loadPage(address: string): Promise<void> {
@@ -250,6 +395,7 @@ function attachPageEvents(view: WebContentsView): void {
 
   webContents.on('did-start-loading', () => {
     navigationError = null;
+    invalidateSemanticAnalysis();
     invalidateAdaptation();
     invalidatePageIntelligence();
     publishNavigationState();
@@ -297,6 +443,10 @@ function registerIpc(): void {
   });
   ipcMain.handle(IPC_CHANNELS.getAdaptationState, () => adaptationState);
   ipcMain.handle(
+    IPC_CHANNELS.getSemanticAnalysisState,
+    () => semanticAnalysisState,
+  );
+  ipcMain.handle(
     IPC_CHANNELS.applyPresentation,
     (_event, untrustedProfile: unknown) => {
       const profile = browserProfileSchema.safeParse(untrustedProfile);
@@ -322,6 +472,7 @@ function registerIpc(): void {
         settings: presentationSettingsFromProfile(profile.data),
         type: 'apply-presentation',
       });
+      void runPageAnalysis(profile.data, model);
       return true;
     },
   );
@@ -426,6 +577,29 @@ function registerIpc(): void {
         view: payload.data.view,
       };
       publishAdaptationState();
+      if (
+        payload.data.operation === 'semantic' &&
+        pendingSemanticPlan?.plan.pageId === payload.data.pageId
+      ) {
+        semanticAnalysisState = {
+          appliedCount:
+            payload.data.status === 'failed'
+              ? 0
+              : payload.data.changedTargetCount,
+          durationMs: pendingSemanticPlan.durationMs,
+          error: payload.data.error,
+          pageId: pendingSemanticPlan.plan.pageId,
+          pagePurpose: pendingSemanticPlan.plan.pagePurpose,
+          revision: pendingSemanticPlan.plan.revision,
+          source: 'ai',
+          status:
+            payload.data.status === 'failed' ? 'fallback' : 'ready',
+          summary: pendingSemanticPlan.plan.summary,
+          usage: pendingSemanticPlan.usage,
+        };
+        pendingSemanticPlan = null;
+        publishSemanticAnalysisState();
+      }
     },
   );
   ipcMain.on(
@@ -493,6 +667,7 @@ async function createWindow(): Promise<void> {
     pageView?.webContents.close();
     pageView = null;
     pageIntelligenceState = null;
+    invalidateSemanticAnalysis();
     invalidateAdaptation();
     mainWindow = null;
   });

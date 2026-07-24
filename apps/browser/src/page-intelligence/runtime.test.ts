@@ -109,6 +109,11 @@ describe('page intelligence runtime', () => {
       }),
     );
     expect(JSON.stringify(model)).not.toContain('do-not-collect');
+    expect(model.privacy).toEqual({
+      hasEditableControl: true,
+      hasNonEmptyEditableControl: true,
+      hasPasswordControl: true,
+    });
     expect(model.repeatedStructures.some((group) => group.count >= 3)).toBe(
       true,
     );
@@ -144,5 +149,10 @@ describe('page intelligence runtime', () => {
         type: 'capture-now',
       }),
     ).toBe(false);
+    expect(first.privacy).toEqual({
+      hasEditableControl: false,
+      hasNonEmptyEditableControl: false,
+      hasPasswordControl: false,
+    });
   });
 });

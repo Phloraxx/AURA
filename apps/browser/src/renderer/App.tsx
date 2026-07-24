@@ -12,6 +12,7 @@ import type {
 import type { AdaptationState, AdaptationView } from '../shared/adaptation';
 import type { PageIntelligenceState } from '../shared/page-model';
 import type { BrowserProfile } from '../shared/profile';
+import type { SemanticAnalysisState } from '../shared/semantic-analysis';
 import { LearnMe } from './LearnMe';
 
 const EMPTY_NAVIGATION: BrowserNavigationState = {
@@ -31,6 +32,19 @@ const EMPTY_ADAPTATION: AdaptationState = {
   view: 'original',
 };
 
+const EMPTY_SEMANTIC_ANALYSIS: SemanticAnalysisState = {
+  appliedCount: 0,
+  durationMs: null,
+  error: null,
+  pageId: null,
+  pagePurpose: null,
+  revision: null,
+  source: null,
+  status: 'idle',
+  summary: null,
+  usage: null,
+};
+
 export function App(): React.JSX.Element {
   const [navigation, setNavigation] =
     useState<BrowserNavigationState>(EMPTY_NAVIGATION);
@@ -43,6 +57,8 @@ export function App(): React.JSX.Element {
     useState<PageIntelligenceState | null>(null);
   const [adaptation, setAdaptation] =
     useState<AdaptationState>(EMPTY_ADAPTATION);
+  const [semanticAnalysis, setSemanticAnalysis] =
+    useState<SemanticAnalysisState>(EMPTY_SEMANTIC_ANALYSIS);
   const [profile, setProfile] = useState<BrowserProfile | null | undefined>(
     undefined,
   );
@@ -73,14 +89,20 @@ export function App(): React.JSX.Element {
     );
     const removeAdaptationListener =
       window.aura.onAdaptationState(setAdaptation);
+    const removeSemanticListener =
+      window.aura.onSemanticAnalysisState(setSemanticAnalysis);
     void window.aura.getPageIntelligenceState().then(setPageIntelligence);
     void window.aura.getAdaptationState().then(setAdaptation);
+    void window.aura
+      .getSemanticAnalysisState()
+      .then(setSemanticAnalysis);
 
     return () => {
       removeAdaptationListener();
       removeIntelligenceListener();
       removeNavigationListener();
       removeRuntimeListener();
+      removeSemanticListener();
     };
   }, []);
 
@@ -334,6 +356,37 @@ export function App(): React.JSX.Element {
                   ? 'AURA is understanding this page before making changes.'
                   : 'Only presentation changes are applied. Page content and form values stay intact.')}
           </p>
+
+          {semanticAnalysis.status !== 'idle' ? (
+            <section
+              aria-live="polite"
+              className={`semantic-status ${semanticAnalysis.status}`}
+            >
+              <span aria-hidden="true">
+                {semanticAnalysis.status === 'analyzing'
+                  ? '◌'
+                  : semanticAnalysis.status === 'ready'
+                    ? '✦'
+                    : '✓'}
+              </span>
+              <div>
+                <strong>
+                  {semanticAnalysis.status === 'analyzing'
+                    ? 'Understanding what matters…'
+                    : semanticAnalysis.status === 'ready'
+                      ? semanticAnalysis.pagePurpose
+                      : 'Your local presentation is active'}
+                </strong>
+                <p>
+                  {semanticAnalysis.status === 'analyzing'
+                    ? 'AURA is refining hierarchy and simplifying only validated page regions.'
+                    : semanticAnalysis.status === 'ready'
+                      ? semanticAnalysis.summary
+                      : 'Semantic refinement is unavailable, but your reading, motion, focus, and control preferences still apply.'}
+                </p>
+              </div>
+            </section>
+          ) : null}
 
           {import.meta.env.DEV && pageIntelligence !== null ? (
             <details className="page-model-inspector">

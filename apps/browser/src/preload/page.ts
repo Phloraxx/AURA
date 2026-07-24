@@ -61,12 +61,18 @@ ipcRenderer.on(
     const command = parsed.data;
     const current =
       command.pageId === currentPageId &&
-      (command.type !== 'apply-presentation' ||
+      (command.type === 'set-adaptation-view' ||
         command.revision === currentRevision);
     if (!current) {
       ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, {
         changedTargetCount: 0,
         error: 'The page changed before AURA could apply this presentation.',
+        operation:
+          command.type === 'apply-presentation'
+            ? 'presentation'
+            : command.type === 'apply-semantic'
+              ? 'semantic'
+              : 'view',
         pageId: command.pageId,
         status: 'failed',
         view:

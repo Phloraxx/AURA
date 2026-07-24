@@ -7,6 +7,7 @@ import {
   type PageRuntimeEvent,
 } from '../shared/contracts';
 import type { AdaptationState } from '../shared/adaptation';
+import type { SemanticAnalysisState } from '../shared/semantic-analysis';
 import type {
   PageIntelligenceState,
   PageRuntimeCommand,
@@ -25,6 +26,8 @@ const api: AuraShellApi = {
   getPageIntelligenceState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getPageIntelligenceState),
   getProfile: () => ipcRenderer.invoke(IPC_CHANNELS.getProfile),
+  getSemanticAnalysisState: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.getSemanticAnalysisState),
   onboardingTurn: (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.onboardingTurn, request),
   refresh: () => ipcRenderer.invoke(IPC_CHANNELS.refresh),
@@ -83,6 +86,18 @@ const api: AuraShellApi = {
     ipcRenderer.on(IPC_CHANNELS.pageRuntimeEvent, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.pageRuntimeEvent, handler);
+    };
+  },
+  onSemanticAnalysisState: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      state: SemanticAnalysisState,
+    ): void => {
+      listener(state);
+    };
+    ipcRenderer.on(IPC_CHANNELS.semanticAnalysisState, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.semanticAnalysisState, handler);
     };
   },
 };

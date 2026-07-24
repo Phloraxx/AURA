@@ -487,6 +487,7 @@ function collectElements(): Element[] {
     for (const element of root.querySelectorAll('*')) {
       if (seen.has(element)) continue;
       seen.add(element);
+      if (element.closest('[data-aura-owned]') !== null) continue;
       output.push(element);
       if (element.shadowRoot !== null) roots.push(element.shadowRoot);
     }
@@ -709,6 +710,29 @@ export function createPageIntelligenceRuntime(
         trigger,
       },
       pageId,
+      privacy: {
+        hasEditableControl:
+          document.querySelector(
+            'input:not([type="button"]):not([type="checkbox"]):not([type="color"]):not([type="hidden"]):not([type="image"]):not([type="radio"]):not([type="range"]):not([type="reset"]):not([type="submit"]), textarea, [contenteditable="true"]',
+          ) !== null,
+        hasNonEmptyEditableControl: [
+          ...document.querySelectorAll<
+            HTMLInputElement | HTMLTextAreaElement | HTMLElement
+          >(
+            'input:not([type="button"]):not([type="checkbox"]):not([type="color"]):not([type="hidden"]):not([type="image"]):not([type="radio"]):not([type="range"]):not([type="reset"]):not([type="submit"]), textarea, [contenteditable="true"]',
+          ),
+        ].some((element) => {
+          if (
+            element instanceof HTMLInputElement ||
+            element instanceof HTMLTextAreaElement
+          ) {
+            return element.value.length > 0;
+          }
+          return (element.textContent?.trim().length ?? 0) > 0;
+        }),
+        hasPasswordControl:
+          document.querySelector('input[type="password"]') !== null,
+      },
       regions,
       repeatedStructures,
       revision,

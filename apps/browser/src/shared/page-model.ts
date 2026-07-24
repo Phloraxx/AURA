@@ -104,6 +104,11 @@ export const pageModelSchema = z.object({
   forms: z.array(pageFormSchema),
   metrics: pageModelMetricsSchema,
   pageId: z.string().min(1),
+  privacy: z.object({
+    hasEditableControl: z.boolean(),
+    hasNonEmptyEditableControl: z.boolean(),
+    hasPasswordControl: z.boolean(),
+  }),
   regions: z.array(pageRegionSchema),
   repeatedStructures: z.array(repeatedStructureSchema),
   revision: z.number().int().positive(),

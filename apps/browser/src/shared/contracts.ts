@@ -12,6 +12,7 @@ import type {
   AdaptationState,
   AdaptationView,
 } from './adaptation';
+import type { SemanticAnalysisState } from './semantic-analysis';
 
 export const IPC_CHANNELS = {
   adaptationCommand: 'aura:adaptation:command',
@@ -24,6 +25,7 @@ export const IPC_CHANNELS = {
   getPageIntelligenceState: 'aura:page-intelligence:get-state',
   getAdaptationState: 'aura:adaptation:get-state',
   getProfile: 'aura:profile:get',
+  getSemanticAnalysisState: 'aura:semantic:get-state',
   navigate: 'aura:navigation:open',
   navigationState: 'aura:navigation:state',
   onboardingTurn: 'aura:onboarding:turn',
@@ -34,6 +36,7 @@ export const IPC_CHANNELS = {
   refresh: 'aura:navigation:refresh',
   resetProfile: 'aura:profile:reset',
   saveProfile: 'aura:profile:save',
+  semanticAnalysisState: 'aura:semantic:state',
   setOnboardingActive: 'aura:layout:set-onboarding-active',
   setPanelOpen: 'aura:layout:set-panel-open',
   setAdaptationView: 'aura:adaptation:set-view',
@@ -65,6 +68,7 @@ export interface AuraShellApi {
   getAdaptationState: () => Promise<AdaptationState>;
   getPageIntelligenceState: () => Promise<PageIntelligenceState | null>;
   getProfile: () => Promise<BrowserProfile | null>;
+  getSemanticAnalysisState: () => Promise<SemanticAnalysisState>;
   navigate: (address: string) => Promise<void>;
   onboardingTurn: (
     request: OnboardingTurnRequest,
@@ -80,6 +84,9 @@ export interface AuraShellApi {
   ) => () => void;
   onPageRuntimeEvent: (
     listener: (event: PageRuntimeEvent) => void,
+  ) => () => void;
+  onSemanticAnalysisState: (
+    listener: (state: SemanticAnalysisState) => void,
   ) => () => void;
   refresh: () => Promise<void>;
   resetProfile: () => Promise<void>;

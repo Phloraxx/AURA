@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PresentationSettings } from '../shared/adaptation';
+import type { SemanticPlan } from '../shared/semantic-analysis';
 import { createPageAdaptationRuntime } from './runtime';
 
 const comfortableSettings: PresentationSettings = {
@@ -14,14 +15,40 @@ const comfortableSettings: PresentationSettings = {
   textScale: 1.15,
 };
 
+const semanticPlan: SemanticPlan = {
+  collapseTargetIds: ['aside-target', 'main-target'],
+  deemphasizeTargetIds: ['aside-target'],
+  guide: {
+    steps: [
+      { auraId: 'action-target', instruction: 'Continue the application' },
+    ],
+    title: 'Application steps',
+  },
+  highlightTargetIds: ['action-target'],
+  importantFacts: [
+    { auraId: 'dense-target', label: 'Deadline', value: '28 July' },
+  ],
+  pageId: 'page-1',
+  pagePurpose: 'Programme application',
+  primaryTargetIds: ['main-target'],
+  revision: 2,
+  simplifications: [
+    {
+      auraId: 'dense-target',
+      simplifiedText: 'Submit the application by 28 July.',
+    },
+  ],
+  summary: 'Review the deadline, then continue with the application.',
+};
+
 function installFixture(): void {
   document.documentElement.setAttribute('data-site-root', 'preserve-me');
   document.body.innerHTML = `
     <header><a href="/home">Home</a></header>
-    <main class="site-main" style="padding: 12px" data-aura-reading-region="site-owned">
+    <main class="site-main" style="padding: 12px" data-aura-id="main-target" data-aura-reading-region="site-owned">
       <article>
         <h1>Apply for the programme</h1>
-        <p>${'This is important application information. '.repeat(18)}</p>
+        <p data-aura-id="dense-target">${'This is important application information. '.repeat(18)}</p>
         <label for="name">Name</label>
         <input id="name" value="Ada Lovelace">
         <label><input id="consent" type="checkbox" checked> I agree</label>
@@ -32,9 +59,10 @@ function installFixture(): void {
         </select>
         <label for="note">Note</label>
         <textarea id="note">Preserve this draft</textarea>
-        <button type="button">Continue</button>
+        <button data-aura-id="action-target" type="button">Continue</button>
       </article>
     </main>
+    <aside data-aura-id="aside-target"><h2>Related stories</h2><p>Secondary recommendations.</p></aside>
   `;
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
     function getBoundingClientRect(this: Element) {
@@ -291,5 +319,125 @@ describe('page adaptation runtime', () => {
         view: 'original',
       }).status,
     ).toBe('failed');
+  });
+
+  it('applies validated semantic primitives and restores them without residue', () => {
+    const runtime = createPageAdaptationRuntime();
+    applyPresentation(runtime);
+
+    const result = runtime.handleCommand({
+      pageId: 'page-1',
+      plan: semanticPlan,
+      revision: 2,
+      type: 'apply-semantic',
+    });
+
+    expect(result.operation).toBe('semantic');
+    expect(
+      document.querySelector('[data-aura-id="main-target"]')?.getAttribute(
+        'data-aura-primary',
+      ),
+    ).toBe('on');
+    expect(
+      document.querySelector('[data-aura-id="aside-target"]')?.getAttribute(
+        'data-aura-collapsed',
+      ),
+    ).toBe('on');
+    expect(
+      document.querySelector('[data-aura-id="action-target"]')?.getAttribute(
+        'data-aura-highlight',
+      ),
+    ).toBe('on');
+    expect(document.querySelectorAll('[data-aura-owned="summary"]')).toHaveLength(
+      1,
+    );
+    expect(
+      document.querySelectorAll('[data-aura-owned="simplification"]'),
+    ).toHaveLength(1);
+    expect(
+      document
+        .querySelector('[data-aura-owned="summary"]')
+        ?.textContent?.includes('28 July'),
+    ).toBe(true);
+
+    runtime.handleCommand({
+      pageId: 'page-1',
+      type: 'set-adaptation-view',
+      view: 'original',
+    });
+    expect(document.querySelector('[data-aura-owned]')).toBeNull();
+    expect(document.querySelector('[data-aura-primary]')).toBeNull();
+    expect(document.querySelector('[data-aura-secondary]')).toBeNull();
+    expect(document.querySelector('[data-aura-highlight]')).toBeNull();
+    expect(document.querySelector('[data-aura-collapsed]')).toBeNull();
+    expect(document.querySelector('[data-aura-semantic-style]')).toBeNull();
+  });
+
+  it('protects secondary regions nested inside primary content', () => {
+    document.body.innerHTML = `
+      <main data-aura-id="main-target">
+        <article><h1>Primary story</h1></article>
+        <aside data-aura-id="aside-target"><h2>Supporting context</h2></aside>
+      </main>
+    `;
+    const runtime = createPageAdaptationRuntime();
+    applyPresentation(runtime);
+
+    runtime.handleCommand({
+      pageId: 'page-1',
+      plan: {
+        ...semanticPlan,
+        collapseTargetIds: ['aside-target'],
+        deemphasizeTargetIds: ['aside-target'],
+        guide: null,
+        highlightTargetIds: [],
+        importantFacts: [],
+        simplifications: [],
+      },
+      revision: 2,
+      type: 'apply-semantic',
+    });
+
+    const inlineAside = document.querySelector('[data-aura-id="aside-target"]');
+    expect(inlineAside?.hasAttribute('data-aura-secondary')).toBe(false);
+    expect(inlineAside?.hasAttribute('data-aura-collapsed')).toBe(false);
+    expect(
+      document.querySelectorAll('[data-aura-owned="restore"]'),
+    ).toHaveLength(0);
+  });
+
+  it('stores semantic refinement while Original is visible and reapplies it once', () => {
+    const runtime = createPageAdaptationRuntime();
+    applyPresentation(runtime);
+    runtime.handleCommand({
+      pageId: 'page-1',
+      type: 'set-adaptation-view',
+      view: 'original',
+    });
+
+    runtime.handleCommand({
+      pageId: 'page-1',
+      plan: semanticPlan,
+      revision: 2,
+      type: 'apply-semantic',
+    });
+    expect(document.querySelector('[data-aura-owned]')).toBeNull();
+
+    runtime.handleCommand({
+      pageId: 'page-1',
+      type: 'set-adaptation-view',
+      view: 'aura',
+    });
+    expect(document.querySelectorAll('[data-aura-owned="summary"]')).toHaveLength(
+      1,
+    );
+    runtime.handleCommand({
+      pageId: 'page-1',
+      type: 'set-adaptation-view',
+      view: 'aura',
+    });
+    expect(document.querySelectorAll('[data-aura-owned="summary"]')).toHaveLength(
+      1,
+    );
   });
 });
