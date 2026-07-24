@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { BrowserProfile } from './profile';
+import { recomposePlanSchema } from './recompose';
 import { semanticPlanSchema } from './semantic-analysis';
 
 export const presentationSettingsSchema = z.object({
@@ -29,6 +30,12 @@ export const adaptationCommandSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     pageId: z.string().min(1),
+    plan: recomposePlanSchema,
+    revision: z.number().int().positive(),
+    type: z.literal('apply-recompose'),
+  }),
+  z.object({
+    pageId: z.string().min(1),
     revision: z.number().int().positive(),
     settings: presentationSettingsSchema,
     type: z.literal('update-presentation'),
@@ -43,7 +50,7 @@ export const adaptationCommandSchema = z.discriminatedUnion('type', [
 export const adaptationEventSchema = z.object({
   changedTargetCount: z.number().int().nonnegative(),
   error: z.string().nullable(),
-  operation: z.enum(['presentation', 'semantic', 'view']),
+  operation: z.enum(['presentation', 'semantic', 'recompose', 'view']),
   pageId: z.string().min(1),
   status: z.enum(['applied', 'failed', 'restored']),
   view: adaptationViewSchema,
