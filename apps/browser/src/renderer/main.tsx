@@ -5,6 +5,7 @@ import { App } from './App';
 import './styles.css';
 import './design-system.css';
 import './motion-personality.css';
+import './video-theme.css';
 
 const root = document.querySelector('#root');
 

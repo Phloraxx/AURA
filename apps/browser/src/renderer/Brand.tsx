@@ -1,8 +1,20 @@
-import type { SVGProps } from 'react';
+import { useId, type SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement>;
 
+/**
+ * AURA Halo
+ *
+ * The event-video identity is a luminous, almost-complete ring: the web is one
+ * continuous space, while the small opening represents the point where AURA
+ * adapts the experience around the person. It is deliberately not a letter A,
+ * medical symbol, eye, or generic sparkle.
+ */
 export function AuraMark(props: IconProps): React.JSX.Element {
+  const id = useId().replaceAll(':', '');
+  const gradientId = `aura-halo-${id}`;
+  const glowId = `aura-glow-${id}`;
+
   return (
     <svg
       aria-hidden={props['aria-label'] === undefined ? true : undefined}
@@ -11,29 +23,53 @@ export function AuraMark(props: IconProps): React.JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      <path
-        d="M17.5 46.5C19.9 32.3 25.1 20.2 32 13.5"
+      <defs>
+        <linearGradient id={gradientId} x1="12" x2="52" y1="12" y2="52">
+          <stop offset="0" stopColor="#C59BFF" />
+          <stop offset="0.46" stopColor="#8A63FF" />
+          <stop offset="0.78" stopColor="#5B8CFF" />
+          <stop offset="1" stopColor="#66C8FF" />
+        </linearGradient>
+        <filter id={glowId} height="180%" width="180%" x="-40%" y="-40%">
+          <feGaussianBlur result="blur" stdDeviation="2.3" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <circle
+        className="aura-mark-ghost"
+        cx="32"
+        cy="32"
+        r="20.5"
         stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="7"
+        strokeOpacity="0.14"
+        strokeWidth="3"
       />
-      <path
-        d="M46.5 46.5C44.1 32.3 38.9 20.2 32 13.5"
-        stroke="currentColor"
+      <circle
+        className="aura-mark-ring"
+        cx="32"
+        cy="32"
+        filter={`url(#${glowId})`}
+        r="20.5"
+        stroke={`url(#${gradientId})`}
+        strokeDasharray="112 17"
         strokeLinecap="round"
-        strokeWidth="7"
+        strokeWidth="3.4"
+        transform="rotate(-78 32 32)"
       />
-      <path
-        d="M24.5 35.5H39.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="6"
+      <circle
+        className="aura-mark-focus"
+        cx="42.8"
+        cy="49.1"
+        fill="#74C8FF"
+        r="1.9"
       />
-      <circle cx="32" cy="13.5" fill="currentColor" r="3.5" />
     </svg>
   );
 }
-
 
 export function AuraBrand(): React.JSX.Element {
   return (

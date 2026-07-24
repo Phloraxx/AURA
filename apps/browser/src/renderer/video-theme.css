@@ -1,0 +1,588 @@
+/*
+ * Cinematic AURA event theme.
+ *
+ * This layer deliberately mirrors the visual identity established in the AURA
+ * promo frames: near-black indigo surfaces, restrained violet/blue light, thin
+ * typography, and the luminous AURA Halo. It loads last so the underlying
+ * accessibility/layout rules remain stable and this file stays a reversible
+ * visual layer rather than a second UI implementation.
+ */
+
+:root {
+  color-scheme: dark;
+  --aura-bg: #07060d;
+  --aura-bg-elevated: rgba(12, 10, 22, 0.9);
+  --aura-surface: #100e19;
+  --aura-surface-soft: #151221;
+  --aura-surface-tint: #18132a;
+  --aura-border: rgba(189, 174, 255, 0.16);
+  --aura-border-strong: rgba(189, 174, 255, 0.27);
+  --aura-ink: #f7f4ff;
+  --aura-ink-secondary: #bbb4cc;
+  --aura-ink-tertiary: #9c95ad;
+  --aura-brand: #8b63ff;
+  --aura-brand-strong: #6d49d8;
+  --aura-brand-soft: #1a132c;
+  --aura-brand-bright: #b48aff;
+  --aura-gold: #73c9ff;
+  --aura-focus: #78baff;
+  --aura-danger: #ff7780;
+  --aura-shadow: 0 26px 70px rgba(0, 0, 0, 0.42);
+  --aura-shadow-small: 0 8px 24px rgba(0, 0, 0, 0.26);
+  color: var(--aura-ink);
+  background: var(--aura-bg);
+}
+
+body,
+.shell,
+.profile-loading {
+  color: var(--aura-ink);
+  background:
+    radial-gradient(circle at 90% 4%, rgba(123, 75, 255, 0.1), transparent 31%),
+    radial-gradient(circle at 5% 95%, rgba(66, 118, 255, 0.07), transparent 31%),
+    var(--aura-bg);
+}
+
+.browser-chrome,
+.learn-me-header {
+  border-color: rgba(177, 158, 255, 0.14);
+  background: rgba(8, 7, 15, 0.82);
+  backdrop-filter: blur(28px) saturate(1.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset;
+}
+
+.brand {
+  color: var(--aura-ink);
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  color: #d8d1ff;
+  background: transparent;
+  box-shadow: none;
+}
+
+.brand-mark::after {
+  display: none;
+}
+
+.brand-mark svg {
+  width: 32px;
+  height: 32px;
+}
+
+.brand-wordmark {
+  color: #f6f2ff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  font-size: 13px;
+  font-weight: 440;
+  letter-spacing: 0.28em;
+}
+
+.navigation-controls {
+  gap: 3px;
+}
+
+.icon-button {
+  color: #aaa4bb;
+  border-radius: 12px;
+}
+
+.icon-button:hover:not(:disabled) {
+  color: #f6f2ff;
+  background: rgba(167, 133, 255, 0.1);
+}
+
+.icon-button:disabled {
+  color: #5d5868;
+}
+
+.address-form {
+  border-color: rgba(186, 169, 255, 0.16);
+  background: rgba(18, 15, 29, 0.86);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.035) inset,
+    0 8px 30px rgba(0, 0, 0, 0.18);
+}
+
+.address-form:focus-within {
+  border-color: rgba(169, 133, 255, 0.72);
+  background: rgba(20, 17, 34, 0.96);
+  box-shadow:
+    0 0 0 3px rgba(139, 99, 255, 0.13),
+    0 10px 34px rgba(0, 0, 0, 0.22);
+}
+
+.address-form input {
+  color: #f4f0ff;
+  caret-color: #9f79ff;
+}
+
+.address-form input::placeholder {
+  color: #777184;
+}
+
+.load-dot {
+  background: #625d6c;
+}
+
+.load-dot.active {
+  background: #8e72ff;
+  box-shadow: 0 0 0 4px rgba(142, 114, 255, 0.12), 0 0 16px rgba(111, 132, 255, 0.45);
+}
+
+.aura-toggle {
+  border-color: rgba(178, 158, 255, 0.24);
+  color: #e8e1ff;
+  background:
+    linear-gradient(145deg, rgba(133, 91, 255, 0.12), rgba(77, 106, 224, 0.08)),
+    rgba(17, 14, 27, 0.94);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.035) inset;
+}
+
+.aura-toggle:hover,
+.aura-toggle[aria-expanded="true"] {
+  border-color: rgba(177, 147, 255, 0.42);
+  color: #fff;
+  background:
+    linear-gradient(145deg, rgba(134, 91, 255, 0.19), rgba(72, 107, 229, 0.11)),
+    rgba(20, 17, 33, 0.98);
+  box-shadow: 0 0 22px rgba(120, 83, 255, 0.09);
+}
+
+.page-status {
+  color: var(--aura-ink-tertiary);
+}
+
+.aura-panel {
+  border-color: rgba(177, 158, 255, 0.14);
+  color: var(--aura-ink);
+  background:
+    radial-gradient(circle at 76% 2%, rgba(126, 78, 255, 0.12), transparent 29%),
+    radial-gradient(circle at 108% 48%, rgba(60, 112, 255, 0.075), transparent 29%),
+    rgba(9, 8, 16, 0.975);
+  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.24);
+}
+
+.aura-panel::before {
+  top: -150px;
+  right: -125px;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(146, 92, 255, 0.12), transparent 66%);
+  filter: blur(5px);
+}
+
+.panel-symbol {
+  width: max(48px, min(var(--aura-ui-target, 48px), 60px));
+  height: max(48px, min(var(--aura-ui-target, 48px), 60px));
+  border: 0;
+  border-radius: 50%;
+  color: #dcd5ff;
+  background: radial-gradient(circle, rgba(137, 91, 255, 0.1), transparent 69%);
+  box-shadow: 0 0 28px rgba(112, 81, 255, 0.11);
+}
+
+.panel-symbol::after {
+  display: none;
+}
+
+.panel-symbol svg {
+  width: 44px;
+  height: 44px;
+}
+
+.aura-panel h1,
+.learn-me-copy h1 {
+  color: #f7f4ff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  font-weight: 470;
+  letter-spacing: -0.035em;
+}
+
+.eyebrow {
+  color: #a98bff;
+  font-weight: 680;
+  letter-spacing: 0.14em;
+}
+
+.panel-copy,
+.runtime-status span:not(.status-light),
+.adaptation-note,
+.semantic-status p,
+.conversation-empty p,
+.memory-editor > p,
+.muted,
+.profile-card p,
+.profile-card span {
+  color: var(--aura-ink-secondary);
+}
+
+.profile-card,
+.runtime-status,
+.semantic-status,
+.conversation-empty,
+.message.assistant,
+.memory-item,
+.talk-heading,
+.memory-editor {
+  border-color: rgba(187, 169, 255, 0.14);
+  background:
+    linear-gradient(145deg, rgba(130, 87, 255, 0.04), transparent 58%),
+    rgba(16, 14, 25, 0.78);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset;
+}
+
+.status-light {
+  background: #6d68a1;
+}
+
+.status-light.ready {
+  background: #78bfff;
+  box-shadow: 0 0 0 4px rgba(111, 184, 255, 0.1), 0 0 14px rgba(104, 141, 255, 0.24);
+}
+
+.primary-action,
+.send-button,
+.primary-compact,
+.memory-proposal .primary-compact {
+  border: 1px solid rgba(204, 188, 255, 0.2);
+  color: #fff;
+  background: linear-gradient(135deg, #7954e8, #4e6fd8);
+  box-shadow:
+    0 9px 26px rgba(82, 64, 206, 0.25),
+    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+}
+
+.primary-action:hover:not(:disabled),
+.send-button:hover:not(:disabled),
+.primary-compact:hover:not(:disabled) {
+  filter: brightness(1.08) saturate(1.04);
+  box-shadow:
+    0 12px 34px rgba(91, 68, 221, 0.33),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+}
+
+.primary-action::before {
+  background: #76caff;
+}
+
+.primary-action:hover:not(:disabled)::before {
+  box-shadow: 0 0 0 6px rgba(118, 202, 255, 0.12), 0 0 18px rgba(118, 202, 255, 0.3);
+}
+
+.primary-action:disabled,
+.send-button:disabled,
+.suggestion-row button:disabled {
+  color: #746e80;
+  background: #1c1924;
+}
+
+.adaptation-switch {
+  border-color: rgba(187, 169, 255, 0.14);
+  background: rgba(13, 11, 21, 0.86);
+}
+
+.adaptation-switch button {
+  color: #948da4;
+}
+
+.adaptation-switch button[aria-pressed="true"] {
+  border-color: rgba(165, 131, 255, 0.18);
+  color: #f8f5ff;
+  background: linear-gradient(145deg, rgba(135, 92, 255, 0.14), rgba(67, 107, 224, 0.08));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), 0 0 18px rgba(126, 85, 255, 0.06);
+}
+
+.semantic-status > span {
+  color: #fff;
+  background: linear-gradient(145deg, #8a63ff, #4f75dc);
+  box-shadow: 0 0 18px rgba(128, 91, 255, 0.16);
+}
+
+.talk-heading {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(153, 101, 255, 0.09), transparent 34%),
+    rgba(15, 13, 24, 0.82);
+}
+
+.talk-heading::before {
+  border-radius: 50%;
+  background: url("./favicon.svg") center / 25px 25px no-repeat;
+  box-shadow: 0 0 18px rgba(129, 91, 255, 0.2);
+}
+
+.talk-heading::after,
+.intent-chip {
+  border-color: rgba(178, 156, 255, 0.18);
+  color: #c8c0d9;
+  background: rgba(126, 88, 255, 0.08);
+}
+
+.suggestion-row button,
+.memory-proposal button,
+.memory-item button,
+.profile-card button,
+.text-button,
+.secondary-action {
+  border-color: rgba(182, 164, 255, 0.2);
+  color: #ddd5f2;
+  background: rgba(21, 18, 32, 0.9);
+}
+
+.suggestion-row button:hover:not(:disabled),
+.memory-proposal button:hover:not(:disabled),
+.memory-item button:hover:not(:disabled),
+.profile-card button:hover:not(:disabled),
+.text-button:hover:not(:disabled),
+.secondary-action:hover:not(:disabled) {
+  border-color: rgba(177, 145, 255, 0.38);
+  color: #fff;
+  background: rgba(132, 90, 255, 0.12);
+}
+
+.message.user {
+  color: #fff;
+  background: linear-gradient(145deg, #7551df, #4967c8);
+  box-shadow: 0 7px 20px rgba(69, 58, 175, 0.24);
+}
+
+.message.assistant {
+  color: #f4f0fb;
+}
+
+.message.assistant::before {
+  border-radius: 50%;
+  background: url("./favicon.svg") center / 22px 22px no-repeat;
+  box-shadow: 0 0 14px rgba(135, 95, 255, 0.16);
+}
+
+.message.waiting {
+  border-color: rgba(174, 137, 255, 0.28);
+}
+
+.message.waiting::after {
+  background: #8c6cff;
+  box-shadow:
+    10px 0 0 rgba(112, 134, 255, 0.78),
+    20px 0 0 rgba(112, 201, 255, 0.58);
+}
+
+.conversation-form > div {
+  border-color: rgba(184, 165, 255, 0.18);
+  background: rgba(13, 11, 21, 0.9);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+
+.conversation-form > div:focus-within {
+  border-color: rgba(168, 127, 255, 0.64);
+  box-shadow:
+    0 0 0 3px rgba(133, 93, 255, 0.12),
+    0 12px 36px rgba(0, 0, 0, 0.25);
+}
+
+.conversation-form textarea,
+.memory-item textarea,
+.note-field textarea {
+  border-color: rgba(184, 165, 255, 0.2);
+  color: #f6f2ff;
+  background: rgba(12, 10, 19, 0.85);
+  caret-color: #aa84ff;
+}
+
+.conversation-form textarea::placeholder,
+.memory-item textarea::placeholder,
+.note-field textarea::placeholder {
+  color: #746e82;
+}
+
+.memory-proposal {
+  border-color: rgba(157, 126, 255, 0.42);
+  background:
+    linear-gradient(145deg, rgba(119, 77, 232, 0.13), rgba(61, 111, 222, 0.065)),
+    rgba(14, 12, 23, 0.92);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+}
+
+.memory-proposal::before {
+  background: linear-gradient(#b383ff, #67c9ff);
+}
+
+/* Learn Me now visually matches the promo-film identity instead of becoming a
+ * separate warm/green product before the browser opens. */
+.learn-me {
+  color: var(--aura-ink);
+  background:
+    radial-gradient(circle at 18% 17%, rgba(123, 72, 255, 0.16), transparent 29%),
+    radial-gradient(circle at 82% 78%, rgba(68, 112, 255, 0.1), transparent 31%),
+    linear-gradient(152deg, #090711 0%, #070710 54%, #080817 100%);
+}
+
+.learn-me::before {
+  position: fixed;
+  inset: auto -10vw -32vh 18vw;
+  height: 58vh;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(ellipse at center, transparent 0 13px, rgba(151, 103, 255, 0.055) 14px 15px, transparent 16px 25px);
+  content: "";
+  filter: blur(0.25px);
+  opacity: 0.7;
+  pointer-events: none;
+  transform: rotate(-8deg) scaleX(1.25);
+}
+
+.learn-me-header {
+  background: rgba(8, 7, 14, 0.72);
+}
+
+.learn-me-card {
+  border-color: rgba(183, 164, 255, 0.15);
+  background:
+    linear-gradient(145deg, rgba(127, 86, 255, 0.045), transparent 48%),
+    rgba(13, 11, 22, 0.9);
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.48),
+    0 1px 0 rgba(255, 255, 255, 0.035) inset;
+  backdrop-filter: blur(26px) saturate(1.08);
+}
+
+.onboarding-progress span {
+  color: #777184;
+}
+
+.onboarding-progress span.active {
+  color: #c8bbff;
+}
+
+.onboarding-progress i {
+  background: #282432;
+}
+
+.onboarding-progress span.active i {
+  background: linear-gradient(90deg, #9b73ff, #688cff);
+  box-shadow: 0 0 12px rgba(139, 99, 255, 0.16);
+}
+
+.learn-me-copy > p,
+.comfort-choice small,
+.live-preview span,
+.profile-summary p,
+.note-field span {
+  color: var(--aura-ink-secondary);
+}
+
+.intro-principles span {
+  color: #cfc6e3;
+  background: rgba(131, 91, 255, 0.09);
+  border: 1px solid rgba(180, 158, 255, 0.12);
+}
+
+.comfort-choice {
+  border-color: rgba(185, 170, 255, 0.15);
+  color: #ece7f8;
+  background: rgba(17, 14, 27, 0.86);
+}
+
+.comfort-choice:hover {
+  border-color: rgba(179, 150, 255, 0.38);
+  background: rgba(132, 88, 255, 0.075);
+}
+
+.comfort-choice.selected {
+  border-color: rgba(163, 124, 255, 0.68);
+  background:
+    linear-gradient(145deg, rgba(129, 83, 242, 0.16), rgba(67, 109, 228, 0.06)),
+    rgba(17, 14, 27, 0.96);
+  box-shadow:
+    0 0 0 2px rgba(143, 99, 255, 0.08),
+    0 14px 34px rgba(0, 0, 0, 0.25);
+}
+
+.comfort-choice.selected::after {
+  background: #72caff;
+  box-shadow: 0 0 12px rgba(114, 202, 255, 0.36);
+}
+
+.live-preview,
+.profile-summary {
+  border-color: rgba(174, 143, 255, 0.42);
+  color: #eee9fa;
+  background: rgba(131, 88, 255, 0.075);
+}
+
+.check-choice {
+  color: #d9d2e7;
+}
+
+.check-choice:hover {
+  background: rgba(132, 90, 255, 0.075);
+}
+
+.check-choice input {
+  accent-color: #8a63ff;
+}
+
+/* Keep focus more prominent than the ambient purple identity. */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline-color: #79bbff;
+  box-shadow: 0 0 0 1px rgba(121, 187, 255, 0.24);
+}
+
+/* The luminous halo is still, unless AURA is genuinely doing work. */
+.aura-mark-ring,
+.aura-mark-focus {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shell[data-reduce-motion="false"] .aura-panel:has(.semantic-status.analyzing) .aura-mark-ring,
+  .shell[data-reduce-motion="false"] .aura-panel:has(.message.waiting) .aura-mark-ring {
+    animation: aura-video-halo 1.7s ease-in-out infinite;
+  }
+
+  .shell[data-reduce-motion="false"] .aura-panel:has(.semantic-status.analyzing) .aura-mark-focus,
+  .shell[data-reduce-motion="false"] .aura-panel:has(.message.waiting) .aura-mark-focus {
+    animation: aura-video-focus 1.7s ease-in-out infinite;
+  }
+}
+
+@keyframes aura-video-halo {
+  0%, 100% {
+    opacity: 0.84;
+    filter: saturate(0.96);
+  }
+  50% {
+    opacity: 1;
+    filter: saturate(1.16);
+  }
+}
+
+@keyframes aura-video-focus {
+  0%, 100% {
+    opacity: 0.74;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .learn-me::before,
+  .aura-mark-ring,
+  .aura-mark-focus {
+    animation: none !important;
+    transform: none !important;
+  }
+}
