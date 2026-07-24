@@ -7,7 +7,7 @@
     "dev": "wxt",
     "build": "wxt build",
     "typecheck": "wxt prepare && tsc --noEmit",
-    "pretest": "pnpm --filter @aura/shared build",
+    "pretest": "corepack pnpm --filter @aura/shared build",
     "test": "vitest run --passWithNoTests",
     "postinstall": "wxt prepare"
   },
