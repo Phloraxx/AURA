@@ -42,7 +42,7 @@ export const recomposeItemSchema = z.object({
 export const recomposeSectionSchema = z.object({
   id: z.string().min(1),
   items: z.array(recomposeItemSchema).max(10),
-  kind: z.enum(['hero', 'actions', 'results', 'content', 'form', 'facts']),
+  kind: z.enum(['actions', 'results', 'content', 'form', 'facts']),
   title: z.string().trim().min(1).max(120),
 });
 
@@ -131,7 +131,8 @@ export function profileForRecomposePreset(
     next.preferences.reduceMotion = true;
     next.preferences.targetSizePx = Math.max(next.preferences.targetSizePx, 52);
     next.preferences.textScale = Math.max(next.preferences.textScale, 1.1);
-    next.summary = 'Clear & Calm: fewer simultaneous choices, quieter hierarchy, and concise explanations.';
+    next.summary =
+      'Clear & Calm: fewer simultaneous choices, quieter hierarchy, and concise explanations.';
   }
   if (preset === 'easier_to_see') {
     next.capabilities.visual = 'important';
@@ -141,7 +142,8 @@ export function profileForRecomposePreset(
     next.preferences.strongFocus = true;
     next.preferences.targetSizePx = 60;
     next.preferences.textScale = Math.max(next.preferences.textScale, 1.35);
-    next.summary = 'Easier to See: large reflowed content, strong hierarchy, and high-visibility controls.';
+    next.summary =
+      'Easier to See: large reflowed content, strong hierarchy, and high-visibility controls.';
   }
   if (preset === 'easy_to_control') {
     next.capabilities.motor = 'important';
@@ -150,7 +152,8 @@ export function profileForRecomposePreset(
     next.preferences.strongFocus = true;
     next.preferences.targetSizePx = 60;
     next.preferences.textScale = Math.max(next.preferences.textScale, 1.08);
-    next.summary = 'Easy to Control: large explicit controls, generous spacing, and minimal precision-dependent interaction.';
+    next.summary =
+      'Easy to Control: large explicit controls, generous spacing, and minimal precision-dependent interaction.';
   }
   if (preset === 'step_by_step') {
     next.capabilities.attention = 'important';
@@ -162,7 +165,8 @@ export function profileForRecomposePreset(
     next.preferences.strongFocus = true;
     next.preferences.targetSizePx = Math.max(next.preferences.targetSizePx, 52);
     next.preferences.textScale = Math.max(next.preferences.textScale, 1.1);
-    next.summary = 'Step by Step: one clear stage at a time with progressive disclosure and obvious next actions.';
+    next.summary =
+      'Step by Step: one clear stage at a time with progressive disclosure and obvious next actions.';
   }
   next.updatedAt = new Date().toISOString();
   return next;
