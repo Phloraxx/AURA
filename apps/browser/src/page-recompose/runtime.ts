@@ -16,7 +16,7 @@ interface RecomposeSession {
 }
 
 interface ViewTransitionDocument extends Document {
-  startViewTransition?: (callback: () => void) => unknown;
+  startViewTransition?: (callback: () => void) => ViewTransition;
 }
 
 function findAuraTarget(auraId: string): HTMLElement | null {
@@ -42,7 +42,6 @@ html[${ROOT_ATTRIBUTE}="on"] body { overflow: hidden !important; }
 [${ROOT_NODE_ATTRIBUTE}] {
   --r-bg: #07060d;
   --r-surface: #100e19;
-  --r-surface-2: #171322;
   --r-border: rgba(190,169,255,.18);
   --r-text: #f7f4ff;
   --r-muted: #b9b2c9;
@@ -215,20 +214,38 @@ html[${ROOT_ATTRIBUTE}="on"] body { overflow: hidden !important; }
   outline: 3px solid #79bbff !important;
   outline-offset: 3px !important;
 }
-[${ROOT_NODE_ATTRIBUTE}][data-preset="clear_calm"] .aura-r-shell { width: min(820px, calc(100% - 48px)); }
+[${ROOT_NODE_ATTRIBUTE}][data-preset="clear_calm"] .aura-r-shell {
+  width: min(820px, calc(100% - 48px));
+}
 [${ROOT_NODE_ATTRIBUTE}][data-preset="clear_calm"] .aura-r-items,
-[${ROOT_NODE_ATTRIBUTE}][data-preset="step_by_step"] .aura-r-items { grid-template-columns: 1fr; }
-[${ROOT_NODE_ATTRIBUTE}][data-preset="easier_to_see"] .aura-r-shell { width: min(900px, calc(100% - 56px)); }
-[${ROOT_NODE_ATTRIBUTE}][data-preset="easier_to_see"] .aura-r-card h3 { font-size: 22px !important; }
-[${ROOT_NODE_ATTRIBUTE}][data-preset="easier_to_see"] .aura-r-card p { font-size: 17px !important; }
-[${ROOT_NODE_ATTRIBUTE}][data-preset="easier_to_see"] button { min-height: 60px !important; font-size: 17px !important; }
+[${ROOT_NODE_ATTRIBUTE}][data-preset="step_by_step"] .aura-r-items {
+  grid-template-columns: 1fr;
+}
+[${ROOT_NODE_ATTRIBUTE}][data-preset="easier_to_see"] .aura-r-shell {
+  width: min(900px, calc(100% - 56px));
+}
+[${ROOT_NODE_ATTRIBUTE}][data-preset="easier_to_see"] .aura-r-card h3 {
+  font-size: 22px !important;
+}
+[${ROOT_NODE_ATTRIBUTE}][data-preset="easier_to_see"] .aura-r-card p {
+  font-size: 17px !important;
+}
+[${ROOT_NODE_ATTRIBUTE}][data-preset="easier_to_see"] button {
+  min-height: 60px !important;
+  font-size: 17px !important;
+}
 [${ROOT_NODE_ATTRIBUTE}][data-preset="easy_to_control"] .aura-r-items {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
   gap: 18px;
 }
 [${ROOT_NODE_ATTRIBUTE}][data-preset="easy_to_control"] .aura-r-card { padding: 22px; }
-[${ROOT_NODE_ATTRIBUTE}][data-preset="easy_to_control"] button { min-height: 60px !important; font-size: 16px !important; }
-[${ROOT_NODE_ATTRIBUTE}][data-preset="step_by_step"] .aura-r-section[hidden] { display: none !important; }
+[${ROOT_NODE_ATTRIBUTE}][data-preset="easy_to_control"] button {
+  min-height: 60px !important;
+  font-size: 16px !important;
+}
+[${ROOT_NODE_ATTRIBUTE}][data-preset="step_by_step"] .aura-r-section[hidden] {
+  display: none !important;
+}
 [${ROOT_NODE_ATTRIBUTE}] .aura-r-step-nav {
   display: flex;
   align-items: center;
@@ -239,18 +256,39 @@ html[${ROOT_ATTRIBUTE}="on"] body { overflow: hidden !important; }
   font-size: 12px;
 }
 [${ROOT_NODE_ATTRIBUTE}] .aura-r-step-nav > div { display: flex; gap: 8px; }
-[${ROOT_NODE_ATTRIBUTE}] .aura-r-step-nav button { min-width: 92px; margin: 0 !important; }
-${reduceMotion ? '' : `
-[${ROOT_NODE_ATTRIBUTE}] .aura-r-hero { animation: aura-r-enter 260ms cubic-bezier(.2,.82,.2,1) both; }
-[${ROOT_NODE_ATTRIBUTE}] .aura-r-section { animation: aura-r-enter 300ms cubic-bezier(.2,.82,.2,1) both; }
+[${ROOT_NODE_ATTRIBUTE}] .aura-r-step-nav button {
+  min-width: 92px;
+  margin: 0 !important;
+}
+${
+  reduceMotion
+    ? ''
+    : `
+[${ROOT_NODE_ATTRIBUTE}] .aura-r-hero {
+  animation: aura-r-enter 260ms cubic-bezier(.2,.82,.2,1) both;
+}
+[${ROOT_NODE_ATTRIBUTE}] .aura-r-section {
+  animation: aura-r-enter 300ms cubic-bezier(.2,.82,.2,1) both;
+}
 [${ROOT_NODE_ATTRIBUTE}] .aura-r-section:nth-child(2) { animation-delay: 45ms; }
 [${ROOT_NODE_ATTRIBUTE}] .aura-r-section:nth-child(3) { animation-delay: 90ms; }
-[${ROOT_NODE_ATTRIBUTE}] .aura-r-card { transition: transform 130ms ease, border-color 150ms ease; }
-[${ROOT_NODE_ATTRIBUTE}] .aura-r-card:hover { transform: translateY(-2px); border-color: rgba(177,145,255,.34); }
-@keyframes aura-r-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-`}
+[${ROOT_NODE_ATTRIBUTE}] .aura-r-card {
+  transition: transform 130ms ease, border-color 150ms ease;
+}
+[${ROOT_NODE_ATTRIBUTE}] .aura-r-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(177,145,255,.34);
+}
+@keyframes aura-r-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+`
+}
 @media (prefers-reduced-motion: reduce) {
-  [${ROOT_NODE_ATTRIBUTE}] *, [${ROOT_NODE_ATTRIBUTE}] *::before, [${ROOT_NODE_ATTRIBUTE}] *::after {
+  [${ROOT_NODE_ATTRIBUTE}] *,
+  [${ROOT_NODE_ATTRIBUTE}] *::before,
+  [${ROOT_NODE_ATTRIBUTE}] *::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
@@ -275,16 +313,51 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
     document.documentElement?.removeAttribute(ROOT_ATTRIBUTE);
   }
 
-  function brieflyRevealTarget(target: HTMLElement, focus: boolean): void {
+  function restoreOverlay(root: HTMLElement | null): void {
+    if (root === null || session?.view !== 'aura') return;
+    root.style.opacity = '1';
+    root.style.pointerEvents = '';
+  }
+
+  function revealForScroll(target: HTMLElement): void {
     const root = document.querySelector<HTMLElement>(`[${ROOT_NODE_ATTRIBUTE}]`);
-    if (root !== null) root.style.opacity = focus ? '0' : '0.08';
-    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-    if (focus) target.focus({ preventScroll: true });
-    target.setAttribute(focus ? 'data-aura-guide-active' : 'data-aura-highlight', 'on');
+    if (root !== null) {
+      root.style.opacity = '0.08';
+      root.style.pointerEvents = 'none';
+    }
+    target.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'center',
+    });
+    target.setAttribute('data-aura-highlight', 'on');
     window.setTimeout(() => {
-      target.removeAttribute(focus ? 'data-aura-guide-active' : 'data-aura-highlight');
-      if (root !== null && session?.view === 'aura') root.style.opacity = '1';
+      target.removeAttribute('data-aura-highlight');
+      restoreOverlay(root);
     }, reduceMotion ? 450 : 900);
+  }
+
+  function revealForFocus(target: HTMLElement): void {
+    const root = document.querySelector<HTMLElement>(`[${ROOT_NODE_ATTRIBUTE}]`);
+    if (root !== null) {
+      root.style.opacity = '0';
+      root.style.pointerEvents = 'none';
+    }
+    target.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'center',
+    });
+    target.setAttribute('data-aura-guide-active', 'on');
+    target.focus({ preventScroll: true });
+
+    let restored = false;
+    const restore = (): void => {
+      if (restored) return;
+      restored = true;
+      target.removeAttribute('data-aura-guide-active');
+      restoreOverlay(root);
+    };
+    target.addEventListener('blur', restore, { once: true });
+    window.setTimeout(restore, 12_000);
   }
 
   function activate(action: RecomposeAction): void {
@@ -294,10 +367,16 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
       target.click();
       return;
     }
-    brieflyRevealTarget(target, action.behavior === 'focus');
+    if (action.behavior === 'focus') {
+      revealForFocus(target);
+      return;
+    }
+    revealForScroll(target);
   }
 
-  function renderCard(item: RecomposePlan['sections'][number]['items'][number]): HTMLElement {
+  function renderCard(
+    item: RecomposePlan['sections'][number]['items'][number],
+  ): HTMLElement {
     const card = document.createElement('article');
     card.className = 'aura-r-card';
     card.append(createText('h3', item.title));
@@ -337,6 +416,7 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
     root.setAttribute(ROOT_NODE_ATTRIBUTE, '');
     root.setAttribute('data-preset', plan.preset);
     root.setAttribute('aria-label', 'AURA recomposed page');
+
     const shell = document.createElement('div');
     shell.className = 'aura-r-shell';
 
@@ -399,7 +479,10 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
 
     if (plan.preset === 'step_by_step' && renderedSections.length > 0) {
       if (session !== null) {
-        session.stepIndex = Math.min(session.stepIndex, renderedSections.length - 1);
+        session.stepIndex = Math.min(
+          session.stepIndex,
+          renderedSections.length - 1,
+        );
       }
       const nav = document.createElement('div');
       nav.className = 'aura-r-step-nav';
@@ -419,7 +502,10 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
         status.textContent = `Step ${index + 1} of ${renderedSections.length}`;
         previous.disabled = index === 0;
         next.disabled = index >= renderedSections.length - 1;
-        root.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+        root.scrollTo({
+          top: 0,
+          behavior: reduceMotion ? 'auto' : 'smooth',
+        });
       };
       previous.addEventListener('click', () => {
         if (session === null) return;
@@ -447,7 +533,10 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
 
   function renderWithTransition(plan: RecomposePlan): void {
     const transitionDocument = document as ViewTransitionDocument;
-    if (!reduceMotion && typeof transitionDocument.startViewTransition === 'function') {
+    if (
+      !reduceMotion &&
+      typeof transitionDocument.startViewTransition === 'function'
+    ) {
       transitionDocument.startViewTransition(() => render(plan));
       return;
     }
@@ -461,7 +550,12 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
     try {
       reduceMotion = nextReduceMotion;
       if (session === null || session.pageId !== plan.pageId) {
-        session = { pageId: plan.pageId, plan, stepIndex: 0, view: 'aura' };
+        session = {
+          pageId: plan.pageId,
+          plan,
+          stepIndex: 0,
+          view: 'aura',
+        };
       } else {
         session.plan = plan;
       }
@@ -480,7 +574,10 @@ export function createPageRecomposeRuntime(): PageRecomposeRuntime {
     } catch (error) {
       return {
         changedTargetCount: 0,
-        error: error instanceof Error ? error.message : 'AURA could not recompose this page.',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'AURA could not recompose this page.',
         operation: 'recompose',
         pageId: plan.pageId,
         status: 'failed',
