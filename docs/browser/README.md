@@ -4,29 +4,44 @@ This directory is the canonical specification for the `aura-browser` branch.
 
 ## Authority
 
-For this branch, the files in `docs/browser/` override the older extension-era documents in `docs/` whenever they conflict. Older documents remain historical reference only.
+For this branch, `docs/browser/` overrides extension-era documents whenever they conflict. Older documents remain historical reference only.
 
-No implementation decision may silently contradict these documents. If the product direction, architecture, scope, or a major technical decision changes, update this source of truth first and record the reason in `08-DECISIONS.md`.
+No implementation decision may silently contradict this source of truth. Material changes must be recorded in `08-DECISIONS.md` first.
 
 ## Product in one sentence
 
 **AURA is a personalized accessibility browser that learns how a person comfortably perceives, understands, and interacts with the web, then adapts real webpages around that person and their current goal.**
 
-## The only three first-class product experiences
+## The only three first-class experiences
 
-1. **Learn Me** — conversational and experiential onboarding that builds a capability-and-preference profile.
-2. **Make This Mine** — AURA understands the current page and transforms it around the active user.
-3. **Talk to AURA** — natural-language requests modify or guide the real page, with explicit memory when the user asks AURA to remember something.
+1. **Learn Me** — short conversational + experiential onboarding.
+2. **Make This Mine** — personalized transformation of the real page.
+3. **Talk to AURA** — natural language adjusts, explains, guides, or explicitly teaches AURA a preference.
 
-Everything else is an implementation detail or supporting control. Do not introduce additional named modes unless this document and `00-PRODUCT.md` are deliberately revised.
+Everything else is supporting infrastructure or a small control.
 
-## Event constraints
+## Locked event architecture
 
-- Primary platform: **macOS only** for the judged build.
-- Runtime: **Electron + Chromium**.
-- This is a one-day-event prototype, so effort is optimized for demo reliability and visible product quality rather than production browser security, distribution, updater infrastructure, or cross-platform polish.
-- OpenAI API capacity is not a practical cost constraint for the event; latency and reliability still are.
-- The judge may choose an arbitrary normal website. Real-site robustness therefore outranks feature count.
+- **Judged platform:** macOS on Apple Silicon (`darwin-arm64`).
+- **Host:** Electron/Chromium.
+- **UI composition:** one local React `BrowserWindow` + one remote `WebContentsView`.
+- **Remote integration:** dedicated page preload in an isolated world.
+- **Page intelligence:** ranked runtime DOM model + geometry/styles + viewport screenshot, with selective CDP Accessibility/DOMSnapshot enrichment only when it proves useful.
+- **AI:** OpenAI Responses API called directly from Electron main for the event build.
+- **Baseline model to measure first:** `gpt-5.6-terra`, low reasoning for latency-sensitive calls; model remains configurable.
+- **Persistence:** versioned local JSON.
+- **Build/dev:** `electron-vite`; Electron Forge only for final packaging.
+
+## Product-scope rule
+
+A new addition belongs in the event build only if it materially improves at least one of:
+
+- how well Learn Me understands the person;
+- how convincingly/reliably Make This Mine transforms a judge-selected page;
+- how naturally Talk to AURA changes or guides the real page;
+- polish/recovery of that primary flow.
+
+Otherwise defer it.
 
 ## Reading order
 
@@ -41,28 +56,27 @@ Everything else is an implementation detail or supporting control. Do not introd
 9. `08-DECISIONS.md`
 10. `DEFINITION-OF-DONE.md`
 
-`STATUS.md` at repository root records the current milestone and must be kept current.
+`STATUS.md` at repository root records the active milestone.
 
-## Scope-control rule
+## Current stage
 
-A proposed addition belongs in the event build only if it measurably improves at least one of these:
+W0 planning is accepted. Implementation begins at **W1 — Browser shell**.
 
-- how well AURA understands the person,
-- how convincingly and reliably **Make This Mine** transforms a judge-selected page,
-- how naturally **Talk to AURA** changes or guides the real page,
-- the polish or reliability of the primary demo path.
-
-Otherwise it is deferred.
+No further broad product brainstorming is required before coding. Future ideas are deferred unless they fix a core blocker.
 
 ## Research basis
 
-The architecture deliberately uses current official platform capabilities:
+Current architecture was checked against primary documentation:
 
-- Electron `BaseWindow` + `WebContentsView`: https://www.electronjs.org/docs/latest/api/web-contents-view
-- Electron `webContents` and debugger/CDP access: https://www.electronjs.org/docs/latest/api/web-contents and https://www.electronjs.org/docs/latest/api/debugger
-- Chrome DevTools Protocol DOM snapshots: https://chromedevtools.github.io/devtools-protocol/tot/DOMSnapshot/
-- Chrome DevTools Protocol accessibility tree: https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/
-- OpenAI Responses API with text/image input: https://platform.openai.com/docs/quickstart/make-your-first-api-request
-- W3C WAI-Adapt personalization direction: https://www.w3.org/WAI/adapt/
+- Electron `BrowserWindow`: https://www.electronjs.org/docs/latest/api/browser-window
+- Electron `WebContentsView`: https://www.electronjs.org/docs/latest/api/web-contents-view
+- Electron preload/context isolation: https://www.electronjs.org/docs/latest/tutorial/tutorial-preload and https://www.electronjs.org/docs/latest/tutorial/context-isolation
+- Electron debugger/CDP transport: https://www.electronjs.org/docs/latest/api/debugger
+- CDP Accessibility: https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/
+- CDP DOMSnapshot: https://chromedevtools.github.io/devtools-protocol/tot/DOMSnapshot/
+- `electron-vite`: https://electron-vite.org/guide/
+- Electron packaging recommendation: https://www.electronjs.org/docs/latest/tutorial/application-distribution
+- OpenAI model guidance: https://developers.openai.com/api/docs/models and https://developers.openai.com/api/docs/guides/latest-model
+- W3C personalization direction: https://www.w3.org/WAI/adapt/
 
-The Chrome DevTools Protocol tip-of-tree contains experimental domains and is not backwards-compatible by guarantee. We therefore pin Electron and test the exact APIs used by the event build rather than assuming future CDP compatibility.
+CDP experimental APIs and model behavior are version-sensitive. Pin the event toolchain/model configuration and test the exact operations instead of relying on unverified future compatibility.
