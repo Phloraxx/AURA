@@ -8,6 +8,20 @@ The most important test is not a fixture.
 
 Everything else exists to make that moment reliable.
 
+## Event launch
+
+For a packaged AI-enabled launch on the event Mac:
+
+```bash
+pnpm browser:package:mac
+pnpm browser:event
+```
+
+The event launcher prompts without echoing for the temporary API key when
+`OPENAI_API_KEY` is not already set, defaults `OPENAI_MODEL` to
+`gpt-5.6-luna`, and executes the arm64 app directly so the process receives the
+environment. It never writes the key to the repository or profile.
+
 ## Test layers
 
 ### 1. Unit tests

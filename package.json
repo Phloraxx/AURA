@@ -10,6 +10,7 @@
   "scripts": {
     "browser:dev": "pnpm --filter @aura/browser dev",
     "browser:build": "pnpm --filter @aura/browser build",
+    "browser:event": "zsh scripts/run-aura-event.zsh",
     "browser:package:mac": "pnpm --filter @aura/browser package:mac",
     "dev": "pnpm --filter @aura/shared build && pnpm --parallel --filter @aura/extension --filter @aura/api dev",
     "demo:fixtures": "node scripts/serve-fixtures.mjs",
