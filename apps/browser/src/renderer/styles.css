@@ -295,6 +295,71 @@ h1 {
   text-align: center;
 }
 
+.page-model-inspector {
+  margin-top: 24px;
+  border-top: 1px solid #dde1dc;
+  padding-top: 18px;
+  color: #303a34;
+}
+
+.page-model-inspector summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.page-model-inspector dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.page-model-inspector dl div {
+  padding: 9px;
+  border-radius: 10px;
+  background: #eef2ed;
+}
+
+.page-model-inspector dt {
+  color: #69726c;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.page-model-inspector dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.page-model-targets {
+  display: grid;
+  gap: 7px;
+}
+
+.page-model-targets button {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid #d8ddd8;
+  border-radius: 10px;
+  overflow: hidden;
+  color: #303a34;
+  background: #ffffff;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-model-targets button span {
+  color: #2c7951;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 @keyframes breathe {
   0%,
   100% {

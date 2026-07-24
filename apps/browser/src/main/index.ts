@@ -13,6 +13,12 @@ import {
   type BrowserNavigationState,
   type PageRuntimeEvent,
 } from '../shared/contracts';
+import {
+  pageModelSchema,
+  pageRuntimeCommandSchema,
+  type PageIntelligenceState,
+  type PageModel,
+} from '../shared/page-model';
 import { getPageViewBounds } from './layout';
 import { normalizeAddress } from './navigation';
 
@@ -22,6 +28,8 @@ let mainWindow: BrowserWindow | null = null;
 let pageView: WebContentsView | null = null;
 let panelOpen = true;
 let navigationError: string | null = null;
+let pageIntelligenceState: PageIntelligenceState | null = null;
+let screenshotRequest = 0;
 
 function getPreloadPath(name: 'page' | 'shell'): string {
   return join(__dirname, `../preload/${name}.cjs`);
@@ -73,6 +81,97 @@ function publishPageRuntimeEvent(event: PageRuntimeEvent): void {
   }
 }
 
+function publishPageIntelligenceState(): void {
+  if (mainWindow?.isDestroyed() === false) {
+    mainWindow.webContents.send(
+      IPC_CHANNELS.pageIntelligenceState,
+      pageIntelligenceState,
+    );
+  }
+}
+
+function invalidatePageIntelligence(): void {
+  screenshotRequest += 1;
+  pageIntelligenceState = null;
+  publishPageIntelligenceState();
+}
+
+function urlsReferToCurrentDocument(modelUrl: string, currentUrl: string): boolean {
+  try {
+    const model = new URL(modelUrl);
+    const current = new URL(currentUrl);
+    model.hash = '';
+    current.hash = '';
+    return model.href === current.href;
+  } catch {
+    return modelUrl === currentUrl;
+  }
+}
+
+async function capturePageScreenshot(model: PageModel): Promise<void> {
+  if (pageView === null) return;
+  const request = screenshotRequest + 1;
+  screenshotRequest = request;
+  const startedAt = performance.now();
+
+  pageIntelligenceState = {
+    model,
+    screenshot: {
+      byteLength: 0,
+      capturedAt: null,
+      durationMs: null,
+      error: null,
+      height: 0,
+      status: 'pending',
+      width: 0,
+    },
+  };
+  publishPageIntelligenceState();
+
+  try {
+    const image = await pageView.webContents.capturePage();
+    if (
+      request !== screenshotRequest ||
+      pageIntelligenceState?.model.pageId !== model.pageId ||
+      pageIntelligenceState.model.revision !== model.revision
+    ) {
+      return;
+    }
+    const size = image.getSize();
+    const png = image.toPNG();
+    pageIntelligenceState = {
+      model,
+      screenshot: {
+        byteLength: png.byteLength,
+        capturedAt: new Date().toISOString(),
+        durationMs:
+          Math.round((performance.now() - startedAt) * 10) / 10,
+        error: image.isEmpty() ? 'Chromium returned an empty screenshot.' : null,
+        height: size.height,
+        status: image.isEmpty() ? 'failed' : 'ready',
+        width: size.width,
+      },
+    };
+  } catch (error) {
+    if (request !== screenshotRequest) return;
+    pageIntelligenceState = {
+      model,
+      screenshot: {
+        byteLength: 0,
+        capturedAt: new Date().toISOString(),
+        durationMs:
+          Math.round((performance.now() - startedAt) * 10) / 10,
+        error:
+          error instanceof Error ? error.message : 'Screenshot capture failed.',
+        height: 0,
+        status: 'failed',
+        width: 0,
+      },
+    };
+  }
+  publishPageIntelligenceState();
+}
+
 async function loadPage(address: string): Promise<void> {
   if (pageView === null) {
     return;
@@ -95,6 +194,7 @@ function attachPageEvents(view: WebContentsView): void {
 
   webContents.on('did-start-loading', () => {
     navigationError = null;
+    invalidatePageIntelligence();
     publishNavigationState();
   });
   webContents.on('did-stop-loading', publishNavigationState);
@@ -135,6 +235,33 @@ function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.refresh, () => {
     pageView?.webContents.reload();
   });
+  ipcMain.handle(IPC_CHANNELS.getPageIntelligenceState, () => {
+    return pageIntelligenceState;
+  });
+  ipcMain.handle(
+    IPC_CHANNELS.debugPageTarget,
+    (_event, untrustedCommand: unknown) => {
+      const command = pageRuntimeCommandSchema.safeParse(untrustedCommand);
+      if (!command.success || pageView === null || pageIntelligenceState === null) {
+        return false;
+      }
+      const parsedCommand = command.data;
+      const targetsCurrentModel =
+        parsedCommand.pageId === pageIntelligenceState.model.pageId &&
+        parsedCommand.revision === pageIntelligenceState.model.revision;
+      const targetExists =
+        parsedCommand.type === 'capture-now' ||
+        pageIntelligenceState.model.elements.some(
+          (element) => element.auraId === parsedCommand.auraId,
+        );
+      if (!targetsCurrentModel || !targetExists) return false;
+      pageView.webContents.send(
+        IPC_CHANNELS.pageRuntimeCommand,
+        parsedCommand,
+      );
+      return true;
+    },
+  );
   ipcMain.handle(IPC_CHANNELS.setPanelOpen, (_event, open: boolean) => {
     panelOpen = open;
     updatePageBounds();
@@ -145,6 +272,23 @@ function registerIpc(): void {
       if (event.sender === pageView?.webContents) {
         publishPageRuntimeEvent(payload);
       }
+    },
+  );
+  ipcMain.on(
+    IPC_CHANNELS.pageModel,
+    (event: IpcMainEvent, untrustedModel: unknown) => {
+      if (event.sender !== pageView?.webContents) return;
+      const model = pageModelSchema.safeParse(untrustedModel);
+      if (
+        !model.success ||
+        !urlsReferToCurrentDocument(
+          model.data.url,
+          pageView.webContents.getURL(),
+        )
+      ) {
+        return;
+      }
+      void capturePageScreenshot(model.data);
     },
   );
 }
@@ -183,6 +327,7 @@ async function createWindow(): Promise<void> {
   mainWindow.on('closed', () => {
     pageView?.webContents.close();
     pageView = null;
+    pageIntelligenceState = null;
     mainWindow = null;
   });
 

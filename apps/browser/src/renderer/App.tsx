@@ -9,6 +9,7 @@ import type {
   BrowserNavigationState,
   PageRuntimeEvent,
 } from '../shared/contracts';
+import type { PageIntelligenceState } from '../shared/page-model';
 
 const EMPTY_NAVIGATION: BrowserNavigationState = {
   canGoBack: false,
@@ -27,6 +28,8 @@ export function App(): React.JSX.Element {
   const [runtimeEvent, setRuntimeEvent] = useState<PageRuntimeEvent | null>(
     null,
   );
+  const [pageIntelligence, setPageIntelligence] =
+    useState<PageIntelligenceState | null>(null);
   const editingAddress = useRef(false);
   const navigationInProgress = useRef(false);
 
@@ -47,8 +50,15 @@ export function App(): React.JSX.Element {
     const removeRuntimeListener = window.aura.onPageRuntimeEvent((event) => {
       setRuntimeEvent(event);
     });
+    const removeIntelligenceListener = window.aura.onPageIntelligenceState(
+      (state) => {
+        setPageIntelligence(state);
+      },
+    );
+    void window.aura.getPageIntelligenceState().then(setPageIntelligence);
 
     return () => {
+      removeIntelligenceListener();
       removeNavigationListener();
       removeRuntimeListener();
     };
@@ -198,6 +208,58 @@ export function App(): React.JSX.Element {
             Make This Mine
           </button>
           <p className="milestone-note">Available after Page Intelligence.</p>
+
+          {import.meta.env.DEV && pageIntelligence !== null ? (
+            <details className="page-model-inspector">
+              <summary>PageModel inspector</summary>
+              <dl>
+                <div>
+                  <dt>Revision</dt>
+                  <dd>{pageIntelligence.model.revision}</dd>
+                </div>
+                <div>
+                  <dt>Targets</dt>
+                  <dd>
+                    {pageIntelligence.model.elements.length} /{' '}
+                    {pageIntelligence.model.metrics.candidateCount}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Capture</dt>
+                  <dd>
+                    {pageIntelligence.model.metrics.captureDurationMs} ms
+                  </dd>
+                </div>
+                <div>
+                  <dt>Screenshot</dt>
+                  <dd>{pageIntelligence.screenshot.status}</dd>
+                </div>
+                <div>
+                  <dt>Health</dt>
+                  <dd>{pageIntelligence.model.extractionHealth.score}</dd>
+                </div>
+              </dl>
+              <div className="page-model-targets">
+                {pageIntelligence.model.elements.slice(0, 8).map((element) => (
+                  <button
+                    key={element.auraId}
+                    onClick={() => {
+                      void window.aura.debugPageTarget({
+                        auraId: element.auraId,
+                        pageId: pageIntelligence.model.pageId,
+                        revision: pageIntelligence.model.revision,
+                        type: 'highlight-target',
+                      });
+                    }}
+                    type="button"
+                  >
+                    <span>{element.category}</span>
+                    {element.accessibleName ?? element.text ?? element.tag}
+                  </button>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </aside>
       ) : null}
     </main>

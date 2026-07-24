@@ -6,11 +6,19 @@ import {
   type BrowserNavigationState,
   type PageRuntimeEvent,
 } from '../shared/contracts';
+import type {
+  PageIntelligenceState,
+  PageRuntimeCommand,
+} from '../shared/page-model';
 
 const api: AuraShellApi = {
   navigate: (address) => ipcRenderer.invoke(IPC_CHANNELS.navigate, address),
   back: () => ipcRenderer.invoke(IPC_CHANNELS.back),
+  debugPageTarget: (command: PageRuntimeCommand) =>
+    ipcRenderer.invoke(IPC_CHANNELS.debugPageTarget, command),
   forward: () => ipcRenderer.invoke(IPC_CHANNELS.forward),
+  getPageIntelligenceState: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.getPageIntelligenceState),
   refresh: () => ipcRenderer.invoke(IPC_CHANNELS.refresh),
   setPanelOpen: (open) =>
     ipcRenderer.invoke(IPC_CHANNELS.setPanelOpen, open),
@@ -24,6 +32,18 @@ const api: AuraShellApi = {
     ipcRenderer.on(IPC_CHANNELS.navigationState, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.navigationState, handler);
+    };
+  },
+  onPageIntelligenceState: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      state: PageIntelligenceState | null,
+    ): void => {
+      listener(state);
+    };
+    ipcRenderer.on(IPC_CHANNELS.pageIntelligenceState, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.pageIntelligenceState, handler);
     };
   },
   onPageRuntimeEvent: (listener) => {

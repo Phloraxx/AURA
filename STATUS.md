@@ -2,12 +2,12 @@
 
 **Branch:** `aura-browser`
 
-**Current milestone:** W2 — Page Intelligence
+**Current milestone:** W3 — Learn Me
 
 **Planning state:** W0 accepted. Canonical product and architecture decisions are locked in `docs/browser/`.
 
-**Implementation state:** W1 is complete. The development and packaged browser
-have been verified on the event Mac. W2 has not started.
+**Implementation state:** W1 and W2 are complete. The development and packaged
+browser have been verified on the event Mac. W3 has not started.
 
 ## W0 — accepted decisions
 
@@ -78,7 +78,45 @@ Verified on the Apple Silicon event Mac on 24 July 2026:
 - repository lint, typecheck, all 69 unit/integration tests, full build, and
   `darwin-arm64` packaging pass.
 
-No W2 implementation, AI, onboarding, or adaptation work has started.
+## W2 — implemented and verified
+
+- versioned, Zod-validated `PageModel` and page-intelligence IPC contracts;
+- stable page-session `data-aura-id` targets, including ordinary open Shadow
+  DOM;
+- runtime-first extraction using native HTML/ARIA semantics, associated labels,
+  geometry, selected computed styles, headings, landmarks, forms, states, and
+  viewport context;
+- no collection of password values or arbitrary typed form values;
+- explainable scoring, structural repetition summaries, duplicate suppression,
+  and balanced category quotas instead of first-N DOM extraction;
+- bounded DOM-ready/mutation quiet-window capture with revisions and
+  hash/history route re-analysis;
+- stale-navigation and stale-revision rejection in Electron main;
+- viewport screenshot capture through `webContents.capturePage()`;
+- debug-only PageModel inspector and target highlight/scroll commands;
+- deterministic unit coverage for late primary content after 250 repeated
+  navigation candidates, repetition caps, labels/forms, value exclusion,
+  Shadow DOM, and stable target IDs;
+- repeatable CDP-driven real-site audit script.
+
+Verified on the Apple Silicon event Mac on 24 July 2026:
+
+- 20/20 baseline real sites produced a settled PageModel and screenshot;
+- 5/5 additional sites chosen after implementation also passed;
+- the 25-site corpus spans news, commerce, universities, public services,
+  technical documentation, forms, SPAs, and search/listing pages;
+- mean local extraction time was 56.6 ms; maximum was 401.5 ms;
+- mean viewport screenshot time was 115.9 ms; maximum was 451 ms;
+- a current W3C Forms heading target highlighted through its stable AURA ID;
+- stale revisions are rejected by the page runtime, while Electron main
+  validates the current page ID, revision, target, and URL before dispatch;
+- a selective CDP Accessibility sample on Next.js resolved 20 AURA targets in
+  32.6 ms, but did not demonstrate enough baseline benefit to justify a
+  mandatory AX-tree request on every page;
+- repository lint, typecheck, tests, browser build, and `darwin-arm64`
+  packaging pass.
+
+W3 onboarding, OpenAI integration, memory, and adaptation have not started.
 
 ## Source of truth
 
