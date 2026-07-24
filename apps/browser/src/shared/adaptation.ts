@@ -5,7 +5,7 @@ import { recomposePlanSchema } from './recompose';
 import { semanticPlanSchema } from './semantic-analysis';
 
 export const presentationSettingsSchema = z.object({
-  informationDensity: z.enum(['standard', 'calm', 'step_by_step']),
+  informationDensity: z.enum(['standard', 'calm', 'step_by_step']).optional(),
   lineSpacing: z.number().min(1).max(2),
   readingWidth: z.enum(['normal', 'narrow']),
   reduceMotion: z.boolean(),
