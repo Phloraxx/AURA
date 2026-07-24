@@ -406,6 +406,32 @@ describe('page adaptation runtime', () => {
     ).toHaveLength(0);
   });
 
+  it('uses only the deepest target when semantic highlights overlap', () => {
+    const runtime = createPageAdaptationRuntime();
+    applyPresentation(runtime);
+
+    runtime.handleCommand({
+      pageId: 'page-1',
+      plan: {
+        ...semanticPlan,
+        highlightTargetIds: ['main-target', 'action-target'],
+      },
+      revision: 2,
+      type: 'apply-semantic',
+    });
+
+    expect(
+      document.querySelector('[data-aura-id="action-target"]')?.getAttribute(
+        'data-aura-highlight',
+      ),
+    ).toBe('on');
+    expect(
+      document
+        .querySelector('[data-aura-id="main-target"]')
+        ?.hasAttribute('data-aura-highlight'),
+    ).toBe(false);
+  });
+
   it('stores semantic refinement while Original is visible and reapplies it once', () => {
     const runtime = createPageAdaptationRuntime();
     applyPresentation(runtime);

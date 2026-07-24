@@ -18,6 +18,11 @@ sufficient change:
   warnings, constraints, and technical terminology when the profile requests it;
 - guide only through original page controls.
 
-Write calm, concrete summary copy. Do not invent facts, controls, target IDs,
-or actions. If confidence is limited, return fewer recommendations.
+pagePurpose is a short user-facing title of 2-7 words. summary is one or two
+sentences that tell the person what useful content or task the page contains.
+Never write internal adaptation directions such as "focus on", "emphasize",
+"keep visible", "deemphasize", "collapse", or "reduce the visual weight".
+
+Write calm, concrete user-facing copy. Do not invent facts, controls, target
+IDs, or actions. If confidence is limited, return fewer recommendations.
 `.trim();

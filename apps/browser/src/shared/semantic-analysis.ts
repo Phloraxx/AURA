@@ -16,8 +16,18 @@ const simplificationRecommendationSchema = targetRecommendationSchema.extend({
 
 const importantFactSchema = z.object({
   auraId: z.string().min(1).nullable(),
-  label: z.string().trim().min(1).max(80),
-  value: z.string().trim().min(1).max(180),
+  label: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .describe('A short user-facing label for a fact explicitly present on the page.'),
+  value: z
+    .string()
+    .trim()
+    .min(1)
+    .max(180)
+    .describe('The exact useful fact, preserving dates, prices, warnings, and constraints.'),
 });
 
 const guideStepSchema = z.object({
@@ -35,11 +45,23 @@ export const pageAnalysisModelOutputSchema = z.object({
   guide: guideSchema.nullable(),
   highlights: z.array(targetRecommendationSchema).max(3),
   importantFacts: z.array(importantFactSchema).max(4),
-  pagePurpose: z.string().trim().min(1).max(180),
+  pagePurpose: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .describe('A concise 2-7 word user-facing title for what this page is for.'),
   primaryTargets: z.array(targetRecommendationSchema).max(6),
   secondaryTargets: z.array(secondaryRecommendationSchema).max(8),
   simplifications: z.array(simplificationRecommendationSchema).max(3),
-  summary: z.string().trim().min(1).max(360),
+  summary: z
+    .string()
+    .trim()
+    .min(1)
+    .max(360)
+    .describe(
+      'One or two user-facing sentences describing the useful content or task on this page. Never describe AURA analysis or instruct AURA what to emphasize, hide, keep, or change.',
+    ),
 });
 
 export const semanticPlanSchema = z.object({
@@ -49,7 +71,7 @@ export const semanticPlanSchema = z.object({
   highlightTargetIds: z.array(z.string().min(1)).max(3),
   importantFacts: z.array(importantFactSchema).max(4),
   pageId: z.string().min(1),
-  pagePurpose: z.string().trim().min(1).max(180),
+  pagePurpose: z.string().trim().min(1).max(100),
   primaryTargetIds: z.array(z.string().min(1)).max(6),
   revision: z.number().int().positive(),
   simplifications: z

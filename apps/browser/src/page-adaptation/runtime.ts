@@ -96,6 +96,39 @@ function findAuraTarget(auraId: string): HTMLElement | null {
   );
 }
 
+function elementDepth(element: Element): number {
+  let depth = 0;
+  for (
+    let parent = element.parentElement;
+    parent !== null;
+    parent = parent.parentElement
+  ) {
+    depth += 1;
+  }
+  return depth;
+}
+
+function chooseNonOverlappingHighlights(
+  auraIds: string[],
+): HTMLElement[] {
+  const candidates = auraIds
+    .map(findAuraTarget)
+    .filter((target): target is HTMLElement => target !== null)
+    .sort((left, right) => elementDepth(right) - elementDepth(left));
+  const selected: HTMLElement[] = [];
+  for (const candidate of candidates) {
+    if (
+      selected.some(
+        (item) => candidate.contains(item) || item.contains(candidate),
+      )
+    ) {
+      continue;
+    }
+    selected.push(candidate);
+  }
+  return selected;
+}
+
 function semanticStyles(): string {
   return `
 html[${ROOT_ATTRIBUTE}="on"] [${PRIMARY_ATTRIBUTE}="on"] {
@@ -253,9 +286,9 @@ export function createPageAdaptationRuntime(): PageAdaptationRuntime {
       rememberAttribute(target, SECONDARY_ATTRIBUTE);
       target.setAttribute(SECONDARY_ATTRIBUTE, 'on');
     }
-    for (const auraId of plan.highlightTargetIds) {
-      const target = findAuraTarget(auraId);
-      if (target === null) continue;
+    for (const target of chooseNonOverlappingHighlights(
+      plan.highlightTargetIds,
+    )) {
       rememberAttribute(target, HIGHLIGHT_ATTRIBUTE);
       target.setAttribute(HIGHLIGHT_ATTRIBUTE, 'on');
     }

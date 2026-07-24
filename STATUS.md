@@ -2,14 +2,12 @@
 
 **Branch:** `aura-browser`
 
-**Current milestone:** W4 — Make This Mine
+**Current milestone:** W5 — Talk to AURA + memory
 
 **Planning state:** W0 accepted. Canonical product and architecture decisions are locked in `docs/browser/`.
 
-**Implementation state:** W1, W2, W3, and W4 Part A are complete. W4 Part B is
-implemented and locally verified; its live Luna/high late-site audit remains
-pending. The development and packaged browser have been verified on the event
-Mac.
+**Implementation state:** W1 through W4 are complete. W5 has not started. The
+development and packaged browser have been verified on the event Mac.
 
 ## W0 — accepted decisions
 
@@ -191,7 +189,7 @@ Verified on the Apple Silicon event Mac on 24 July 2026:
   retry;
 - local adaptation remains active when semantic analysis falls back.
 
-## W4 — Part B implemented; live model verification pending
+## W4 — Part B implemented and verified
 
 - one bounded `analyzePage` Responses API request per Make This Mine;
 - configurable `gpt-5.6-luna` with high reasoning, structured Zod output,
@@ -214,15 +212,31 @@ Verified on the Apple Silicon event Mac on 24 July 2026:
 - repository lint, typecheck, tests, production build, and native
   `darwin-arm64` packaging pass.
 
-Remaining W4 acceptance work:
+Verified with live `gpt-5.6-luna` and high reasoning on the Apple Silicon event
+Mac on 24 July 2026:
 
-- launch the app with the temporary event key provided through the local
-  process environment;
-- verify one end-to-end Luna/high semantic transformation and its token/latency
-  record;
-- run the five-site late/random semantic audit;
-- visually inspect the semantic summary/refinement and exact Original restore;
-- do not mark W4 complete until those live checks pass.
+- an end-to-end Wikipedia smoke test returned a validated semantic plan in
+  17.0 seconds using 33,680 tokens, applied one AURA summary and three primary
+  targets, and restored with zero AURA-owned nodes, semantic/presentation
+  styles, or adaptation attributes;
+- all five late/random sites passed: NASA News, Harvard, Canada Benefits,
+  Python Tutorial, and Next.js Docs;
+- the five-site run used 96,587 total tokens, with mean model latency of
+  15.6 seconds and a measured range of 10.0–20.1 seconds;
+- the corpus exercised safe collapse, additive simplification, important
+  facts, primary emphasis, deemphasis, and summary output without losing the
+  original page or its controls;
+- every audited site returned to Original without semantic residue;
+- visual review of Wikipedia and Next.js confirmed that the AURA-owned summary
+  is readable and the source page remains recognizable;
+- a final prompt/contract refinement made page purpose a concise user-facing
+  title and prohibited internal adaptation instructions in summary copy;
+- overlapping highlight targets are now reduced to the deepest target in each
+  containment chain, avoiding nested outlines;
+- the refined Next.js rerun returned user-facing copy, passed exact restoration,
+  and used 24,524 tokens in 23.6 seconds.
+
+W4 acceptance is complete. W5 is the next milestone.
 
 ## Source of truth
 

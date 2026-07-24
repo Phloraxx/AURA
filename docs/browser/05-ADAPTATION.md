@@ -222,6 +222,10 @@ It does not add an agent chain.
    Original.
 8. Model timeout, refusal, invalid output, missing key, or stale targets leave
    Part A active and usable.
+9. Page purpose and summary are user-facing content, never internal directions
+   about what AURA should emphasize, hide, keep, or change.
+10. When proposed highlight targets overlap, the runtime keeps only the deepest
+    target in each containment chain to avoid nested outlines.
 
 ## Text simplification
 
