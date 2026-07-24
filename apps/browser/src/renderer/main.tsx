@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './styles.css';
 import './design-system.css';
+import './motion-personality.css';
 
 const root = document.querySelector('#root');
 
