@@ -12,6 +12,18 @@ import { PAGE_ANALYSIS_INSTRUCTIONS } from './prompts/page-analysis';
 
 const DEFAULT_MODEL = 'gpt-5.6-luna';
 const DEFAULT_TIMEOUT_MS = 35_000;
+const REASONING_EFFORTS = ['none', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
+const DEFAULT_REASONING_EFFORT: ReasoningEffort = 'medium';
+
+function resolveReasoningEffort(environment: NodeJS.ProcessEnv): ReasoningEffort {
+  const candidate = (
+    environment.AURA_PAGE_REASONING_EFFORT ?? environment.AURA_REASONING_EFFORT
+  )?.trim();
+  return REASONING_EFFORTS.includes(candidate as ReasoningEffort)
+    ? (candidate as ReasoningEffort)
+    : DEFAULT_REASONING_EFFORT;
+}
 
 export interface PageAnalysisRequest {
   page: PageModel;
@@ -65,8 +77,9 @@ function fallbackResult(error: string): PageAnalysisProviderResult {
 class OpenAIPageAnalysisProvider implements PageAnalysisProvider {
   readonly #client: OpenAI;
   readonly #model: string;
+  readonly #reasoningEffort: ReasoningEffort;
 
-  constructor(apiKey: string, model: string) {
+  constructor(apiKey: string, model: string, reasoningEffort: ReasoningEffort) {
     this.#client = new OpenAI({
       apiKey,
       maxRetries: 1,
@@ -74,6 +87,7 @@ class OpenAIPageAnalysisProvider implements PageAnalysisProvider {
       logLevel: process.env.NODE_ENV === 'production' ? 'error' : 'warn',
     });
     this.#model = model;
+    this.#reasoningEffort = reasoningEffort;
   }
 
   async analyze(
@@ -106,7 +120,7 @@ class OpenAIPageAnalysisProvider implements PageAnalysisProvider {
       instructions: PAGE_ANALYSIS_INSTRUCTIONS,
       max_output_tokens: 3_000,
       model: this.#model,
-      reasoning: { effort: 'high' },
+      reasoning: { effort: this.#reasoningEffort },
       store: false,
       text: {
         format: zodTextFormat(
@@ -149,6 +163,7 @@ export function createPageAnalysisProvider(
   const provider = new OpenAIPageAnalysisProvider(
     apiKey,
     environment.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
+    resolveReasoningEffort(environment),
   );
   return {
     analyze: async (request) => {
