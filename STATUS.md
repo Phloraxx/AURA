@@ -1,10 +1,12 @@
 # AURA Browser Status
 
-**Integration PR:** #2 — `aura-browser` → `main`
+**Primary branch:** `main`
+
+**Integration:** PR #2 (`aura-browser` → `main`) merged successfully after green GitHub CI.
 
 **Current milestone:** W7 — Judge-proofing / release freeze
 
-**Product state:** W1 through W6 are implemented. W7 hardening, real-site coverage, native packaging, and automated rehearsal are complete. Feature scope is frozen.
+**Product state:** W1 through W6 are implemented. W7 hardening, real-site coverage, native packaging, automated rehearsal, and repository CI are complete. Feature scope is frozen.
 
 ## Primary product
 
@@ -59,7 +61,7 @@ OPENAI_MODEL=gpt-5.6-luna
 AURA_PAGE_REASONING_EFFORT=medium
 ```
 
-The flagship page-analysis call now defaults to medium reasoning because the earlier high-reasoning W4 runs produced good plans but typically took roughly 10–24 seconds. The effort is externally configurable, so `high` can be restored for the event without a code change if the final live Mac test shows a material quality regression.
+The flagship page-analysis call defaults to medium reasoning because earlier high-reasoning W4 runs produced good plans but typically took roughly 10–24 seconds. The effort is externally configurable, so `high` can be restored for the event without a code change if the final live Mac test shows a material quality regression.
 
 Onboarding and conversation retain their already-verified reasoning settings until measured evidence justifies a change.
 
@@ -81,6 +83,8 @@ Electron Playwright E2E under Xvfb
 ```
 
 The established local suite contains 107 unit/integration tests plus Electron E2E coverage. The E2E journey covers clean launch, Learn Me, Make This Mine, Talk to AURA, Remember, navigation/session intent, Original restoration, restart, persistent memory, and serious/critical Axe checks.
+
+PR #2's final CI run completed successfully before merge.
 
 ## Portability fix
 
@@ -108,11 +112,11 @@ No OpenAI key is committed to the repository.
 
 ## Remaining release gate
 
-Only one manual operational gate remains after PR #2 is green and merged:
+Only one manual operational gate remains:
 
 > Run the packaged `AURA.app` on the actual event Mac with the real temporary OpenAI key using the event Wi-Fi or planned hotspot, then exercise Learn Me → arbitrary real site → Make This Mine → Talk to AURA → Remember → Original.
 
-During that run, compare the default page reasoning (`medium`) with `high` on at least one difficult page. Keep `medium` unless `high` produces a clearly better judged result worth the added latency.
+During that run, compare the default page reasoning (`medium`) with `high` on at least one difficult page. Keep `medium` unless `high` produces a clearly better judged result worth the added latency and API usage.
 
 Any bug found by that smoke test may be fixed. No new features should be added.
 

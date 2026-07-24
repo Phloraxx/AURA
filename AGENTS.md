@@ -1,10 +1,10 @@
 # AGENTS.md
 
-This file defines the default instructions for coding agents working on the `aura-browser` branch.
+This file defines the default instructions for coding agents working on the AURA Browser product line in `main`.
 
 ## Mission
 
-Build the macOS AURA Browser event prototype defined by `docs/browser/`.
+Build and harden the macOS AURA Browser event prototype defined by `docs/browser/`.
 
 The goal is one polished experience in which AURA:
 
@@ -69,7 +69,7 @@ Material architecture/scope changes require an ADR update before or with code.
 ## AI rules
 
 - Browser event build calls OpenAI from Electron main; do not require the Hono API server.
-- Initial baseline: `gpt-5.6-luna` with high reasoning, environment-configurable.
+- Event model: `gpt-5.6-luna`. Flagship page analysis defaults to `medium` reasoning and is environment-configurable; onboarding/conversation retain their verified settings unless measured evidence justifies a change.
 - Use Responses API + structured outputs; page screenshots may be image input.
 - AI returns typed semantic/adaptation requests; trusted AURA code performs changes.
 - Never execute model-generated JavaScript or arbitrary generated HTML.

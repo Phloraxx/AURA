@@ -1,6 +1,6 @@
 # AURA Browser — Source of Truth
 
-This directory is the canonical specification for the `aura-browser` branch and, after PR #2 merges, for `main`.
+This directory is the canonical specification for the AURA Browser product line in `main`.
 
 ## Authority
 
@@ -61,7 +61,7 @@ Otherwise defer it.
 
 ## Current stage
 
-W1 through W6 are implemented. W7 hardening/release work is effectively complete except for the final credentialed OpenAI smoke test on the actual event network/hotspot and any issue that test reveals.
+The AURA Browser was promoted to `main` through PR #2 after green GitHub CI. W1 through W6 are implemented and W7 hardening/release work is effectively complete except for the final credentialed OpenAI smoke test on the actual event network/hotspot and any issue that test reveals.
 
 The feature scope is frozen. Only reliability, release, copy, and measured latency fixes belong before the event.
 
