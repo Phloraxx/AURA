@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import type { BrowserProfile } from './profile';
+import { pageModelSchema } from './page-model';
+import {
+  browserProfileSchema,
+  type BrowserProfile,
+} from './profile';
 
 export const recomposePresetSchema = z.enum([
   'personalized',
@@ -66,6 +70,21 @@ export const localRecomposeOutputSchema = z.object({
   summary: z.string().trim().max(260),
 });
 
+export const localRecomposeRequestSchema = z.object({
+  currentGoal: z.string().trim().min(1).max(600).nullable(),
+  page: pageModelSchema,
+  preset: recomposePresetSchema,
+  profile: browserProfileSchema,
+});
+
+export const localRecomposeResultSchema = z.object({
+  applied: z.boolean(),
+  durationMs: z.number().nonnegative(),
+  error: z.string().nullable(),
+  model: z.string(),
+  output: localRecomposeOutputSchema.nullable(),
+});
+
 export const recomposeStateSchema = z.object({
   error: z.string().nullable(),
   localDurationMs: z.number().nonnegative().nullable(),
@@ -86,6 +105,8 @@ export const recomposeStateSchema = z.object({
 });
 
 export type LocalRecomposeOutput = z.infer<typeof localRecomposeOutputSchema>;
+export type LocalRecomposeRequest = z.infer<typeof localRecomposeRequestSchema>;
+export type LocalRecomposeResult = z.infer<typeof localRecomposeResultSchema>;
 export type RecomposeAction = z.infer<typeof recomposeActionSchema>;
 export type RecomposeArchetype = z.infer<typeof recomposeArchetypeSchema>;
 export type RecomposeItem = z.infer<typeof recomposeItemSchema>;
