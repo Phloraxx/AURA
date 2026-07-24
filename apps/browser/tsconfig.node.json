@@ -15,6 +15,7 @@
     "src/main/**/*.ts",
     "src/page-adaptation/**/*.ts",
     "src/page-intelligence/**/*.ts",
+    "src/page-recompose/**/*.ts",
     "src/preload/**/*.ts",
     "src/shared/**/*.ts"
   ]

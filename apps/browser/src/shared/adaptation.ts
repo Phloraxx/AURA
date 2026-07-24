@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 import type { BrowserProfile } from './profile';
+import { recomposePlanSchema } from './recompose';
 import { semanticPlanSchema } from './semantic-analysis';
 
 export const presentationSettingsSchema = z.object({
+  informationDensity: z.enum(['standard', 'calm', 'step_by_step']).optional(),
   lineSpacing: z.number().min(1).max(2),
   readingWidth: z.enum(['normal', 'narrow']),
   reduceMotion: z.boolean(),
@@ -29,6 +31,13 @@ export const adaptationCommandSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     pageId: z.string().min(1),
+    plan: recomposePlanSchema,
+    revision: z.number().int().positive(),
+    type: z.literal('apply-recompose'),
+    view: z.literal('aura').default('aura'),
+  }),
+  z.object({
+    pageId: z.string().min(1),
     revision: z.number().int().positive(),
     settings: presentationSettingsSchema,
     type: z.literal('update-presentation'),
@@ -43,7 +52,7 @@ export const adaptationCommandSchema = z.discriminatedUnion('type', [
 export const adaptationEventSchema = z.object({
   changedTargetCount: z.number().int().nonnegative(),
   error: z.string().nullable(),
-  operation: z.enum(['presentation', 'semantic', 'view']),
+  operation: z.enum(['presentation', 'semantic', 'recompose', 'view']),
   pageId: z.string().min(1),
   status: z.enum(['applied', 'failed', 'restored']),
   view: adaptationViewSchema,
@@ -67,6 +76,7 @@ export function presentationSettingsFromProfile(
   profile: BrowserProfile,
 ): PresentationSettings {
   return presentationSettingsSchema.parse({
+    informationDensity: profile.preferences.informationDensity,
     lineSpacing: profile.preferences.lineSpacing,
     readingWidth: profile.preferences.readingWidth,
     reduceMotion: profile.preferences.reduceMotion,

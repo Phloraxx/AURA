@@ -15,6 +15,8 @@ import type {
 } from '../shared/page-model';
 
 const api: AuraShellApi = {
+  applyLocalRecompose: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.applyLocalRecompose, request),
   applyPresentation: (profile) =>
     ipcRenderer.invoke(IPC_CHANNELS.applyPresentation, profile),
   back: () => ipcRenderer.invoke(IPC_CHANNELS.back),
@@ -24,6 +26,8 @@ const api: AuraShellApi = {
   debugPageTarget: (command: PageRuntimeCommand) =>
     ipcRenderer.invoke(IPC_CHANNELS.debugPageTarget, command),
   dismissMemory: () => ipcRenderer.invoke(IPC_CHANNELS.dismissMemory),
+  ensureMicrophoneAccess: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.ensureMicrophoneAccess),
   forward: () => ipcRenderer.invoke(IPC_CHANNELS.forward),
   getAdaptationState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getAdaptationState),
@@ -49,6 +53,8 @@ const api: AuraShellApi = {
     ipcRenderer.invoke(IPC_CHANNELS.setOnboardingActive, active),
   setPanelOpen: (open) =>
     ipcRenderer.invoke(IPC_CHANNELS.setPanelOpen, open),
+  transcribeVoice: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.transcribeVoice, request),
   updateLearnedPreferences: (preferences) =>
     ipcRenderer.invoke(IPC_CHANNELS.updateLearnedPreferences, { preferences }),
   onAdaptationState: (listener) => {
