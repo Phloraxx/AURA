@@ -62,6 +62,7 @@ export const IPC_CHANNELS = {
   setOnboardingActive: 'aura:layout:set-onboarding-active',
   setPanelOpen: 'aura:layout:set-panel-open',
   setAdaptationView: 'aura:adaptation:set-view',
+  startRecompose: 'aura:recompose:start',
   transcribeVoice: 'aura:voice:transcribe',
   updateLearnedPreferences: 'aura:memory:update-preferences',
 } as const;
@@ -133,6 +134,7 @@ export interface AuraShellApi {
   setAdaptationView: (view: AdaptationView) => Promise<boolean>;
   setOnboardingActive: (active: boolean) => Promise<void>;
   setPanelOpen: (open: boolean) => Promise<void>;
+  startRecompose: (request: LocalRecomposeRequest) => Promise<boolean>;
   transcribeVoice: (
     request: VoiceTranscriptionRequest,
   ) => Promise<VoiceTranscriptionResponse>;
