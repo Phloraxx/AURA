@@ -1,5 +1,6 @@
 import { _electron as electron, expect, test } from '@playwright/test';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -11,6 +12,7 @@ import {
 
 const ARTICLE_URL = 'http://127.0.0.1:4173/cluttered-article.html';
 const FORM_URL = 'http://127.0.0.1:4173/complex-form.html';
+const AXE_CORE_PATH = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const PROCESS_ENV = Object.fromEntries(
   Object.entries(process.env).filter(
     (entry): entry is [string, string] => entry[1] !== undefined,
@@ -85,9 +87,7 @@ test('rehearses clean launch through Learn Me, Talk, Remember, and Original', as
       shell.getByText('The original presentation is restored.'),
     ).toBeVisible();
 
-    await shell.addScriptTag({
-      path: resolve('../extension/node_modules/axe-core/axe.min.js'),
-    });
+    await shell.addScriptTag({ path: AXE_CORE_PATH });
     const seriousViolations = await shell.evaluate(async () => {
       const axe = (
         globalThis as typeof globalThis & {
