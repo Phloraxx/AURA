@@ -6,6 +6,7 @@ import './styles.css';
 import './design-system.css';
 import './motion-personality.css';
 import './video-theme.css';
+import './recompose-ui.css';
 
 const root = document.querySelector('#root');
 
