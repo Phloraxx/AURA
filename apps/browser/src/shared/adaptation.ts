@@ -32,6 +32,7 @@ export const adaptationCommandSchema = z.discriminatedUnion('type', [
   z.object({
     pageId: z.string().min(1),
     plan: recomposePlanSchema,
+    reduceMotion: z.boolean(),
     revision: z.number().int().positive(),
     type: z.literal('apply-recompose'),
     view: z.literal('aura').default('aura'),
