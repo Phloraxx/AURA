@@ -14,7 +14,7 @@
     "test:e2e": "playwright test -c playwright.config.ts",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "test": "vitest run src",
-    "package:mac": "pnpm build && electron-forge package --platform=darwin --arch=arm64"
+    "package:mac": "corepack pnpm build && electron-forge package --platform=darwin --arch=arm64"
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.2",
