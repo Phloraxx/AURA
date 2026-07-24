@@ -2,48 +2,54 @@
 
 **Branch:** `aura-browser`
 
-**Current milestone:** W0 — Planning lock
+**Current milestone:** W1 — Browser shell
 
-**Implementation state:** Browser implementation has intentionally not started yet. The branch is being reset around a new canonical product/architecture plan before code is written.
+**Planning state:** W0 accepted. Canonical product and architecture decisions are locked in `docs/browser/`.
 
-## Done
+**Implementation state:** W1 has not been scaffolded yet.
 
-- Created dedicated `aura-browser` branch from `main`.
-- Established `docs/browser/` as the authoritative source of truth for this branch.
-- Defined the three first-class product experiences:
+## W0 — accepted decisions
+
+- Product has exactly three first-class experiences:
   - Learn Me
   - Make This Mine
   - Talk to AURA
-- Selected macOS as the only polished event target.
-- Selected Electron/Chromium with `BaseWindow` + `WebContentsView`.
-- Defined hybrid page intelligence: AURA DOM IDs + CDP DOMSnapshot + Accessibility tree + screenshot.
-- Defined explicit local memory layers.
-- Defined phased adaptation and Original/AURA reversal.
-- Defined implementation milestones W0–W7.
-- Defined real-site testing gates and event Definition of Done.
+- Make This Mine is the flagship and wins schedule conflicts.
+- Judged platform is macOS on Apple Silicon (`darwin-arm64`).
+- Electron/Chromium hosts the prototype; no browser-engine fork.
+- One trusted React `BrowserWindow` is the shell.
+- One remote `WebContentsView` renders arbitrary websites.
+- Remote AURA runtime is a dedicated preload in an isolated world.
+- Page Intelligence is runtime-first: ranked DOM/ARIA targets + geometry/styles + screenshot.
+- CDP Accessibility is selective enrichment; DOMSnapshot is fallback/diagnostic rather than mandatory on every page.
+- No first-N DOM truncation.
+- OpenAI is called directly from Electron main during the event; no local Hono server is required in the judged path.
+- Baseline model to measure first: `gpt-5.6-terra` with low reasoning on latency-sensitive calls, environment-configurable.
+- AI uses three rich operations, not an agent swarm.
+- Adaptation uses conservative reversible Tier 0–3 interventions; arbitrary large DOM reconstruction is not required.
+- Original ↔ AURA is mandatory.
+- Required persistent memory is profile + explicit learned global preferences; site memory is secondary.
+- Talk to AURA optimizes four action families: Adjust, Explain, Goal/Guide, Remember.
+- Text conversation is required; voice is stretch.
+- `electron-vite` is the dev/build tool; Electron Forge is used only for final packaging.
+- Real-site testing is a release gate.
 
-## W0 remaining
-
-- Team review of every `docs/browser/` file.
-- Resolve any product/architecture disagreements in `08-DECISIONS.md`.
-- Confirm the primary event Mac's macOS version/CPU architecture before pinning Electron.
-- Confirm the live OpenAI model/config to use during W3/W4; keep the contract provider-agnostic.
-- Mark W0 accepted.
-
-## Next
-
-**W1 — Browser shell**
+## W1 — next implementation work
 
 Create `apps/browser` and prove:
 
-- Electron launches on the primary Mac;
-- `BaseWindow` + WebContentsView composition works;
-- address navigation/back/forward/refresh work;
-- AURA chrome/panel resize correctly;
-- a macOS dev/package path is stable.
+- Electron launches on the event Mac;
+- `electron-vite` dev/build works in the existing pnpm workspace;
+- one local `BrowserWindow` shell renders React chrome/panel;
+- one remote `WebContentsView` loads arbitrary sites;
+- page preload runs on every navigation;
+- address/back/forward/refresh work;
+- panel/window resizing updates PageView bounds correctly;
+- at least Wikipedia, GitHub, an e-commerce page, and the college site load;
+- a `darwin-arm64` package/dev path is stable.
 
-No AI or flagship adaptation work should begin until W1 is green.
+No AI or real adaptation should be implemented until W1 is green.
 
 ## Source of truth
 
-Read `docs/browser/README.md` first.
+Read `docs/browser/README.md` first, then follow its reading order.
