@@ -53,3 +53,17 @@ jobs:
 
       - name: Electron end-to-end tests
         run: xvfb-run -a corepack pnpm --filter @aura/browser test:e2e
+        env:
+          CI: 'true'
+          DEBUG: pw:browser
+
+      - name: Upload Playwright diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-diagnostics
+          path: |
+            apps/browser/playwright-report/
+            apps/browser/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
