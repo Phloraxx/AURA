@@ -2,7 +2,7 @@
 
 **Adaptive User-Responsive Accessibility**
 
-This branch is the clean product/architecture reset for the judged AURA experience.
+`main` now contains the canonical judged AURA Browser product.
 
 > **AURA learns how the web works best for you, understands the page you are on, and reshapes that real page around you.**
 
@@ -10,9 +10,9 @@ This branch is the clean product/architecture reset for the judged AURA experien
 
 Start with **`docs/browser/README.md`**.
 
-For `aura-browser`, `docs/browser/` is authoritative. Older extension-era documents are historical/reference material only when the new source of truth explicitly points to them.
+For the AURA Browser product line, `docs/browser/` is authoritative. Older extension-era documents are historical/reference material only when the current source of truth explicitly points to them.
 
-Current work is tracked in **`STATUS.md`**.
+Current release state is tracked in **`STATUS.md`**.
 
 ## Product scope
 
@@ -49,7 +49,7 @@ A persistent `Original ↔ AURA` control proves and reverses the transformation.
 - **Remote AURA runtime:** dedicated preload in an isolated world
 - **Page intelligence:** ranked runtime DOM/ARIA model + geometry/styles + viewport screenshot, with selective CDP enrichment
 - **AI:** OpenAI Responses API called directly from Electron main for the event build
-- **Initial model baseline:** `gpt-5.6-terra`, configurable
+- **Event model:** `gpt-5.6-luna`; page analysis defaults to `medium` reasoning and remains configurable
 - **Memory:** local versioned JSON; profile + explicit learned preferences are required
 - **Build/dev:** `electron-vite`; Forge only for final packaging
 
@@ -100,31 +100,31 @@ The browser shell is only the host. The personalized transformation engine is th
 ## Implementation sequence
 
 ```text
-W0  Planning lock — ACCEPTED
+W0  Planning lock — COMPLETE
  ↓
-W1  Browser shell — CURRENT
+W1  Browser shell — COMPLETE
  ↓
-W2  Page Intelligence
+W2  Page Intelligence — COMPLETE
  ↓
-W3  Learn Me
+W3  Learn Me — COMPLETE
  ↓
-W4  Make This Mine
+W4  Make This Mine — COMPLETE
  ↓
-W5  Talk to AURA + memory
+W5  Talk to AURA + memory — COMPLETE
  ↓
-W6  Product polish
+W6  Product polish — COMPLETE
  ↓
-W7  Judge-proofing / freeze
+W7  Judge-proofing / release freeze — CURRENT
 ```
 
-See `docs/browser/06-IMPLEMENTATION-PLAN.md` for acceptance gates.
+See `docs/browser/06-IMPLEMENTATION-PLAN.md` for milestone acceptance gates and `STATUS.md` for the current release evidence.
 
-## Existing code
+## Existing extension code
 
-The repository already contains a Chrome/WXT extension, capability/profile concepts, reversible transformations, an API, and tests from the earlier AURA direction.
+The repository also contains the earlier Chrome/WXT extension, capability/profile concepts, reversible transformations, API code, and tests.
 
-On this branch that code is **reference material, not architectural authority**. Reuse proven logic selectively when it fits the browser architecture. Do not port the old side-panel product or Chrome-extension assumptions wholesale.
+That code is **reference/history, not architectural authority for the judged AURA Browser**. Reuse proven logic selectively when it fits the browser architecture; do not reintroduce the old side-panel product or Chrome-extension assumptions wholesale.
 
 ## Current state
 
-W0 is accepted. **W1 — Browser shell** is ready to implement.
+The AURA Browser has been promoted to `main` through PR #2 after green GitHub CI. Feature scope is frozen. The remaining release work is operational verification on the actual event Mac/network and fixes only for issues that verification reveals.
