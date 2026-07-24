@@ -119,6 +119,23 @@ describe('page intelligence runtime', () => {
     );
   });
 
+  it('treats empty and plaintext-only contenteditable controls as private editable input', () => {
+    document.body.innerHTML = `
+      <main>
+        <h1>Private editor</h1>
+        <div contenteditable aria-label="Draft">private-empty-attribute</div>
+        <div contenteditable="plaintext-only" aria-label="Plain draft">private-plaintext</div>
+      </main>
+    `;
+    const runtime = createPageIntelligenceRuntime(() => undefined);
+    const model = runtime.capture('manual');
+
+    expect(model.privacy.hasEditableControl).toBe(true);
+    expect(model.privacy.hasNonEmptyEditableControl).toBe(true);
+    expect(JSON.stringify(model)).not.toContain('private-empty-attribute');
+    expect(JSON.stringify(model)).not.toContain('private-plaintext');
+  });
+
   it('keeps target IDs stable within a page session and increments revisions', () => {
     document.body.innerHTML = `
       <main>

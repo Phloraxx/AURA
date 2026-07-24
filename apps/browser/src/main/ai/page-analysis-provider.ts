@@ -3,6 +3,7 @@ import { zodTextFormat } from 'openai/helpers/zod';
 
 import type { PageModel } from '../../shared/page-model';
 import type { BrowserProfile } from '../../shared/profile';
+import type { SessionIntent } from '../../shared/conversation';
 import {
   pageAnalysisModelOutputSchema,
   pageAnalysisProviderResultSchema,
@@ -26,6 +27,7 @@ function resolveReasoningEffort(environment: NodeJS.ProcessEnv): ReasoningEffort
 }
 
 export interface PageAnalysisRequest {
+  currentIntent: SessionIntent | null;
   page: PageModel;
   profile: BrowserProfile;
   screenshotDataUrl: string | null;
@@ -65,6 +67,19 @@ export function compactPageModel(page: PageModel): object {
   };
 }
 
+export function buildPageAnalysisContext(request: PageAnalysisRequest): object {
+  return {
+    currentIntent: request.currentIntent,
+    page: compactPageModel(request.page),
+    profile: {
+      capabilities: request.profile.capabilities,
+      learnedPreferences: request.profile.learnedPreferences,
+      preferences: request.profile.preferences,
+      summary: request.profile.summary,
+    },
+  };
+}
+
 function fallbackResult(error: string): PageAnalysisProviderResult {
   return pageAnalysisProviderResultSchema.parse({
     error,
@@ -95,15 +110,7 @@ class OpenAIPageAnalysisProvider implements PageAnalysisProvider {
   ): Promise<PageAnalysisProviderResult> {
     const content: OpenAI.Responses.ResponseInputContent[] = [
       {
-        text: JSON.stringify({
-          page: compactPageModel(request.page),
-          profile: {
-            capabilities: request.profile.capabilities,
-            learnedPreferences: request.profile.learnedPreferences,
-            preferences: request.profile.preferences,
-            summary: request.profile.summary,
-          },
-        }),
+        text: JSON.stringify(buildPageAnalysisContext(request)),
         type: 'input_text',
       },
     ];

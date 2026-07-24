@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { PageModel } from '../../shared/page-model';
 import { createDefaultBrowserProfile } from '../../shared/profile';
 import {
+  buildPageAnalysisContext,
   compactPageModel,
   createPageAnalysisProvider,
 } from './page-analysis-provider';
@@ -45,6 +46,7 @@ const page: PageModel = {
 describe('page analysis provider', () => {
   it('uses a bounded fallback when OpenAI is not configured', async () => {
     const result = await createPageAnalysisProvider({}).analyze({
+      currentIntent: null,
       page,
       profile: createDefaultBrowserProfile(),
       screenshotDataUrl: null,
@@ -53,6 +55,23 @@ describe('page analysis provider', () => {
     expect(result.source).toBe('fallback');
     expect(result.output).toBeNull();
     expect(result.error).toContain('not configured');
+  });
+
+  it('includes the active browsing goal in the flagship analysis context', () => {
+    const context = JSON.stringify(
+      buildPageAnalysisContext({
+        currentIntent: {
+          goal: 'register for semester seven',
+          preserveAcrossNavigation: true,
+        },
+        page,
+        profile: createDefaultBrowserProfile(),
+        screenshotDataUrl: null,
+      }),
+    );
+
+    expect(context).toContain('register for semester seven');
+    expect(context).toContain('preserveAcrossNavigation');
   });
 
   it('serializes only modeled page data', () => {

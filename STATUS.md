@@ -46,7 +46,7 @@ Implemented and verified:
 - SPA/hash/history revision handling;
 - screenshot capture;
 - stale page/revision rejection;
-- optional CDP enrichment only where useful.
+- CDP Accessibility/DOMSnapshot enrichment remains an optional fallback; the verified event baseline does not depend on it.
 
 The real-site matrix is maintained in `tests/sites.md` and currently contains 27 sites across articles/news, commerce, universities, government/public services, technical documentation, forms, SPAs, listings, and public-information sites.
 
@@ -82,13 +82,13 @@ build all applications
 Electron Playwright E2E under Xvfb
 ```
 
-The established local suite contains 107 unit/integration tests plus Electron E2E coverage. The E2E journey covers clean launch, Learn Me, Make This Mine, Talk to AURA, Remember, navigation/session intent, Original restoration, restart, persistent memory, and serious/critical Axe checks.
+The established local suite contains 113 passing unit/integration tests plus Electron E2E coverage. The E2E journey covers clean launch, Learn Me, Make This Mine, Talk to AURA, Remember, navigation/session intent, Original restoration, restart, persistent memory, and serious/critical Axe checks.
 
 PR #2's final CI run completed successfully before merge.
 
 ## Portability fix
 
-Repository scripts invoke pnpm through Corepack so a clean machine does not require a separately exposed global `pnpm` binary.
+Repository scripts invoke pnpm through Corepack so a clean machine does not require a separately exposed global `pnpm` binary. Electron Forge performs its own package-manager lookup, so the macOS packaging script prepends the repository's tiny `scripts/corepack-bin/pnpm` shim; Forge still resolves the pinned Corepack pnpm version instead of depending on a global install.
 
 ```bash
 corepack pnpm install --frozen-lockfile
@@ -96,7 +96,10 @@ corepack pnpm lint
 corepack pnpm typecheck
 corepack pnpm test
 corepack pnpm build
+corepack pnpm browser:package:mac
 ```
+
+The final hardening pass successfully cross-packaged the `darwin-arm64` bundle and verified that the `.app` embeds the generated AURA `.icns` byte-for-byte. Execution on the actual Mac remains part of the manual event smoke test.
 
 ## Event launcher
 
@@ -109,6 +112,23 @@ corepack pnpm browser:event
 The launcher prompts for a temporary `OPENAI_API_KEY` when one is not already present, defaults to `gpt-5.6-luna`, and defaults page analysis to medium reasoning.
 
 No OpenAI key is committed to the repository.
+
+## Release hardening and design pass
+
+The final audit-driven pass closes the remaining product-story gaps without expanding the event into new modes:
+
+- flagship page analysis now receives the active session goal;
+- preserved goals can continue across navigation and guide matching original controls;
+- task guidance exposes a current `Step X of N` and one current original-page target;
+- AURA's trusted shell now honors resolved text scale, line spacing, interaction target size, information density, and reduced-motion preference;
+- `Original → conversational adjustment → semantic refinement` keeps the adaptation session state synchronized;
+- explicit requests to keep technical details remove active additive simplifications for the current page;
+- “Use comfortable defaults” now applies the same comfortable choices shown in Learn Me;
+- screenshot privacy checks cover all supported contenteditable spellings;
+- the app has one AURA visual identity across native icon, favicon, browser wordmark, panel mark, and custom interface glyphs;
+- light/dark appearance, keyboard focus, reduced motion, and profile-sized controls are part of the shell design system.
+
+The design contract is documented in `docs/browser/09-DESIGN-SYSTEM.md`.
 
 ## Remaining release gate
 

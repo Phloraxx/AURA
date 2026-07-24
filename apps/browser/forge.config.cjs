@@ -3,6 +3,7 @@ const path = require('node:path');
 module.exports = {
   packagerConfig: {
     asar: true,
+    icon: path.resolve(__dirname, 'resources/aura'),
     download: {
       cacheRoot: path.resolve(__dirname, '../../.cache/electron'),
     },

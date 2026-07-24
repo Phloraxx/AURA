@@ -55,7 +55,8 @@ Otherwise defer it.
 7. `06-IMPLEMENTATION-PLAN.md`
 8. `07-TESTING-DEMO.md`
 9. `08-DECISIONS.md`
-10. `DEFINITION-OF-DONE.md`
+10. `09-DESIGN-SYSTEM.md`
+11. `DEFINITION-OF-DONE.md`
 
 `STATUS.md` at repository root records the active milestone and release evidence.
 

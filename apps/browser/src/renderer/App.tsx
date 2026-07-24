@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type FormEvent,
   useEffect,
   useRef,
@@ -14,6 +15,15 @@ import type { PageIntelligenceState } from '../shared/page-model';
 import type { BrowserProfile } from '../shared/profile';
 import type { SemanticAnalysisState } from '../shared/semantic-analysis';
 import type { ConversationState } from '../shared/conversation';
+import {
+  AuraBrand,
+  AuraMark,
+  AuraSparkIcon,
+  BackIcon,
+  CheckIcon,
+  ForwardIcon,
+  RefreshIcon,
+} from './Brand';
 import { LearnMe } from './LearnMe';
 import { TalkToAura } from './TalkToAura';
 
@@ -213,7 +223,9 @@ export function App(): React.JSX.Element {
   if (profile === undefined) {
     return (
       <main className="profile-loading" aria-live="polite">
-        <span className="brand-mark" aria-hidden="true">A</span>
+        <span className="brand-mark" aria-hidden="true">
+          <AuraMark />
+        </span>
         <p>Preparing AURA…</p>
       </main>
     );
@@ -223,18 +235,24 @@ export function App(): React.JSX.Element {
     return <LearnMe initialProfile={profile ?? undefined} onComplete={completeOnboarding} />;
   }
 
+  const shellStyle = {
+    '--aura-ui-body-size': `${Math.round(14 * profile.preferences.textScale * 10) / 10}px`,
+    '--aura-ui-leading': profile.preferences.lineSpacing,
+    '--aura-ui-section-title-size': `${Math.round(20 * profile.preferences.textScale * 10) / 10}px`,
+    '--aura-ui-small-size': `${Math.round(12 * profile.preferences.textScale * 10) / 10}px`,
+    '--aura-ui-target': `${profile.preferences.targetSizePx}px`,
+    '--aura-ui-title-size': `${Math.round(24 * profile.preferences.textScale * 10) / 10}px`,
+  } as CSSProperties;
+
   return (
     <main
       className={panelOpen ? 'shell panel-open' : 'shell'}
+      data-density={profile.preferences.informationDensity}
       data-reduce-motion={profile.preferences.reduceMotion ? 'true' : 'false'}
+      style={shellStyle}
     >
       <header className="browser-chrome">
-        <div className="brand" aria-label="AURA Browser">
-          <span className="brand-mark" aria-hidden="true">
-            A
-          </span>
-          <span>AURA</span>
-        </div>
+        <AuraBrand />
 
         <nav className="navigation-controls" aria-label="Page navigation">
           <button
@@ -244,7 +262,7 @@ export function App(): React.JSX.Element {
             onClick={() => void window.aura.back()}
             type="button"
           >
-            ←
+            <BackIcon aria-hidden="true" className="interface-icon" />
           </button>
           <button
             aria-label="Go forward"
@@ -253,7 +271,7 @@ export function App(): React.JSX.Element {
             onClick={() => void window.aura.forward()}
             type="button"
           >
-            →
+            <ForwardIcon aria-hidden="true" className="interface-icon" />
           </button>
           <button
             aria-label="Refresh page"
@@ -261,7 +279,7 @@ export function App(): React.JSX.Element {
             onClick={() => void window.aura.refresh()}
             type="button"
           >
-            ↻
+            <RefreshIcon aria-hidden="true" className="interface-icon" />
           </button>
         </nav>
 
@@ -306,7 +324,7 @@ export function App(): React.JSX.Element {
           onClick={togglePanel}
           type="button"
         >
-          <span aria-hidden="true">✦</span>
+          <AuraSparkIcon aria-hidden="true" className="interface-icon compact" />
           {panelOpen ? 'Close AURA' : 'Open AURA'}
         </button>
       </header>
@@ -315,7 +333,7 @@ export function App(): React.JSX.Element {
         <aside className="aura-panel" aria-label="AURA panel">
           <div className="panel-header">
             <div className="panel-symbol" aria-hidden="true">
-              ✦
+              <AuraMark />
             </div>
             <div>
               <p className="eyebrow">AURA</p>
@@ -418,11 +436,11 @@ export function App(): React.JSX.Element {
               className={`semantic-status ${semanticAnalysis.status}`}
             >
               <span aria-hidden="true">
-                {semanticAnalysis.status === 'analyzing'
-                  ? '◌'
-                  : semanticAnalysis.status === 'ready'
-                    ? '✦'
-                    : '✓'}
+                {semanticAnalysis.status === 'fallback' ? (
+                  <CheckIcon className="status-glyph" />
+                ) : (
+                  <AuraSparkIcon className="status-glyph" />
+                )}
               </span>
               <div>
                 <strong>

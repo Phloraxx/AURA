@@ -183,12 +183,19 @@ describe('page analysis validation', () => {
     expect(plan.guide?.steps).toHaveLength(1);
   });
 
-  it('honors an explicit request to preserve navigation', () => {
-    const profile = createDefaultBrowserProfile();
-    profile.learnedPreferences = ['Keep navigation visible on every page.'];
-    const plan = validatePageAnalysis(output(), model, profile);
+  it('uses explicit remembered preferences to change a later transformation', () => {
+    const baseline = validatePageAnalysis(
+      output(),
+      model,
+      createDefaultBrowserProfile(),
+    );
+    expect(baseline.deemphasizeTargetIds).toContain('navigation');
 
-    expect(plan.deemphasizeTargetIds).not.toContain('navigation');
+    const remembered = createDefaultBrowserProfile();
+    remembered.learnedPreferences = ['Keep navigation visible on every page.'];
+    const personalized = validatePageAnalysis(output(), model, remembered);
+
+    expect(personalized.deemphasizeTargetIds).not.toContain('navigation');
   });
 
   it('downgrades collapse when the profile keeps standard density', () => {

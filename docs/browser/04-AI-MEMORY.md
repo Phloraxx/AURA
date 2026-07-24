@@ -306,18 +306,18 @@ Examples:
 - show one form section at a time;
 - keep navigation available.
 
-### 3. Site memory — secondary
+### 3. Site memory — deferred
 
-Origin-specific overrides are supported by the schema, but they are not required to prove the central event story.
+Origin-specific overrides are not part of the current event BrowserProfile schema. They remain a post-event extension and are not required to prove the central event story.
 
-Examples:
+Possible future examples:
 
 ```text
 shopping site → keep reviews prominent
 college portal → use larger controls automatically
 ```
 
-Implement only after global memory works.
+Do not add site memory before the event. Global explicit memory is the required behavior.
 
 ### 4. Session intent — required, transient
 
