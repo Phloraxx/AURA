@@ -14,6 +14,7 @@ const PRIMARY_ATTRIBUTE = 'data-aura-primary';
 const SECONDARY_ATTRIBUTE = 'data-aura-secondary';
 const HIGHLIGHT_ATTRIBUTE = 'data-aura-highlight';
 const COLLAPSED_ATTRIBUTE = 'data-aura-collapsed';
+const GUIDE_ATTRIBUTE = 'data-aura-guide-active';
 
 interface AttributeRecord {
   element: Element;
@@ -144,6 +145,13 @@ html[${ROOT_ATTRIBUTE}="on"] [${HIGHLIGHT_ATTRIBUTE}="on"] {
   outline-offset: 5px !important;
   border-radius: 6px !important;
 }
+html[${ROOT_ATTRIBUTE}="on"] [${GUIDE_ATTRIBUTE}="on"] {
+  outline: 4px solid #1f7650 !important;
+  outline-offset: 5px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 0 0 2px #ffffff !important;
+  scroll-margin-block: 96px !important;
+}
 html[${ROOT_ATTRIBUTE}="on"] [${COLLAPSED_ATTRIBUTE}="on"] {
   display: none !important;
 }
@@ -210,6 +218,16 @@ html[${ROOT_ATTRIBUTE}="on"] [${OWNED_ATTRIBUTE}="restore"] {
   display: block !important;
   inline-size: fit-content !important;
   margin-block: 8px !important;
+}
+html[${ROOT_ATTRIBUTE}="on"] [${OWNED_ATTRIBUTE}="guide-status"] {
+  margin: 0 !important;
+  color: #466253 !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+}
+html[${ROOT_ATTRIBUTE}="on"] [${OWNED_ATTRIBUTE}="summary"] ol button[aria-current="step"] {
+  border-color: #1f7650 !important;
+  box-shadow: 0 0 0 2px rgba(31, 118, 80, 0.14) !important;
 }
 `.trim();
 }
@@ -379,23 +397,45 @@ export function createPageAdaptationRuntime(): PageAdaptationRuntime {
       if (plan.guide !== null) {
         const guideHeading = document.createElement('strong');
         guideHeading.textContent = plan.guide.title;
+        const guideStatus = own(document.createElement('p'), 'guide-status');
         const steps = document.createElement('ol');
-        for (const step of plan.guide.steps) {
+        const buttons: HTMLButtonElement[] = [];
+        const targets = plan.guide.steps.map((step) =>
+          findAuraTarget(step.auraId),
+        );
+        const activateStep = (index: number, scroll: boolean): void => {
+          guideStatus.textContent = `Step ${index + 1} of ${plan.guide?.steps.length ?? 0}`;
+          buttons.forEach((button, buttonIndex) => {
+            if (buttonIndex === index) button.setAttribute('aria-current', 'step');
+            else button.removeAttribute('aria-current');
+          });
+          targets.forEach((target, targetIndex) => {
+            if (target === null) return;
+            rememberAttribute(target, GUIDE_ATTRIBUTE);
+            target.setAttribute(
+              GUIDE_ATTRIBUTE,
+              targetIndex === index ? 'on' : 'off',
+            );
+          });
+          if (scroll) {
+            targets[index]?.scrollIntoView({
+              behavior: session?.settings.reduceMotion ? 'auto' : 'smooth',
+              block: 'center',
+            });
+          }
+        };
+        plan.guide.steps.forEach((step, index) => {
           const item = document.createElement('li');
           const button = document.createElement('button');
           button.type = 'button';
           button.textContent = step.instruction;
-          button.addEventListener('click', () => {
-            const target = findAuraTarget(step.auraId);
-            target?.scrollIntoView({
-              behavior: session?.settings.reduceMotion ? 'auto' : 'smooth',
-              block: 'center',
-            });
-          });
+          button.addEventListener('click', () => activateStep(index, true));
+          buttons.push(button);
           item.append(button);
           steps.append(item);
-        }
-        summary.append(guideHeading, steps);
+        });
+        if (plan.guide.steps.length > 0) activateStep(0, false);
+        summary.append(guideHeading, guideStatus, steps);
       }
       host.prepend(summary);
     }
@@ -475,6 +515,7 @@ export function createPageAdaptationRuntime(): PageAdaptationRuntime {
           throw new Error('No active AURA presentation exists for this page.');
         }
         session.settings = command.settings;
+        session.view = 'aura';
         return {
           changedTargetCount: apply(),
           error: null,

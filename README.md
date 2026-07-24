@@ -47,7 +47,7 @@ A persistent `Original ↔ AURA` control proves and reverses the transformation.
 - **Local UI:** one React + TypeScript `BrowserWindow`
 - **Remote website:** one child `WebContentsView`
 - **Remote AURA runtime:** dedicated preload in an isolated world
-- **Page intelligence:** ranked runtime DOM/ARIA model + geometry/styles + viewport screenshot, with selective CDP enrichment
+- **Page intelligence:** ranked runtime DOM/ARIA model + geometry/styles + viewport screenshot; CDP enrichment is an optional fallback, not a required critical-path dependency
 - **AI:** OpenAI Responses API called directly from Electron main for the event build
 - **Event model:** `gpt-5.6-luna`; page analysis defaults to `medium` reasoning and remains configurable
 - **Memory:** local versioned JSON; profile + explicit learned preferences are required

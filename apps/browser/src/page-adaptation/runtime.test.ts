@@ -406,6 +406,52 @@ describe('page adaptation runtime', () => {
     ).toHaveLength(0);
   });
 
+  it('marks one task-guide step as current and moves the marker when selected', () => {
+    const runtime = createPageAdaptationRuntime();
+    applyPresentation(runtime);
+    const second = document.createElement('button');
+    second.setAttribute('data-aura-id', 'second-action');
+    second.textContent = 'Review';
+    document.querySelector('main')?.append(second);
+
+    runtime.handleCommand({
+      pageId: 'page-1',
+      plan: {
+        ...semanticPlan,
+        guide: {
+          title: 'Application steps',
+          steps: [
+            { auraId: 'action-target', instruction: 'Continue the application' },
+            { auraId: 'second-action', instruction: 'Review the application' },
+          ],
+        },
+      },
+      revision: 2,
+      type: 'apply-semantic',
+    });
+
+    const guideButtons = [
+      ...document.querySelectorAll<HTMLButtonElement>(
+        '[data-aura-owned="summary"] ol button',
+      ),
+    ];
+    expect(guideButtons[0]?.getAttribute('aria-current')).toBe('step');
+    expect(
+      document
+        .querySelector('[data-aura-id="action-target"]')
+        ?.getAttribute('data-aura-guide-active'),
+    ).toBe('on');
+
+    guideButtons[1]?.click();
+    expect(guideButtons[0]?.hasAttribute('aria-current')).toBe(false);
+    expect(guideButtons[1]?.getAttribute('aria-current')).toBe('step');
+    expect(
+      document
+        .querySelector('[data-aura-id="second-action"]')
+        ?.getAttribute('data-aura-guide-active'),
+    ).toBe('on');
+  });
+
   it('uses only the deepest target when semantic highlights overlap', () => {
     const runtime = createPageAdaptationRuntime();
     applyPresentation(runtime);
@@ -430,6 +476,33 @@ describe('page adaptation runtime', () => {
         .querySelector('[data-aura-id="main-target"]')
         ?.hasAttribute('data-aura-highlight'),
     ).toBe(false);
+  });
+
+  it('reactivates the session after a presentation update from Original', () => {
+    const runtime = createPageAdaptationRuntime();
+    applyPresentation(runtime);
+    runtime.handleCommand({
+      pageId: 'page-1',
+      type: 'set-adaptation-view',
+      view: 'original',
+    });
+
+    const update = runtime.handleCommand({
+      pageId: 'page-1',
+      revision: 2,
+      settings: { ...comfortableSettings, targetSizePx: 60 },
+      type: 'update-presentation',
+    });
+    expect(update.view).toBe('aura');
+    expect(document.documentElement.dataset.auraPresentation).toBe('on');
+
+    runtime.handleCommand({
+      pageId: 'page-1',
+      plan: semanticPlan,
+      revision: 2,
+      type: 'apply-semantic',
+    });
+    expect(document.querySelector('[data-aura-owned="summary"]')).not.toBeNull();
   });
 
   it('stores semantic refinement while Original is visible and reapplies it once', () => {

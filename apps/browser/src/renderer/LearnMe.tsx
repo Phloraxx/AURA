@@ -8,6 +8,7 @@ import {
   type BrowserProfile,
   type CalibrationChoice,
 } from '../shared/profile';
+import { AuraBrand } from './Brand';
 
 interface LearnMeProps {
   initialProfile: BrowserProfile | undefined;
@@ -127,7 +128,10 @@ export function LearnMe({
     setSaving(true);
     setError(null);
     try {
-      const profile = createDefaultBrowserProfile();
+      const profile = applyCalibrationChoices(
+        createDefaultBrowserProfile(),
+        INITIAL_CHOICES,
+      );
       await onComplete(
         completeBrowserProfile(profile, summarizeBrowserProfile(profile)),
       );
@@ -151,10 +155,7 @@ export function LearnMe({
       } as React.CSSProperties}
     >
       <header className="learn-me-header">
-        <div className="brand" aria-label="AURA Browser">
-          <span className="brand-mark" aria-hidden="true">A</span>
-          <span>AURA</span>
-        </div>
+        <AuraBrand />
         <button className="text-button" disabled={saving} onClick={() => void skip()} type="button">
           Use comfortable defaults
         </button>

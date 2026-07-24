@@ -7,6 +7,7 @@ import type { PageModel } from '../../shared/page-model';
 import {
   createConversationProvider,
   deterministicConversationTurn,
+  type ConversationProviderRequest,
 } from './conversation-provider';
 
 const page = {
@@ -42,7 +43,7 @@ const page = {
   viewport: { height: 800, width: 1200 },
 } as unknown as PageModel;
 
-function request(userMessage: string) {
+function request(userMessage: string): ConversationProviderRequest {
   return {
     currentIntent: null,
     page,
@@ -69,6 +70,27 @@ describe('deterministicConversationTurn', () => {
     expect(result.actionFamily).toBe('goal_guide');
     expect(result.intent?.goal).toBe('apply?');
     expect(result.adaptationPatch?.guide?.steps[0]?.auraId).toBe('action-1');
+  });
+
+  it('continues a preserved goal using matching controls on the new page', () => {
+    const continued = request('What now?');
+    continued.currentIntent = {
+      goal: 'apply',
+      preserveAcrossNavigation: true,
+    };
+    const result = deterministicConversationTurn(continued);
+
+    expect(result.actionFamily).toBe('goal_guide');
+    expect(result.intent?.goal).toBe('apply');
+    expect(result.adaptationPatch?.guide?.steps[0]?.auraId).toBe('action-1');
+  });
+
+  it('does not fabricate a fallback guide when the goal matches no page target', () => {
+    const result = deterministicConversationTurn(
+      request('Help me find the quantum banana warranty.'),
+    );
+    expect(result.actionFamily).toBe('goal_guide');
+    expect(result.adaptationPatch).toBeNull();
   });
 
   it('requires explicit remember phrasing before proposing memory', () => {

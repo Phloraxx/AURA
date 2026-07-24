@@ -127,9 +127,12 @@ function shorten(value: string): string {
     : `${value.slice(0, MAX_TEXT_LENGTH - 1)}…`;
 }
 
-const USER_TEXT_SELECTOR =
-  'textarea, [contenteditable=""], [contenteditable="true"], ' +
-  '[contenteditable="plaintext-only"]';
+const CONTENTEDITABLE_SELECTOR =
+  '[contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]';
+const EDITABLE_CONTROL_SELECTOR =
+  'input:not([type="button"]):not([type="checkbox"]):not([type="color"]):not([type="hidden"]):not([type="image"]):not([type="radio"]):not([type="range"]):not([type="reset"]):not([type="submit"]), ' +
+  `textarea, ${CONTENTEDITABLE_SELECTOR}`;
+const USER_TEXT_SELECTOR = `textarea, ${CONTENTEDITABLE_SELECTOR}`;
 
 function safeTextContent(element: Element): string {
   if (element.matches(USER_TEXT_SELECTOR)) return '';
@@ -713,13 +716,13 @@ export function createPageIntelligenceRuntime(
       privacy: {
         hasEditableControl:
           document.querySelector(
-            'input:not([type="button"]):not([type="checkbox"]):not([type="color"]):not([type="hidden"]):not([type="image"]):not([type="radio"]):not([type="range"]):not([type="reset"]):not([type="submit"]), textarea, [contenteditable="true"]',
+            EDITABLE_CONTROL_SELECTOR,
           ) !== null,
         hasNonEmptyEditableControl: [
           ...document.querySelectorAll<
             HTMLInputElement | HTMLTextAreaElement | HTMLElement
           >(
-            'input:not([type="button"]):not([type="checkbox"]):not([type="color"]):not([type="hidden"]):not([type="image"]):not([type="radio"]):not([type="range"]):not([type="reset"]):not([type="submit"]), textarea, [contenteditable="true"]',
+            EDITABLE_CONTROL_SELECTOR,
           ),
         ].some((element) => {
           if (

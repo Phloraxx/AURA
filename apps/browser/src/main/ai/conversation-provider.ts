@@ -79,6 +79,7 @@ function findGoalGuide(page: PageModel, goal: string) {
         right.score - left.score ||
         Number(right.element.interactive) - Number(left.element.interactive),
     )
+    .filter((candidate) => candidate.score > 0)
     .slice(0, 3)
     .map(({ element }) => ({
       auraId: element.auraId,
@@ -148,6 +149,31 @@ export function deterministicConversationTurn(
               preference,
               reason: 'You explicitly asked AURA to remember this preference.',
             },
+    });
+  }
+
+  if (
+    request.currentIntent !== null &&
+    /\b(continue|keep going|next step|what now|where next)\b/.test(lower)
+  ) {
+    const guide = findGoalGuide(request.page, request.currentIntent.goal);
+    return conversationTurnResponseSchema.parse({
+      ...base,
+      actionFamily: 'goal_guide',
+      adaptationPatch:
+        guide === null
+          ? null
+          : {
+              deemphasizeTargetIds: [],
+              guide,
+              highlightTargetIds: guide.steps.slice(0, 1).map((step) => step.auraId),
+              primaryTargetIds: guide.steps.map((step) => step.auraId),
+            },
+      assistantMessage:
+        guide === null
+          ? `I’m keeping “${request.currentIntent.goal}” as your goal on this page.`
+          : `Continuing “${request.currentIntent.goal}”. Start with the highlighted original control.`,
+      intent: request.currentIntent,
     });
   }
 

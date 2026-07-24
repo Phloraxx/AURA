@@ -1,0 +1,577 @@
+:root {
+  --aura-bg: #f4f2ec;
+  --aura-bg-elevated: rgba(252, 251, 247, 0.94);
+  --aura-surface: #fffefa;
+  --aura-surface-soft: #f0f3ed;
+  --aura-surface-tint: #eaf2eb;
+  --aura-border: #d4dbd5;
+  --aura-border-strong: #b7c7bb;
+  --aura-ink: #17211b;
+  --aura-ink-secondary: #526057;
+  --aura-ink-tertiary: #667169;
+  --aura-brand: #245f43;
+  --aura-brand-strong: #173d2c;
+  --aura-brand-soft: #e6f0e8;
+  --aura-brand-bright: #3f805e;
+  --aura-gold: #d2a84f;
+  --aura-focus: #0b63ce;
+  --aura-danger: #9b2c2c;
+  --aura-shadow: 0 18px 52px rgba(30, 48, 37, 0.1);
+  --aura-shadow-small: 0 3px 14px rgba(30, 48, 37, 0.08);
+  color: var(--aura-ink);
+  background: var(--aura-bg);
+  color-scheme: light dark;
+}
+
+body {
+  color: var(--aura-ink);
+  background: var(--aura-bg);
+}
+
+.shell,
+.learn-me,
+.profile-loading {
+  color: var(--aura-ink);
+  background-color: var(--aura-bg);
+}
+
+.browser-chrome,
+.learn-me-header {
+  border-color: color-mix(in srgb, var(--aura-border) 88%, transparent);
+  background: color-mix(in srgb, var(--aura-bg-elevated) 94%, transparent);
+  backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.brand {
+  color: var(--aura-brand-strong);
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  border: 1px solid color-mix(in srgb, white 18%, transparent);
+  border-radius: 10px;
+  color: #fbf8ef;
+  background: linear-gradient(145deg, #347e5a, var(--aura-brand-strong));
+  box-shadow: 0 5px 14px rgba(23, 61, 44, 0.2);
+}
+
+.brand-mark svg {
+  width: 22px;
+  height: 22px;
+}
+
+.brand-mark svg circle {
+  fill: var(--aura-gold);
+}
+
+.brand-wordmark {
+  font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 780;
+  letter-spacing: 0.11em;
+}
+
+.interface-icon {
+  display: block;
+  width: 21px;
+  height: 21px;
+}
+
+.interface-icon.compact {
+  width: 18px;
+  height: 18px;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--aura-focus);
+  outline-offset: 3px;
+}
+
+.icon-button {
+  width: max(44px, var(--aura-ui-target, 44px));
+  height: max(44px, var(--aura-ui-target, 44px));
+  color: var(--aura-ink-secondary);
+}
+
+.icon-button:hover:not(:disabled) {
+  color: var(--aura-brand-strong);
+  background: var(--aura-brand-soft);
+}
+
+.address-form {
+  min-height: max(44px, var(--aura-ui-target, 44px));
+  border-color: var(--aura-border);
+  background: var(--aura-surface);
+  box-shadow: var(--aura-shadow-small);
+}
+
+.address-form:focus-within {
+  border-color: var(--aura-brand-bright);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aura-brand) 16%, transparent);
+}
+
+.address-form input {
+  color: var(--aura-ink);
+  font-size: var(--aura-ui-body-size, 14px);
+}
+
+.aura-toggle {
+  min-height: max(44px, var(--aura-ui-target, 44px));
+  border-color: var(--aura-border-strong);
+  color: var(--aura-brand-strong);
+  background: var(--aura-brand-soft);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.aura-toggle:hover {
+  background: color-mix(in srgb, var(--aura-brand-soft) 75%, var(--aura-brand) 8%);
+}
+
+.page-status {
+  color: var(--aura-ink-tertiary);
+  font-size: var(--aura-ui-small-size, 12px);
+}
+
+.aura-panel {
+  isolation: isolate;
+  padding-top: 26px;
+  border-color: var(--aura-border);
+  color: var(--aura-ink);
+  background: color-mix(in srgb, var(--aura-bg-elevated) 96%, transparent);
+  font-size: var(--aura-ui-body-size, 14px);
+  line-height: var(--aura-ui-leading, 1.5);
+}
+
+.aura-panel::before {
+  position: absolute;
+  z-index: -1;
+  top: -120px;
+  right: -90px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--aura-brand-bright) 15%, transparent), transparent 68%);
+  content: "";
+  pointer-events: none;
+}
+
+.panel-symbol {
+  width: max(44px, min(var(--aura-ui-target, 44px), 56px));
+  height: max(44px, min(var(--aura-ui-target, 44px), 56px));
+  color: #fbf8ef;
+  background: linear-gradient(145deg, #347e5a, var(--aura-brand-strong));
+  box-shadow: 0 8px 22px rgba(23, 61, 44, 0.18);
+}
+
+.panel-symbol svg {
+  width: 28px;
+  height: 28px;
+}
+
+.panel-symbol svg circle {
+  fill: var(--aura-gold);
+}
+
+.aura-panel h1 {
+  color: var(--aura-ink);
+  font-family: "New York", ui-serif, Georgia, "Times New Roman", serif;
+  font-size: var(--aura-ui-title-size, 24px);
+}
+
+.eyebrow {
+  color: var(--aura-brand-bright);
+  font-size: var(--aura-ui-small-size, 12px);
+}
+
+.runtime-status strong,
+.profile-card summary,
+.profile-card p,
+.profile-card span,
+.semantic-status strong,
+.memory-editor summary,
+.memory-proposal p,
+.conversation-form label,
+.memory-item label {
+  font-size: var(--aura-ui-body-size, 14px);
+}
+
+.talk-heading h2 {
+  font-size: var(--aura-ui-section-title-size, 20px);
+}
+
+.intent-chip,
+.memory-proposal span {
+  font-size: calc(var(--aura-ui-small-size, 12px) + 1px);
+}
+
+.message strong {
+  font-size: var(--aura-ui-small-size, 12px);
+}
+
+.panel-copy,
+.runtime-status span:not(.status-light),
+.adaptation-note,
+.semantic-status p,
+.conversation-empty p,
+.memory-editor > p,
+.muted,
+.message p,
+.conversation-form label,
+.memory-item label,
+.conversation-error {
+  font-size: var(--aura-ui-body-size, 14px);
+  line-height: var(--aura-ui-leading, 1.5);
+}
+
+.panel-copy,
+.adaptation-note,
+.semantic-status p,
+.conversation-empty p,
+.memory-editor > p,
+.muted {
+  color: var(--aura-ink-secondary);
+}
+
+.profile-card,
+.runtime-status,
+.semantic-status,
+.conversation-empty,
+.message.assistant,
+.memory-item {
+  border-color: var(--aura-border);
+  background: var(--aura-surface);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+.profile-card summary,
+.memory-editor summary,
+.talk-heading h2,
+.conversation-form label,
+.memory-item label {
+  color: var(--aura-ink);
+}
+
+.profile-card summary,
+.profile-card button,
+.memory-editor summary,
+.suggestion-row button,
+.memory-proposal button,
+.memory-item button,
+.primary-compact,
+.send-button,
+.adaptation-switch button,
+.primary-action {
+  min-height: var(--aura-ui-target, 44px);
+}
+
+.profile-card p,
+.profile-card span,
+.runtime-status span:not(.status-light) {
+  color: var(--aura-ink-secondary);
+}
+
+.status-light {
+  background: var(--aura-gold);
+}
+
+.status-light.ready {
+  background: var(--aura-brand-bright);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--aura-brand-bright) 14%, transparent);
+}
+
+.primary-action,
+.send-button,
+.primary-compact,
+.memory-proposal .primary-compact {
+  color: #fff;
+  background: linear-gradient(145deg, var(--aura-brand), var(--aura-brand-strong));
+  box-shadow: 0 8px 20px rgba(23, 61, 44, 0.14);
+}
+
+.primary-action:hover:not(:disabled),
+.send-button:hover:not(:disabled),
+.primary-compact:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.primary-action:disabled,
+.send-button:disabled,
+.suggestion-row button:disabled {
+  color: var(--aura-ink-tertiary);
+  background: color-mix(in srgb, var(--aura-border) 70%, var(--aura-surface));
+  box-shadow: none;
+}
+
+.adaptation-switch {
+  border-color: var(--aura-border);
+  background: var(--aura-surface-soft);
+}
+
+.adaptation-switch button {
+  color: var(--aura-ink-secondary);
+}
+
+.adaptation-switch button[aria-pressed="true"] {
+  color: var(--aura-brand-strong);
+  background: var(--aura-surface);
+  box-shadow: var(--aura-shadow-small);
+}
+
+.semantic-status > span {
+  color: #fff;
+  background: var(--aura-brand-bright);
+}
+
+.status-glyph {
+  width: 17px;
+  height: 17px;
+}
+
+.talk-card,
+.memory-editor {
+  border-color: var(--aura-border);
+}
+
+.intent-chip {
+  border-color: color-mix(in srgb, var(--aura-brand) 32%, var(--aura-border));
+  color: var(--aura-brand-strong);
+  background: var(--aura-brand-soft);
+}
+
+.suggestion-row button,
+.memory-proposal button,
+.memory-item button {
+  border-color: var(--aura-border-strong);
+  color: var(--aura-brand-strong);
+  background: var(--aura-surface-soft);
+}
+
+.message.user {
+  color: #fff;
+  background: linear-gradient(145deg, #2d6c4c, var(--aura-brand-strong));
+}
+
+.message.assistant {
+  color: var(--aura-ink);
+}
+
+.conversation-form textarea,
+.memory-item textarea,
+.note-field textarea {
+  border-color: var(--aura-border-strong);
+  color: var(--aura-ink);
+  background: var(--aura-surface);
+  font-size: var(--aura-ui-body-size, 14px);
+  line-height: var(--aura-ui-leading, 1.5);
+}
+
+.memory-proposal {
+  border-color: var(--aura-brand-bright);
+  background: color-mix(in srgb, var(--aura-brand-soft) 72%, var(--aura-surface));
+}
+
+.shell[data-density="calm"] .aura-panel {
+  padding-inline: 26px;
+}
+
+.shell[data-density="calm"] .talk-card,
+.shell[data-density="calm"] .conversation-empty {
+  gap: 17px;
+}
+
+.shell[data-density="step_by_step"] .aura-panel {
+  padding: 30px 28px 38px;
+}
+
+.shell[data-density="step_by_step"] .talk-card,
+.shell[data-density="step_by_step"] .conversation-empty,
+.shell[data-density="step_by_step"] .memory-proposal,
+.shell[data-density="step_by_step"] .memory-editor[open] {
+  gap: 20px;
+}
+
+.shell[data-density="step_by_step"] .talk-card {
+  margin-top: 22px;
+  padding-top: 22px;
+}
+
+.learn-me-card {
+  border-color: color-mix(in srgb, var(--aura-border) 80%, transparent);
+  background: color-mix(in srgb, var(--aura-bg-elevated) 97%, transparent);
+  box-shadow: var(--aura-shadow);
+}
+
+.text-button,
+.profile-card button {
+  min-height: var(--target-size, var(--aura-ui-target, 44px));
+  border-color: var(--aura-border-strong);
+  color: var(--aura-brand-strong);
+  background: var(--aura-surface-soft);
+}
+
+.onboarding-progress span {
+  color: var(--aura-ink-tertiary);
+}
+
+.onboarding-progress i {
+  background: var(--aura-border);
+}
+
+.onboarding-progress span.active {
+  color: var(--aura-brand-strong);
+}
+
+.onboarding-progress span.active i {
+  background: var(--aura-brand-bright);
+}
+
+.intro-principles span {
+  color: var(--aura-brand-strong);
+}
+
+.check-choice {
+  color: var(--aura-ink);
+}
+
+.check-choice:hover {
+  background: var(--aura-surface-soft);
+}
+
+.check-choice input {
+  accent-color: var(--aura-brand);
+}
+
+.onboarding-actions {
+  border-color: var(--aura-border);
+}
+
+.secondary-action {
+  color: var(--aura-ink);
+}
+
+.learn-me-copy h1 {
+  color: var(--aura-ink);
+  font-family: "New York", ui-serif, Georgia, "Times New Roman", serif;
+}
+
+.comfort-choice,
+.live-preview,
+.note-field textarea,
+.profile-summary,
+.secondary-action {
+  color: var(--aura-ink);
+  border-color: var(--aura-border);
+  background: var(--aura-surface);
+}
+
+.comfort-choice.selected {
+  border-color: var(--aura-brand-bright);
+  background: var(--aura-brand-soft);
+}
+
+.comfort-choice:hover {
+  border-color: var(--aura-brand-bright);
+}
+
+.live-preview {
+  border-left-color: var(--aura-brand-bright);
+  background: var(--aura-surface-soft);
+}
+
+.profile-summary,
+.intro-principles span {
+  background: var(--aura-brand-soft);
+}
+
+.note-field {
+  color: var(--aura-ink);
+}
+
+.learn-me-copy > p,
+.comfort-choice small,
+.live-preview span,
+.profile-summary p {
+  color: var(--aura-ink-secondary);
+}
+
+.error-message,
+.onboarding-error,
+.conversation-error {
+  color: var(--aura-danger);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --aura-bg: #101612;
+    --aura-bg-elevated: rgba(21, 29, 23, 0.95);
+    --aura-surface: #1b241d;
+    --aura-surface-soft: #222d25;
+    --aura-surface-tint: #26372b;
+    --aura-border: #344238;
+    --aura-border-strong: #4a5c50;
+    --aura-ink: #f0f4ef;
+    --aura-ink-secondary: #bdc7c0;
+    --aura-ink-tertiary: #99a69e;
+    --aura-brand: #58a878;
+    --aura-brand-strong: #9bd6b0;
+    --aura-brand-soft: #20382a;
+    --aura-brand-bright: #70c18d;
+    --aura-gold: #e1bd69;
+    --aura-focus: #83b5ff;
+    --aura-danger: #ff9d9d;
+    --aura-shadow: 0 20px 56px rgba(0, 0, 0, 0.32);
+    --aura-shadow-small: 0 4px 16px rgba(0, 0, 0, 0.24);
+  }
+
+  .brand-mark,
+  .panel-symbol {
+    color: #fbf8ef;
+    background: linear-gradient(145deg, #347e5a, #173d2c);
+  }
+
+  .browser-chrome,
+  .learn-me-header {
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset;
+  }
+
+  .aura-toggle,
+  .adaptation-switch button[aria-pressed="true"],
+  .profile-card,
+  .runtime-status,
+  .semantic-status,
+  .conversation-empty,
+  .message.assistant,
+  .memory-item,
+  .comfort-choice,
+  .note-field textarea,
+  .secondary-action,
+  .address-form {
+    box-shadow: none;
+  }
+
+  .primary-action,
+  .send-button,
+  .primary-compact,
+  .memory-proposal .primary-compact,
+  .message.user {
+    color: #fff;
+    background: linear-gradient(145deg, #347e5a, #245f43);
+  }
+
+  .semantic-status > span {
+    color: #fff;
+    background: #347e5a;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

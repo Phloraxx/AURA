@@ -6,6 +6,7 @@ import {
   app,
   BrowserWindow,
   ipcMain,
+  nativeTheme,
   WebContentsView,
   type IpcMainEvent,
 } from 'electron';
@@ -57,6 +58,7 @@ import { ProfileStore } from './profile-store';
 const DEFAULT_URL =
   process.env.AURA_START_URL?.trim() || 'https://www.wikipedia.org/';
 const APP_DIRECTORY = dirname(fileURLToPath(import.meta.url));
+const BRAND_ICON_PATH = join(APP_DIRECTORY, '../../resources/aura.png');
 
 if (process.env.AURA_USER_DATA_DIR?.trim()) {
   app.setPath('userData', process.env.AURA_USER_DATA_DIR.trim());
@@ -342,6 +344,17 @@ async function runConversationTurn(
 
   if (response.adjustment !== null && pageView !== null) {
     const patch = response.adjustment;
+    if (
+      patch.preserveTechnicalTerms === true &&
+      activeSemanticPlan !== null &&
+      activeSemanticPlan.simplifications.length > 0
+    ) {
+      activeSemanticPlan = {
+        ...activeSemanticPlan,
+        revision: model.revision,
+        simplifications: [],
+      };
+    }
     const adjustedProfile = browserProfileSchema.parse({
       ...profile,
       preferences: {
@@ -526,6 +539,7 @@ async function runPageAnalysis(
   publishSemanticAnalysisState();
 
   const result = await pageAnalysisProvider.analyze({
+    currentIntent: conversationState.currentIntent,
     page: initialModel,
     profile,
     screenshotDataUrl,
@@ -605,6 +619,10 @@ function attachPageEvents(view: WebContentsView): void {
   });
   webContents.on('did-start-loading', () => {
     navigationError = null;
+    if (conversationState.currentIntent?.preserveAcrossNavigation === false) {
+      conversationState = { ...conversationState, currentIntent: null };
+      publishConversationState();
+    }
     invalidateSemanticAnalysis();
     invalidateAdaptation();
     invalidatePageIntelligence();
@@ -931,7 +949,7 @@ async function createWindow(): Promise<void> {
     height: 920,
     minWidth: 760,
     minHeight: 560,
-    backgroundColor: '#f4f2ec',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#101612' : '#f4f2ec',
     title: 'AURA',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 18, y: 24 },
@@ -977,6 +995,9 @@ async function createWindow(): Promise<void> {
 registerIpc();
 
 void app.whenReady().then(async () => {
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    app.dock?.setIcon(BRAND_ICON_PATH);
+  }
   profileStore = new ProfileStore(app.getPath('userData'));
   await createWindow();
 
