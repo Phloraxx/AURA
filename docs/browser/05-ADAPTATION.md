@@ -2,49 +2,102 @@
 
 ## Purpose
 
-The adaptation engine turns profile preferences and AI semantic recommendations into reliable, reversible changes on the real webpage.
+The adaptation engine turns resolved user preferences and validated AI semantic recommendations into visible, reversible changes on the **real webpage**.
 
-The flagship behavior is **Make This Mine**. There are no separate Adapt/Focus/Simplify/Reimagine modes in the event UI.
+There is one primary product action: **Make This Mine**.
+
+No separate Adapt / Focus / Simplify / Reader / Reimagine modes in the judged UI.
+
+## Core philosophy
+
+**Use the least invasive transformation that produces a meaningful personalized improvement.**
+
+AURA wins only if the judge's arbitrary page still works.
 
 ## Two-phase transformation
 
 ### Phase A — immediate deterministic adaptation
 
-Apply from the resolved user profile without waiting for AI:
+Apply known profile preferences immediately:
 
 - text scale;
-- line spacing;
-- reading width;
+- line and paragraph spacing;
+- reading width where appropriate;
 - reduced motion;
 - larger interaction targets;
-- focus visibility;
-- safe contrast/presentation adjustments where supported.
+- stronger focus visibility;
+- safe presentation/contrast adjustments.
 
-This phase creates immediate feedback and is the fallback when AI is unavailable.
+This creates the instant response and remains useful if AI fails.
 
 ### Phase B — semantic refinement
 
 After validated page analysis, AURA may:
 
-- emphasize primary content/actions;
-- de-emphasize or collapse secondary regions;
-- surface important facts/deadlines/prices;
-- simplify selected text;
-- group related controls;
-- add progressive form guidance;
-- add an AURA-owned task/summary strip;
-- scroll/highlight the next relevant original control;
-- preserve detail when the user profile explicitly prefers it.
+- emphasize primary regions/actions;
+- de-emphasize clearly secondary regions;
+- safely collapse secondary regions with restore controls;
+- surface deadlines, prices, statuses, and other important facts;
+- simplify selected dense text;
+- guide through form/task steps;
+- add a compact AURA-owned summary/task strip;
+- highlight/scroll to relevant original controls;
+- preserve or restore detail based on explicit preference.
 
-## Core rule
+## Intervention tiers
 
-**Preserve original page nodes and functionality wherever practical.**
+Use these in order. Do not jump to a more invasive tier merely to create drama.
 
-For the event build, do not replace `document.body` or ask the model to generate a complete replacement website.
+### Tier 0 — presentation profile
 
-Deep personalization should come from trusted DOM-preserving operations plus small AURA-owned UI overlays/components.
+Global/local CSS variables/classes:
 
-## Transformation primitive contract
+- type scale;
+- spacing;
+- line length;
+- motion;
+- target sizing;
+- focus presentation.
+
+Lowest risk and immediate.
+
+### Tier 1 — emphasis
+
+Element-level visual changes that preserve layout/behavior:
+
+- emphasize;
+- deemphasize;
+- highlight;
+- outline/group visually;
+- scroll to target.
+
+### Tier 2 — reversible simplification
+
+Only after target validation:
+
+- collapse clearly secondary content with an AURA restore affordance;
+- simplify a targeted text block while retaining original wording;
+- progressively reveal form groups without detaching original controls.
+
+### Tier 3 — AURA-owned guidance
+
+Add small local AURA UI connected to real page targets:
+
+```text
+Semester Registration
+Deadline: 28 July
+Step 1 of 4 — Enter Student ID
+```
+
+The strip/panel may highlight, scroll to, or describe original controls.
+
+### Not required — arbitrary DOM reconstruction
+
+Do not make large-scale reparenting/regrouping of unknown page DOM part of the event success criteria.
+
+If a dramatic result can only be achieved by rebuilding arbitrary site structure, prefer a strong Tier 0–3 experience instead.
+
+## Primitive contract
 
 Every primitive must be:
 
@@ -52,13 +105,13 @@ Every primitive must be:
 - idempotent;
 - reversible;
 - target-validated;
-- safe to ignore when its target disappears.
+- safe to ignore when the target disappears.
 
-Suggested primitive set:
+Initial primitive set:
 
 ```ts
 type AdaptationPrimitive =
-  | { type: 'injectPresentationProfile'; settings: PresentationSettings }
+  | { type: 'presentation'; settings: PresentationSettings }
   | { type: 'emphasize'; targetIds: string[] }
   | { type: 'deemphasize'; targetIds: string[] }
   | { type: 'collapse'; targetIds: string[]; label?: string }
@@ -70,120 +123,129 @@ type AdaptationPrimitive =
   | { type: 'showAuraSummary'; content: AuraSummary };
 ```
 
-The exact union can evolve, but new primitives require tests and an entry in `08-DECISIONS.md` when they materially change product behavior.
+Do not add a primitive simply because the model suggested an operation. New primitives need tests and must map to a real product need.
 
-## Original state registry
+## Original-state registry
 
-Maintain an adaptation session registry keyed by page ID/revision.
+Maintain one adaptation session per active page.
 
-For every mutated target, store only what is needed to restore AURA-owned changes:
+Store only what AURA changes:
 
-- original inline style values touched by AURA;
-- original text when simplified;
-- original hidden/aria state when changed;
-- wrappers/classes/attributes added by AURA;
-- AURA-owned UI nodes.
+- AURA classes/attributes;
+- original inline values for touched properties;
+- original text for simplified blocks;
+- original hidden/ARIA state when changed;
+- AURA-owned UI nodes;
+- collapse/restore state.
 
-Prefer applying classes and CSS variables over rewriting many individual inline styles.
+Prefer CSS variables/classes over rewriting many inline styles.
 
 ## Original ↔ AURA
 
-`Original` must remove all active AURA transformations for the current page without reloading.
+`Original` removes all AURA-owned transformations without reloading.
 
-`AURA` must reapply the latest validated plan deterministically.
+`AURA` reapplies the latest validated plan.
 
-This toggle is a hard acceptance criterion, not a decorative demo feature.
+The toggle must remain fast enough to use repeatedly in front of judges.
 
-## Simplification
+## Text simplification
 
-AI may rewrite a selected text block into clearer language when the profile or explicit user request calls for it.
+Simplify only targeted blocks.
 
 Rules:
 
-- preserve the original text in the registry;
-- do not silently remove warnings, deadlines, prices, legal meaning, or critical constraints;
-- preserve technical terms when profile/memory says to;
-- simplify targeted blocks, not the entire page at once;
-- provide an easy way to reveal original wording.
+- preserve original text in the registry;
+- keep warnings/deadlines/prices/constraints;
+- preserve technical terminology when memory/profile requests it;
+- avoid pretending that a paraphrase replaces legally important original wording;
+- allow original wording to be restored immediately.
 
-## Structural focus
+The AI should usually return a replacement for a specific AURA target, not a rewritten page.
 
-AURA should prefer this order of intervention:
+## Safe collapse
 
-1. emphasize what matters;
-2. de-emphasize secondary content;
-3. collapse clearly secondary content with restore affordance;
-4. guide progressively through complex forms;
-5. only then attempt more invasive visual regrouping.
+Before collapsing a target:
 
-This produces dramatic improvements without destroying site behavior.
+- target exists and is still current;
+- target is not `<main>`, the main article, the primary form, a modal requiring attention, consent/security warning, or the only path to a primary action;
+- target does not contain the currently focused element;
+- AURA can restore it visibly;
+- collapse does not destroy layout enough to make the page unusable.
 
-## AURA-owned summary/task strip
+Prefer `deemphasize` over `collapse` when confidence is moderate.
 
-A compact strip may be rendered above or beside the real page to show personalized important information or task progress.
+## Form guidance
 
-Examples:
+Guide through original form controls.
 
-```text
-Semester Registration
-Deadline: 28 July
-Step 1 of 4 — Enter Student ID
-```
+AURA may:
 
-The strip may point to, scroll to, or highlight original controls. It must not pretend to have completed actions that the original site has not completed.
+- visually separate logical sections;
+- keep the current section prominent;
+- reduce visual competition from later sections;
+- scroll to/highlight the next control;
+- explain labels/instructions.
+
+Do not duplicate inputs into fake AURA forms in the event build.
+
+## AURA-owned task/summary strip
+
+Keep it compact and clearly AURA-owned.
+
+It may show:
+
+- current goal;
+- important fact/deadline;
+- step progress;
+- next action;
+- a concise explanation.
+
+It points to original page targets rather than impersonating completed site actions.
 
 ## Mutation handling
 
 When the host page changes:
 
-- preserve the adaptation session if the page is still semantically the same SPA route;
-- reapply global presentation rules automatically;
-- validate target IDs before applying semantic primitives;
-- remove stale primitive records when targets disappear;
-- request lightweight or full reanalysis only when needed.
+- keep global presentation rules active;
+- validate semantic targets before reapplying;
+- remove stale primitive records;
+- debounce model refresh;
+- preserve session intent when the route still belongs to the same task.
 
-## Target validation
+Do not fight the website's framework on every mutation.
 
-Before applying an AI-targeted primitive:
+## Conversation patches
 
-- target exists;
-- target belongs to current page/revision or has survived validation;
-- target is visible/relevant where required;
-- destructive/collapse actions do not swallow primary content, critical forms, dialogs, consent/security warnings, or the entire application shell.
-
-Even for a one-day event, this validation is essential for reliability.
-
-## Conversation-driven changes
-
-Talk to AURA produces a small adaptation patch rather than rebuilding the plan from scratch whenever possible.
+Talk to AURA should modify the active plan incrementally when possible.
 
 Examples:
 
-- “Make this bigger” → update presentation/target-size primitive.
-- “Keep technical details” → revert affected simplifications + update session preference.
-- “I only want to register” → emphasize registration region, collapse secondary areas, create task guidance.
-- “Explain this” → add AURA explanation without mutating unrelated page structure.
+- “Make this bigger” → update presentation/target-size settings.
+- “Too distracting” → stronger deemphasis/collapse of validated secondary targets.
+- “Keep technical details” → restore affected simplifications + update session preference.
+- “I only want to register” → set goal, emphasize registration controls, add guidance.
+- “Explain this” → explanation/highlight without unrelated structural mutation.
 
-## Accessibility of AURA changes
+## Accessibility of AURA-owned changes
 
-AURA-generated controls must:
+AURA controls must:
 
-- have semantic roles/names;
+- use semantic roles/names;
 - be keyboard operable;
-- preserve logical focus order;
-- avoid motion when profile requests reduced motion;
+- preserve logical focus behavior;
+- respect reduced-motion preference;
 - use sufficient contrast;
-- avoid focus traps unless implementing a real modal.
+- avoid unnecessary focus traps.
 
 ## Acceptance criteria
 
-The engine is ready when:
+The adaptation engine is ready when:
 
-- deterministic profile changes feel immediate;
-- AI refinement can create a visibly different layout/hierarchy on real pages;
+- deterministic changes feel immediate;
+- AI refinement creates obvious personalized improvements without requiring arbitrary DOM reconstruction;
 - two profiles produce meaningfully different results on the same page;
-- form values and ordinary controls survive adaptation;
-- Original restores the page without reload;
+- ordinary form values/primary controls survive;
+- Original restores without reload;
 - reapplying AURA does not duplicate wrappers/styles;
-- stale AI target IDs fail safely;
-- at least the site corpus in `07-TESTING-DEMO.md` is usable after transformation.
+- stale targets fail safely;
+- at least 20 real corpus pages remain usable after Make This Mine before polish begins.
