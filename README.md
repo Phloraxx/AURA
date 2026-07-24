@@ -1,167 +1,132 @@
-# AURA
+# AURA Browser
 
 **Adaptive User-Responsive Accessibility**
 
-**AURA** is a browser extension that adapts websites to the individual capabilities and interaction preferences of the person using them.
+This branch is a clean product/architecture reset for the judged AURA experience.
 
-> Accessibility should not begin with a diagnosis label. It should begin with what a person can comfortably perceive, understand, and control.
+> **AURA learns how the web works best for you, understands the page you are on, and reshapes that real page around you.**
 
-AURA builds a multidimensional capability profile through accessible multimodal onboarding and optional calibration tasks. It then combines deterministic adaptation primitives with conservative AI-assisted page understanding to personalize websites in real time.
+## Source of truth
 
-## MVP thesis
+Start here:
 
-The MVP proves one vertical slice:
+**`docs/browser/README.md`**
 
-1. A user completes onboarding through text, voice, keyboard, or pointer.
-2. The system creates a capability profile without diagnosing the user.
-3. The user opens a webpage and selects **Adapt this page**.
-4. The extension extracts a compact semantic representation of the page.
-5. A deterministic policy engine combines the user's needs.
-6. Local reversible DOM transformations are applied immediately.
-7. Optional AI analysis identifies page semantics such as primary content, distractions, ambiguous controls, and text worth simplifying.
-8. The same webpage adapts differently when the active profile changes.
+For the `aura-browser` branch, `docs/browser/` is authoritative. The older extension-era files under `docs/` remain historical/reference material only when the new source of truth explicitly points to them.
 
-## Product principles
+Current project state is tracked in **`STATUS.md`**.
 
-- **Capability-first, not diagnosis-first.** Never require a medical label.
-- **Multimodal from the first screen.** Onboarding must itself be accessible.
-- **AI understands; local code transforms.** Never execute AI-generated JavaScript or HTML.
-- **Composable adaptations.** No `ADHDMode`, `BlindMode`, or `DyslexiaMode` architecture.
-- **Reversible by design.** Every transformation must support `apply()` and `revert()`.
-- **Useful without AI.** Deterministic adaptations must work offline or when the API fails.
-- **Privacy by default.** Store capability profiles locally and minimize page data sent to servers.
-- **Preserve website functionality.** Remodel the interface; do not rebuild the application from scratch.
+## Product scope
 
-## Proposed stack
+AURA has only three first-class experiences for the event build:
 
-- WXT
-- Chrome Manifest V3
-- React
-- TypeScript with strict mode
-- Zod
-- Hono for the small backend API
-- Provider abstractions for LLM and speech-to-text
-- Vitest for unit tests
-- Playwright for browser/integration tests
+### 1. Learn Me
 
-## Development
+Conversational and experiential onboarding builds a capability-and-preference profile without requiring diagnosis labels.
 
-### Prerequisites
+### 2. Make This Mine
 
-- Node.js 20.12 or newer (Node 20.20.2 is the current verified baseline)
-- Corepack, included with the supported Node.js distribution
-- Chrome 114 or newer
+The flagship experience. AURA combines the person, the page, memory, and current intent to transform the real website into a more comfortable personalized presentation.
 
-Install the entire workspace from the repository root:
+### 3. Talk to AURA
 
-```bash
-corepack pnpm install
+Natural-language requests modify or guide the current webpage rather than producing a generic chatbot answer.
+
+Examples:
+
+- “Make this easier.”
+- “I only want to register.”
+- “Explain this.”
+- “Keep the technical details.”
+- “Make these controls easier for me.”
+- “Remember that.”
+
+A persistent `Original ↔ AURA` control proves and reverses the transformation.
+
+## Event target
+
+- **Primary platform:** macOS
+- **Browser host:** Electron / Chromium
+- **UI:** React + TypeScript
+- **Page intelligence:** AURA DOM runtime + Chrome DevTools Protocol DOM/layout + accessibility tree + screenshot
+- **AI:** OpenAI through structured server-side/provider contracts
+- **Memory:** local-first persistent profile/preferences + site memory + session intent
+
+This is intentionally optimized for a polished one-day judged prototype rather than production browser infrastructure.
+
+## What we are not building
+
+- a Chromium or Firefox engine fork;
+- Windows parity before the Mac build is polished;
+- a generic AI browser assistant;
+- a dashboard full of accessibility modes;
+- a password manager, sync system, extension store, updater, or browser ecosystem;
+- model-generated replacement websites;
+- diagnosis-specific modes such as `ADHD Mode` or `Blind Mode`.
+
+## Architecture direction
+
+```text
+                         USER
+                          |
+                     Learn Me
+                          |
+                          v
+                 Profile + Memory
+                          |
+                          v
+REAL WEBPAGE ---> Page Intelligence <--- Current Goal
+                          |
+                          v
+                     AURA Brain
+                    /          \
+      immediate local       OpenAI semantic
+        adaptation            refinement
+                    \          /
+                          v
+                  validated plan
+                          |
+                          v
+                  Make This Mine
+                          |
+                          v
+                    REAL WEBPAGE
 ```
 
-Run the repository quality gates:
+The browser shell is only the host. The personalized transformation engine is the product.
 
-```bash
-corepack pnpm lint
-corepack pnpm typecheck
-corepack pnpm test
-corepack pnpm build
+## Implementation sequence
+
+Do not skip milestones:
+
+```text
+W0  Planning lock
+ ↓
+W1  Browser shell
+ ↓
+W2  Page Intelligence
+ ↓
+W3  Learn Me
+ ↓
+W4  Make This Mine
+ ↓
+W5  Talk to AURA
+ ↓
+W6  Product polish
+ ↓
+W7  Judge-proofing
 ```
 
-Install Playwright's bundled Chromium once, then run the real Manifest V3 smoke
-test (side panel, mock voice transcription, two profiles, and Undo):
+See `docs/browser/06-IMPLEMENTATION-PLAN.md` for acceptance criteria.
 
-```bash
-corepack pnpm exec playwright install chromium
-corepack pnpm test:e2e
-```
+## Existing code
 
-Start the extension development server and local API together:
+The repository already contains a Chrome/WXT extension, shared capability/profile concepts, reversible transformations, an API, and tests from the earlier AURA direction.
 
-```bash
-corepack pnpm dev
-```
+On this branch that code is **reference material, not the architectural source of truth**. Reuse proven logic selectively after its boundary fits the new browser architecture. Do not port the old side-panel product or Chrome-extension assumptions wholesale.
 
-The API listens on `http://localhost:8787` by default and exposes
-`GET /health`. Copy `.env.example` to `.env` when provider configuration is
-introduced; provider secrets must remain in the API process.
+## Current state
 
-The default `LLM_PROVIDER=mock` keeps onboarding offline and deterministic. To
-exercise live adaptive onboarding, configure the API process with:
+Browser implementation has intentionally not started yet. The team should review and lock the new source-of-truth documents before W1 begins.
 
-```dotenv
-LLM_PROVIDER=openai
-OPENAI_API_KEY=your_backend_only_key
-OPENAI_MODEL=gpt-5.6-luna
-AURA_ALLOWED_ORIGINS=chrome-extension://your-unpacked-extension-id
-```
-
-Never prefix provider keys with `WXT_PUBLIC_`; WXT public variables are bundled
-into the extension. The API client falls back to local onboarding if the server
-is unavailable or returns invalid data.
-
-### Load the production build in Chrome
-
-1. Run `corepack pnpm build`.
-2. Open `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Choose **Load unpacked**.
-5. Select `apps/extension/.output/chrome-mv3`.
-6. Click the AURA toolbar action to open `sidepanel.html`.
-
-The generated manifest is Manifest V3 and currently requests `storage`,
-`activeTab`, `scripting`, and `sidePanel`, plus localhost API access for
-development. The e2e build temporarily adds the fixture-server origin; a normal
-production build does not.
-
-### Run the repeatable demo
-
-In a second terminal, serve the three local test pages:
-
-```bash
-corepack pnpm demo:fixtures
-```
-
-Open `http://127.0.0.1:4173`, choose a fixture, and use **Adapt this page**.
-The seeded low-vision, motor-first, and attention/language profiles produce
-different plans. **Undo all** restores AURA-owned changes without reloading.
-The mock LLM and STT providers are the default, so the complete demo is stable
-without provider credentials.
-
-## Read this repository in this order
-
-1. `AGENTS.md`
-2. `docs/00-PRODUCT-BRIEF.md`
-3. `docs/01-MVP-SCOPE.md`
-4. `docs/02-ARCHITECTURE.md`
-5. `docs/03-DATA-MODEL.md`
-6. `docs/04-ONBOARDING-CALIBRATION.md`
-7. `docs/05-ADAPTATION-ENGINE.md`
-8. `docs/06-AI-CONTRACTS.md`
-9. `docs/07-API-CONTRACTS.md`
-10. `docs/08-SECURITY-PRIVACY.md`
-11. `docs/15-PREFLIGHT-REVIEW.md`
-12. `docs/09-RESEARCH.md`
-13. `docs/10-IMPLEMENTATION-PLAN.md`
-14. `docs/11-TESTING.md`
-15. `docs/12-DEMO.md`
-16. `docs/13-DECISIONS.md`
-17. `docs/14-OPEN-QUESTIONS.md`
-18. `docs/DEFINITION-OF-DONE.md`
-
-Codex should start from `docs/CODEX-MASTER-PROMPT.md` after reading the documentation above.
-
-## Non-goals for the hackathon MVP
-
-- Guaranteeing that every website becomes fully accessible.
-- Replacing screen readers or other assistive technologies.
-- Diagnosing disabilities from user behavior.
-- Training a custom ML model.
-- Rebuilding arbitrary web applications from generated HTML.
-- Supporting complex Canvas/WebGL applications perfectly.
-- Creating a complete Chrome Web Store production release before the demo works.
-
-## Demo promise
-
-The winning demo is simple:
-
-> Three users. One webpage. Three clearly different adaptations, all produced by the same capability-driven engine.
+See `STATUS.md`.
