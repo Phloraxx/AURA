@@ -46,6 +46,13 @@ function chooseRecorderMimeType(): string | undefined {
   return undefined;
 }
 
+function latestAssistantMessageId(state: ConversationState): string | null {
+  return (
+    [...state.messages].reverse().find((item) => item.role === 'assistant')?.id ??
+    null
+  );
+}
+
 export function TalkToAura({
   disabled,
   onConfirmMemory,
@@ -82,7 +89,13 @@ export function TalkToAura({
   }, [profile.preferences.reduceMotion, state.messages, state.status]);
 
   useEffect(() => {
-    if (!voiceReplies || state.status === 'responding') return;
+    if (
+      !voiceReplies ||
+      voiceState !== 'idle' ||
+      state.status === 'responding'
+    ) {
+      return;
+    }
     const latest = [...state.messages]
       .reverse()
       .find((item) => item.role === 'assistant');
@@ -110,7 +123,7 @@ export function TalkToAura({
       null;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
-  }, [state.messages, state.status, voiceReplies]);
+  }, [state.messages, state.status, voiceReplies, voiceState]);
 
   useEffect(() => {
     return () => {
@@ -169,7 +182,6 @@ export function TalkToAura({
         mimeType: blob.type || 'audio/webm',
       });
       setVoiceState('idle');
-      setMessage(result.text);
       setVoiceReplies(true);
       void send(result.text);
     } catch (caughtError) {
@@ -235,6 +247,7 @@ export function TalkToAura({
         },
         { once: true },
       );
+      lastSpokenMessageId.current = latestAssistantMessageId(state);
       recorder.start(200);
       setVoiceReplies(true);
       setVoiceState('listening');
@@ -392,24 +405,38 @@ export function TalkToAura({
         <div className="conversation-label-row">
           <label htmlFor="aura-message">Ask or tell AURA</label>
           <button
-            aria-label={voiceReplies ? 'Turn spoken AURA replies off' : 'Turn spoken AURA replies on'}
+            aria-label={
+              voiceReplies
+                ? 'Turn spoken AURA replies off'
+                : 'Turn spoken AURA replies on'
+            }
             aria-pressed={voiceReplies}
             className="voice-reply-toggle"
             onClick={() => {
               if (voiceReplies && 'speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
               }
+              if (!voiceReplies) {
+                lastSpokenMessageId.current = latestAssistantMessageId(state);
+              }
               setVoiceReplies(!voiceReplies);
             }}
             type="button"
           >
-            <SpeakerIcon aria-hidden="true" className="interface-icon compact" />
+            <SpeakerIcon
+              aria-hidden="true"
+              className="interface-icon compact"
+            />
             {voiceReplies ? 'Voice on' : 'Voice off'}
           </button>
         </div>
         <div className="conversation-composer">
           <textarea
-            disabled={disabled || state.status === 'responding' || voiceState === 'transcribing'}
+            disabled={
+              disabled ||
+              state.status === 'responding' ||
+              voiceState === 'transcribing'
+            }
             id="aura-message"
             onChange={(event) => setMessage(event.target.value)}
             onKeyDown={(event) => {
@@ -429,9 +456,19 @@ export function TalkToAura({
             value={message}
           />
           <button
-            aria-label={voiceState === 'listening' ? 'Stop listening' : 'Speak to AURA'}
-            className={voiceState === 'listening' ? 'voice-button listening' : 'voice-button'}
-            disabled={disabled || state.status === 'responding' || voiceState === 'transcribing'}
+            aria-label={
+              voiceState === 'listening' ? 'Stop listening' : 'Speak to AURA'
+            }
+            className={
+              voiceState === 'listening'
+                ? 'voice-button listening'
+                : 'voice-button'
+            }
+            disabled={
+              disabled ||
+              state.status === 'responding' ||
+              voiceState === 'transcribing'
+            }
             onClick={() =>
               voiceState === 'listening'
                 ? stopListening()
@@ -456,7 +493,8 @@ export function TalkToAura({
         </div>
         {voiceState === 'listening' ? (
           <p className="voice-status" role="status">
-            <span aria-hidden="true" /> Listening — tap the microphone when you’re done.
+            <span aria-hidden="true" /> Listening — tap the microphone when
+            you’re done.
           </p>
         ) : voiceState === 'transcribing' ? (
           <p className="voice-status" role="status">
