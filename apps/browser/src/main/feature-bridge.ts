@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import {
   app,
   ipcMain,
+  session,
   systemPreferences,
   webContents,
   type WebContents,
@@ -36,6 +37,41 @@ function sameDocument(left: string, right: string): boolean {
   } catch {
     return left === right;
   }
+}
+
+function isAuraShellWebContents(contents: WebContents | null): boolean {
+  if (contents === null || contents.isDestroyed()) return false;
+  const currentUrl = contents.getURL();
+  const devRendererUrl = process.env.ELECTRON_RENDERER_URL?.trim();
+  if (devRendererUrl && currentUrl.startsWith(devRendererUrl)) return true;
+  return currentUrl.startsWith('file://');
+}
+
+function configureShellMediaPermissions(): void {
+  const shellSession = session.defaultSession;
+
+  // Chromium performs a permission check before the request callback for many
+  // media APIs. Permit media checks only for AURA's trusted local shell; remote
+  // websites in the WebContentsView stay denied.
+  shellSession.setPermissionCheckHandler((contents, permission) => {
+    return permission === 'media' && isAuraShellWebContents(contents);
+  });
+
+  shellSession.setPermissionRequestHandler(
+    (contents, permission, callback, details) => {
+      if (permission !== 'media' || !isAuraShellWebContents(contents)) {
+        callback(false);
+        return;
+      }
+      const mediaTypes =
+        'mediaTypes' in details && Array.isArray(details.mediaTypes)
+          ? details.mediaTypes
+          : [];
+      callback(
+        mediaTypes.length > 0 && mediaTypes.every((mediaType) => mediaType === 'audio'),
+      );
+    },
+  );
 }
 
 function findPageWebContents(url: string): WebContents | null {
@@ -184,6 +220,7 @@ ipcMain.handle(IPC_CHANNELS.transcribeVoice, async (_event, untrusted) => {
 });
 
 void app.whenReady().then(async () => {
+  configureShellMediaPermissions();
   const warm = await localProvider.warm();
   console.info(
     warm
