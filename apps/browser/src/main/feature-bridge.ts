@@ -32,6 +32,10 @@ const localProvider = createLocalRecomposeProvider();
 const localRecomposeOperations = new LatestOperation();
 let transcriptionClient: OpenAI | null = null;
 
+export function invalidateLocalRecompose(): void {
+  localRecomposeOperations.begin();
+}
+
 function sameDocument(left: string, right: string): boolean {
   try {
     const a = new URL(left);

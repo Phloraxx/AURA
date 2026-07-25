@@ -44,6 +44,26 @@ export interface ConversationProvider {
   ) => Promise<ConversationTurnResponse>;
 }
 
+type ConversationProviderKind = 'cloud' | 'local';
+
+export function resolveConversationProviderOrder(
+  environment: NodeJS.ProcessEnv,
+  available: {
+    cloud: boolean;
+    local: boolean;
+  },
+): ConversationProviderKind[] {
+  const preferred =
+    environment.AURA_CONVERSATION_PROVIDER?.trim().toLocaleLowerCase() ===
+    'local'
+      ? ('local' as const)
+      : ('cloud' as const);
+  const alternate: ConversationProviderKind =
+    preferred === 'cloud' ? 'local' : 'cloud';
+  const ordered: ConversationProviderKind[] = [preferred, alternate];
+  return ordered.filter((kind) => available[kind]);
+}
+
 function emptyAdjustment() {
   return {
     explanationStyle: null,
@@ -368,6 +388,36 @@ export function deterministicConversationTurn(
   });
 }
 
+/**
+ * A schema-valid response is not necessarily useful. Explicit interface
+ * requests must retain an actual adjustment, goal, or memory effect; otherwise
+ * the next provider gets a chance and deterministic behavior remains the final
+ * reliable path.
+ */
+export function responsePreservesRequestedEffect(
+  response: ConversationTurnResponse,
+  request: ConversationProviderRequest,
+): boolean {
+  const expected = deterministicConversationTurn(request);
+  switch (expected.actionFamily) {
+    case 'adjust':
+      return (
+        response.adjustment !== null || response.adaptationPatch !== null
+      );
+    case 'goal_guide':
+      return response.intent !== null || response.adaptationPatch !== null;
+    case 'remember':
+      return response.memoryProposal !== null;
+    case 'explain':
+      return (
+        response.explanation !== null ||
+        response.actionFamily === 'explain'
+      );
+    case 'answer':
+      return true;
+  }
+}
+
 class OllamaConversationProvider implements ConversationProvider {
   readonly #baseUrl: string;
   readonly #contextLength: number;
@@ -545,22 +595,27 @@ export function createConversationProvider(
     : null;
   return {
     turn: async (request) => {
-      if (localProvider !== null) {
+      const providers = {
+        cloud: cloudProvider,
+        local: localProvider,
+      } as const;
+      for (const kind of resolveConversationProviderOrder(environment, {
+        cloud: cloudProvider !== null,
+        local: localProvider !== null,
+      })) {
+        const provider = providers[kind];
+        if (provider === null) continue;
         try {
-          return await localProvider.turn(request);
-        } catch (error) {
+          const response = await provider.turn(request);
+          if (responsePreservesRequestedEffect(response, request)) {
+            return response;
+          }
           console.warn(
-            '[AURA] Local conversation unavailable; trying the next safe path.',
-            error instanceof Error ? error.message : String(error),
+            `[AURA] ${kind} conversation returned no usable interface effect; trying the next safe path.`,
           );
-        }
-      }
-      if (cloudProvider !== null) {
-        try {
-          return await cloudProvider.turn(request);
         } catch (error) {
           console.warn(
-            '[AURA] Cloud conversation unavailable; using deterministic guidance.',
+            `[AURA] ${kind} conversation unavailable; trying the next safe path.`,
             error instanceof Error ? error.message : String(error),
           );
         }

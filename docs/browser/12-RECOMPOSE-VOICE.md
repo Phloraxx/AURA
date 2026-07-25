@@ -115,6 +115,7 @@ AURA_OLLAMA_URL
 AURA_LOCAL_MODEL
 AURA_LOCAL_CONTEXT
 AURA_LOCAL_CONVERSATION
+AURA_CONVERSATION_PROVIDER
 ```
 
 The event default context is 8192 tokens. The installed model supports a much
@@ -152,10 +153,13 @@ The current Ollama library lists `qwen3.5:4b-mlx` as an MLX build for Apple Sili
 GPT-5.6 Luna remains the deep multimodal refinement provider for the event build. It can add validated page purpose, important facts, simplifications, primary targets, and goal guidance after the local interface is already usable.
 
 For Recompose, the local model is a latency layer rather than a replacement for
-deep cloud page analysis. For Talk to AURA, it is the first provider: a compact
+deep cloud page analysis. For Talk to AURA, OpenAI is the event default because
+it proved faster and more reliable for intent-sensitive interface changes.
+Local Ollama remains an enabled offline fallback: a compact
 page/profile/conversation payload produces the same validated Adjust, Explain,
-Goal/Guide, Remember, or Answer contract used by the cloud provider. Invalid or
-unavailable local output falls through to cloud and then deterministic guidance.
+Goal/Guide, Remember, or Answer contract. Invalid, unavailable, or
+non-actionable output continues to the next provider and finally deterministic
+guidance.
 
 ## Voice
 

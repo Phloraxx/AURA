@@ -47,6 +47,10 @@ import {
   type ConversationState,
   type ConversationTurnResponse,
 } from '../shared/conversation';
+import {
+  buildPageRecomposePlan,
+  inferPresetFromSettings,
+} from '../page-recompose/plan';
 import { createConversationProvider } from './ai/conversation-provider';
 import { createOnboardingProvider } from './ai/onboarding-provider';
 import { createPageAnalysisProvider } from './ai/page-analysis-provider';
@@ -55,6 +59,7 @@ import {
   validateConversationTurn,
 } from './ai/validate-conversation';
 import { validatePageAnalysis } from './ai/validate-page-analysis';
+import { invalidateLocalRecompose } from './feature-bridge';
 import { getPageViewBounds } from './layout';
 import { friendlyNavigationError, normalizeAddress } from './navigation';
 import { ProfileStore } from './profile-store';
@@ -360,6 +365,7 @@ async function runConversationTurn(
     pendingMemory: response.memoryProposal,
   };
 
+  let presentationProfile = profile;
   if (response.adjustment !== null && pageView !== null) {
     const patch = response.adjustment;
     if (
@@ -389,6 +395,7 @@ async function runConversationTurn(
         textScale: patch.textScale ?? profile.preferences.textScale,
       },
     });
+    presentationProfile = adjustedProfile;
     pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {
       pageId: model.pageId,
       revision: model.revision,
@@ -401,6 +408,32 @@ async function runConversationTurn(
   }
 
   const conversationPlan = mergeConversationPlan(response, model);
+  const shouldRecompose =
+    response.adjustment !== null ||
+    response.adaptationPatch !== null ||
+    response.intent !== null ||
+    response.explanation?.targetAuraId != null;
+  if (shouldRecompose && pageView !== null) {
+    invalidateLocalRecompose();
+    const preset =
+      response.actionFamily === 'goal_guide'
+        ? ('step_by_step' as const)
+        : inferPresetFromSettings(presentationProfile.preferences);
+    const recomposePlan = buildPageRecomposePlan({
+      currentGoal: conversationState.currentIntent?.goal ?? null,
+      page: model,
+      preset,
+      source: 'deterministic',
+      subtitle: 'Updated from your request to AURA.',
+    });
+    pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {
+      pageId: model.pageId,
+      plan: recomposePlan,
+      reduceMotion: presentationProfile.preferences.reduceMotion,
+      revision: model.revision,
+      type: 'apply-recompose',
+    });
+  }
   if (conversationPlan !== null && pageView !== null) {
     if (adaptationState.pageId !== model.pageId) {
       pageView.webContents.send(IPC_CHANNELS.adaptationCommand, {

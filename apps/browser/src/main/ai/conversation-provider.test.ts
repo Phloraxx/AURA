@@ -8,6 +8,8 @@ import type { PageModel } from '../../shared/page-model';
 import {
   createConversationProvider,
   deterministicConversationTurn,
+  resolveConversationProviderOrder,
+  responsePreservesRequestedEffect,
   type ConversationProviderRequest,
 } from './conversation-provider';
 
@@ -74,6 +76,18 @@ function request(userMessage: string): ConversationProviderRequest {
 }
 
 describe('deterministicConversationTurn', () => {
+  it('prefers OpenAI over local inference when both are configured', () => {
+    expect(
+      resolveConversationProviderOrder({}, { cloud: true, local: true }),
+    ).toEqual(['cloud', 'local']);
+    expect(
+      resolveConversationProviderOrder(
+        { AURA_CONVERSATION_PROVIDER: 'local' },
+        { cloud: true, local: true },
+      ),
+    ).toEqual(['local', 'cloud']);
+  });
+
   it('recognizes an adjustment without exact command phrasing', () => {
     const result = deterministicConversationTurn(
       request('These controls still feel a little too small.'),
@@ -120,6 +134,25 @@ describe('deterministicConversationTurn', () => {
     expect(result.memoryProposal?.preference).toBe(
       'I prefer short explanations.',
     );
+  });
+
+  it('rejects a schema-valid answer that drops an explicit interface change', () => {
+    expect(
+      responsePreservesRequestedEffect(
+        {
+          actionFamily: 'answer',
+          adaptationPatch: null,
+          adjustment: null,
+          assistantMessage: 'Here is an answer.',
+          explanation: null,
+          intent: null,
+          memoryProposal: null,
+          source: 'local',
+          usage: null,
+        },
+        request('Make these controls bigger.'),
+      ),
+    ).toBe(false);
   });
 
   it.runIf(process.env.AURA_LIVE_AI === '1')(

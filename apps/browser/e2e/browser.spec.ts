@@ -121,11 +121,21 @@ test('rehearses clean launch through Learn Me, Recompose, voice UI, Talk, Rememb
       .toBe(true);
 
     const message = shell.getByRole('textbox', { name: 'Ask or tell AURA' });
-    await message.fill('The page is too distracting.');
+    await message.fill('Make the text and controls much bigger.');
     await message.press('Enter');
     await expect(
       shell.getByText('I adjusted the current AURA presentation.'),
     ).toBeVisible();
+    await expect
+      .poll(() =>
+        remote?.evaluate(
+          () =>
+            document.querySelector<HTMLElement>(
+              '[data-aura-recompose-root]',
+            )?.dataset.preset ?? null,
+        ),
+      )
+      .toBe('easier_to_see');
     await message.fill('Remember that I prefer calm pages.');
     await message.press('Enter');
     await expect(shell.getByText('Remember this preference?')).toBeVisible();
@@ -269,10 +279,30 @@ test('runs Step by Step, conversation, memory, navigation, and Original in Elect
     await expect(
       shell.getByText('I adjusted the current AURA presentation.'),
     ).toBeVisible();
+    await expect
+      .poll(() =>
+        remote?.evaluate(
+          () =>
+            document.querySelector<HTMLElement>(
+              '[data-aura-recompose-root]',
+            )?.dataset.preset ?? null,
+        ),
+      )
+      .toBe('easier_to_see');
 
     await message.fill('Help me complete this form.');
     await message.press('Enter');
     await expect(shell.getByText(/Goal:/)).toBeVisible();
+    await expect
+      .poll(() =>
+        remote?.evaluate(
+          () =>
+            document.querySelector<HTMLElement>(
+              '[data-aura-recompose-root]',
+            )?.dataset.preset ?? null,
+        ),
+      )
+      .toBe('step_by_step');
 
     const address = shell.getByRole('textbox', {
       name: 'Search or enter address',

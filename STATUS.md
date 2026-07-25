@@ -3,7 +3,7 @@
 **Primary branch:** `main`
 
 **Integration:** PRs #8–#10 are merged into `main`. The current local
-judge-hardening pass reconciles the local-first conversation, Recompose, voice,
+judge-hardening pass reconciles the conversation, Recompose, voice,
 and design work before one focused integration commit.
 
 **Current milestone:** W7 — Judge-proofing / release freeze
@@ -103,14 +103,16 @@ AURA_LOCAL_MODEL=qwen3.5:4b-mlx
 AURA_OLLAMA_URL=http://127.0.0.1:11434
 AURA_LOCAL_CONTEXT=8192
 AURA_LOCAL_CONVERSATION=1
+AURA_CONVERSATION_PROVIDER=cloud
 ```
 
-The local model is used as a low-latency structural planner and as the first
-Talk to AURA conversation provider. Both paths receive compact balanced page
-context, return only typed decisions, use an explicit 8192-token context, and
-keep the model warm. Conversation falls through to OpenAI and then deterministic
-guidance when local output is unavailable or invalid. Recompose retains its
-deterministic first plan and cloud refinement.
+The local model remains the Recompose structural planner and the offline Talk to
+AURA fallback. Talk to AURA uses OpenAI first on the event Mac, then local
+Ollama, then deterministic guidance. Schema-valid replies that discard an
+explicit interface request are rejected. Conversation adjustments and goals
+regenerate the visible Recompose surface instead of modifying only the hidden
+original page. Local requests retain compact balanced context and an explicit
+8192-token window.
 
 GPT-5.6 Luna remains the deeper multimodal provider. Page analysis defaults to medium reasoning because earlier high-reasoning runs produced useful plans but materially higher latency. `high` remains an environment override for the final event comparison.
 
@@ -147,7 +149,7 @@ build all applications
 Electron Playwright E2E under Xvfb
 ```
 
-The current unit/integration suite contains **139 passing tests** across Browser, shared package, API, and legacy extension, with two live-provider browser tests skipped unless explicitly enabled. Electron E2E covers clean launch, Learn Me, judge Recompose presets, full-page Recompose presence, Step by Step progression, Talk to AURA, Remember, navigation/session intent, Original restoration, restart/persistent memory, and serious/critical Axe checks.
+The current unit/integration suite contains **141 passing tests** across Browser, shared package, API, and legacy extension, with two live-provider browser tests skipped unless explicitly enabled. Electron E2E covers clean launch, Learn Me, judge Recompose presets, full-page Recompose presence, request-driven visible Recompose changes, Step by Step progression, Talk to AURA, Remember, navigation/session intent, Original restoration, restart/persistent memory, and serious/critical Axe checks.
 
 The latest event-Mac hardening pass additionally verified:
 
@@ -161,9 +163,13 @@ The latest event-Mac hardening pass additionally verified:
   visually inspected in the running Electron app;
 - stale-response guards so an older local refinement cannot replace a newer
   preset and conversation output cannot target an outdated PageModel revision;
+- OpenAI-first Talk to AURA with local/offline fallback and requested-effect
+  validation, measured at about 3.1 seconds for the live Luna goal request;
+- visible conversation-driven Recompose regeneration for presentation
+  adjustments and goal guidance;
 - 44px minimum voice controls and race-safe spoken-reply state;
 - a newly packaged and launched ad-hoc-signed `darwin-arm64` application;
-- lint, all typechecks, 139 unit/integration tests, all builds, and all three
+- lint, all typechecks, 141 unit/integration tests, all builds, and all three
   Electron E2E journeys passing on the event Mac.
 
 PR #8's final CI run completed successfully before merge.

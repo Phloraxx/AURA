@@ -31,19 +31,20 @@ Electron main
 
 There is no required localhost Hono server in the judged path.
 
-Talk to AURA uses a separate local-first provider chain in the same Electron
+Talk to AURA uses a separate quality-first provider chain in the same Electron
 main process:
 
 ```text
-local Ollama structured conversation
-        ↓ unavailable or invalid
 OpenAI structured conversation
+        ↓ unavailable or invalid
+local Ollama structured conversation
         ↓ unavailable or invalid
 deterministic action-family fallback
 ```
 
-The local response crosses the same Zod and current-page target validation
-boundaries as a cloud response.
+Every response crosses the same Zod, requested-effect, and current-page target
+validation boundaries. A schema-valid reply that drops an explicit adjustment
+or goal does not stop the fallback chain.
 
 The existing `apps/api` remains available for legacy extension work or a later production architecture.
 
@@ -149,9 +150,10 @@ Every actionable target references an AURA ID and PageModel revision.
 
 Purpose: make Talk to AURA change or explain the current browsing experience.
 
-The event implementation attempts this operation through local Ollama first.
-OpenAI remains a quality fallback, and the deterministic parser remains the
-final reliability fallback.
+The event implementation attempts this operation through OpenAI first because
+live Mac measurements found it faster and more reliable for intent-sensitive
+interface changes. Local Ollama remains the offline fallback, and the
+deterministic parser remains the final reliability fallback.
 
 Input:
 

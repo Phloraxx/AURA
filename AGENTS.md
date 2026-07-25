@@ -75,7 +75,8 @@ Material architecture/scope changes require an ADR update before or with code.
 
 - Browser event build calls AI providers from Electron main; do not require the Hono API server.
 - Event model: `gpt-5.6-luna`. Flagship page analysis defaults to `medium` reasoning and is environment-configurable; onboarding/conversation retain their verified settings unless measured evidence justifies a change.
-- Talk to AURA uses local Ollama first, optional OpenAI second, and the deterministic action-family fallback last.
+- Talk to AURA uses OpenAI first when configured, local Ollama as an offline
+  fallback, and the deterministic action-family implementation last.
 - Local requests use an explicit, environment-configurable context window; the event default is 8192 tokens.
 - Use Responses API + structured outputs; page screenshots may be image input.
 - AI returns typed semantic/adaptation requests; trusted AURA code performs changes.

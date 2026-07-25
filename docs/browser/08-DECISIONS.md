@@ -264,7 +264,7 @@ Reason: local Mac verification remains essential for native packaging and real-s
 
 ## ADR-029 — Talk to AURA is local-first and the Halo is its companion
 
-**Status:** Accepted
+**Status:** Superseded by ADR-031
 
 Use the installed Ollama model as the first structured provider for
 `conversationTurn`. Use OpenAI as the second provider when configured, then
@@ -305,6 +305,24 @@ Reason: the original ADR-014 correctly protected site state but prohibited the
 trusted Recompose surface that became the flagship experience. This decision
 preserves that safety boundary while allowing a materially personalized
 interface.
+
+## ADR-031 — Talk to AURA prioritizes visible intent fulfillment
+
+**Status:** Accepted
+
+When OpenAI is configured, use it before local Ollama for `conversationTurn`.
+Ollama remains an enabled offline fallback and deterministic interpretation
+remains the final reliable path. `AURA_CONVERSATION_PROVIDER=local` may restore
+local-first behavior for measured offline experiments.
+
+A schema-valid response is accepted only when it preserves the effect of an
+explicit adjustment, goal, explanation, or memory request. Adjustments and goals
+must also regenerate the visible Recompose presentation; changing only the
+original page underneath an active AURA surface is not a successful result.
+
+Reason: event-Mac testing showed local generation could be slower than Luna and
+could return valid conversational prose without a usable interface change.
+Visible intent fulfillment is more important than local-provider novelty.
 
 ## Decision template
 

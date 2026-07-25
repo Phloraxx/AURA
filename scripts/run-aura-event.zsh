@@ -30,6 +30,7 @@ export AURA_OLLAMA_URL="${AURA_OLLAMA_URL:-http://127.0.0.1:11434}"
 export AURA_LOCAL_MODEL="${AURA_LOCAL_MODEL:-qwen3.5:4b-mlx}"
 export AURA_LOCAL_CONTEXT="${AURA_LOCAL_CONTEXT:-8192}"
 export AURA_LOCAL_CONVERSATION="${AURA_LOCAL_CONVERSATION:-1}"
+export AURA_CONVERSATION_PROVIDER="${AURA_CONVERSATION_PROVIDER:-cloud}"
 export AURA_TRANSCRIPTION_MODEL="${AURA_TRANSCRIPTION_MODEL:-gpt-4o-mini-transcribe}"
 
 # Local Qwen is an acceleration layer, not a launch dependency. Give the event
