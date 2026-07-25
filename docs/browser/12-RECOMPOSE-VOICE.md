@@ -21,6 +21,8 @@ The event build exposes four non-diagnostic example profiles alongside the perso
 
 These are demonstrations of needs, not medical modes. The fifth option is **My profile**, which uses Learn Me.
 
+Judge presets change layout, density, target size, and information hierarchy, but they do not silently change the person's motion preference. Progressive Recompose transitions remain visible when motion is allowed; a Learn Me/system reduced-motion preference still removes spatial motion across every preset.
+
 ## Recompose architecture
 
 ```text
@@ -157,12 +159,12 @@ MediaRecorder
   ↓
 OpenAI transcription
   ↓
-transcript in composer
+validated transcript
   ↓
 existing Talk to AURA request
 ```
 
-The baseline implementation uses `gpt-4o-mini-transcribe` after the person stops recording because it is simple, low-cost, and uses the existing OpenAI key. A future enhancement may replace it with `gpt-realtime-whisper` transcript deltas without changing Talk to AURA.
+The baseline implementation uses `gpt-4o-mini-transcribe` after the person stops recording because it is simple, low-cost, and uses the existing OpenAI key. The finalized transcript is submitted directly into the same Talk to AURA path as typed text, so the judge gets an immediate page/action response rather than an extra confirmation click. The transcribed text remains visible as the user's conversation message. A future enhancement may replace it with `gpt-realtime-whisper` transcript deltas without changing Talk to AURA.
 
 Primary OpenAI references:
 
@@ -201,11 +203,11 @@ AURA is ready when all of the following are true:
 - the same arbitrary page looks materially different under at least three judge presets;
 - Fiverr/search/listing pages no longer remain a lightly restyled grid;
 - the first useful visible change begins immediately after `Make This Mine`;
-- local Qwen failure still leaves a convincing deterministic Recompose interface;
+- local Qwen failure still leaves a convincing deterministic Recompose interface and is reported as a local fallback, not as a successful Qwen refinement;
 - cloud failure still leaves the local/deterministic interface usable;
 - `Original` restores the real website without reload and without losing form state;
 - every Recompose action maps to a real current-page target;
-- push-to-talk fills the existing Talk to AURA composer and can submit normally;
+- push-to-talk submits the finalized transcript through the existing Talk to AURA path and exposes that transcript in conversation history;
 - AURA can speak a short assistant reply and can be interrupted;
-- reduced-motion preferences disable spatial Recompose transitions;
+- reduced-motion preferences disable spatial Recompose transitions while motion-enabled profiles retain the progressive transition across judge presets;
 - CI remains green for lint, typecheck, tests, build, and Electron E2E.
