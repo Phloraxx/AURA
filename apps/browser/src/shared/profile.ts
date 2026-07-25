@@ -1,6 +1,25 @@
 import { z } from 'zod';
 
 export const supportLevelSchema = z.enum(['default', 'helpful', 'important']);
+export const functionalAreaSchema = z.enum([
+  'visual',
+  'auditory',
+  'motor',
+  'cognitive',
+  'attention',
+  'language',
+]);
+export const functionalDifficultySchema = z.enum([
+  'no_difficulty',
+  'some_difficulty',
+  'a_lot_of_difficulty',
+  'cannot_reliably',
+  'not_sure',
+]);
+export const functionalAnswerSchema = z.object({
+  area: functionalAreaSchema,
+  difficulty: functionalDifficultySchema,
+});
 
 export const browserProfileSchema = z.object({
   capabilities: z.object({
@@ -14,6 +33,7 @@ export const browserProfileSchema = z.object({
   completedAt: z.string().nullable(),
   createdAt: z.string(),
   id: z.string().min(1),
+  functionalAnswers: z.array(functionalAnswerSchema).max(6).default([]),
   learnedPreferences: z.array(z.string().trim().min(1).max(300)).max(20),
   preferences: z.object({
     explanationStyle: z.enum(['concise', 'balanced', 'detailed']),
@@ -52,14 +72,31 @@ export const calibrationChoiceSchema = z.discriminatedUnion('area', [
 ]);
 
 export const onboardingTurnRequestSchema = z.object({
-  choices: z.array(calibrationChoiceSchema),
-  userResponse: z.string().trim().max(1_000),
+  answers: z.array(functionalAnswerSchema).max(6).default([]),
+  choices: z.array(calibrationChoiceSchema).default([]),
+  userResponse: z.string().trim().max(1_000).default(''),
+});
+
+export const onboardingQuestionSchema = z.object({
+  area: functionalAreaSchema,
+  helpText: z.string().trim().min(1).max(220),
+  prompt: z.string().trim().min(1).max(240),
 });
 
 export const onboardingTurnResponseSchema = z.object({
   assistantMessage: z.string().trim().min(1).max(600),
+  complete: z.boolean(),
   confidence: z.number().min(0).max(1),
   learnedPreference: z.string().trim().max(300).nullable(),
+  mascotMood: z.enum([
+    'welcoming',
+    'asking',
+    'listening',
+    'thinking',
+    'celebrating',
+    'attention',
+  ]),
+  nextQuestion: onboardingQuestionSchema.nullable(),
   source: z.enum(['ai', 'fallback']),
   usage: z
     .object({
@@ -77,7 +114,10 @@ export const onboardingModelOutputSchema = onboardingTurnResponseSchema.omit({
 
 export type BrowserProfile = z.infer<typeof browserProfileSchema>;
 export type CalibrationChoice = z.infer<typeof calibrationChoiceSchema>;
-export type OnboardingTurnRequest = z.infer<
+export type FunctionalAnswer = z.infer<typeof functionalAnswerSchema>;
+export type FunctionalArea = z.infer<typeof functionalAreaSchema>;
+export type FunctionalDifficulty = z.infer<typeof functionalDifficultySchema>;
+export type OnboardingTurnRequest = z.input<
   typeof onboardingTurnRequestSchema
 >;
 export type OnboardingTurnResponse = z.infer<
@@ -103,6 +143,7 @@ export function createDefaultBrowserProfile(
     completedAt: null,
     createdAt: now,
     id,
+    functionalAnswers: [],
     learnedPreferences: [],
     preferences: {
       explanationStyle: 'balanced',
@@ -119,6 +160,60 @@ export function createDefaultBrowserProfile(
     updatedAt: now,
     version: 1,
   });
+}
+
+function supportFromDifficulty(
+  difficulty: FunctionalDifficulty,
+): z.infer<typeof supportLevelSchema> {
+  if (
+    difficulty === 'a_lot_of_difficulty' ||
+    difficulty === 'cannot_reliably'
+  ) {
+    return 'important';
+  }
+  return difficulty === 'some_difficulty' ? 'helpful' : 'default';
+}
+
+export function applyFunctionalAnswers(
+  original: BrowserProfile,
+  answers: FunctionalAnswer[],
+  now = new Date().toISOString(),
+): BrowserProfile {
+  const profile = structuredClone(original);
+  profile.functionalAnswers = answers;
+
+  for (const answer of answers) {
+    profile.capabilities[answer.area] = supportFromDifficulty(answer.difficulty);
+    const support = profile.capabilities[answer.area];
+    if (support === 'default') continue;
+
+    if (answer.area === 'visual') {
+      profile.preferences.textScale = support === 'important' ? 1.3 : 1.15;
+      profile.preferences.lineSpacing = support === 'important' ? 1.7 : 1.55;
+      profile.preferences.readingWidth = 'narrow';
+    }
+    if (answer.area === 'motor') {
+      profile.preferences.targetSizePx = support === 'important' ? 60 : 52;
+      profile.preferences.strongFocus = true;
+    }
+    if (answer.area === 'attention') {
+      profile.preferences.reduceMotion = true;
+      profile.preferences.informationDensity =
+        support === 'important' ? 'step_by_step' : 'calm';
+    }
+    if (answer.area === 'cognitive') {
+      profile.preferences.informationDensity =
+        support === 'important' ? 'step_by_step' : 'calm';
+      profile.preferences.explanationStyle = 'concise';
+    }
+    if (answer.area === 'language') {
+      profile.preferences.explanationStyle = 'concise';
+      profile.preferences.preserveTechnicalTerms = false;
+    }
+  }
+
+  profile.updatedAt = now;
+  return browserProfileSchema.parse(profile);
 }
 
 export function applyCalibrationChoices(

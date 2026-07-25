@@ -13,6 +13,7 @@ import { PAGE_ANALYSIS_INSTRUCTIONS } from './prompts/page-analysis';
 
 const DEFAULT_MODEL = 'gpt-5.6-luna';
 const DEFAULT_TIMEOUT_MS = 35_000;
+const CLOUD_RETRY_COUNT = 2;
 const REASONING_EFFORTS = ['none', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
 type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 const DEFAULT_REASONING_EFFORT: ReasoningEffort = 'medium';
@@ -89,15 +90,44 @@ function fallbackResult(error: string): PageAnalysisProviderResult {
   });
 }
 
+function providerErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return 'Unknown provider error';
+  const details = error as Error & {
+    request_id?: unknown;
+    status?: unknown;
+  };
+  if (
+    typeof details.status === 'number' &&
+    details.status >= 500 &&
+    details.status <= 599
+  ) {
+    const requestId =
+      typeof details.request_id === 'string' && details.request_id.length > 0
+        ? ` Request ID: ${details.request_id}.`
+        : '';
+    return (
+      'Cloud refinement is temporarily unavailable after retrying. ' +
+      `Local AURA remains active.${requestId}`
+    );
+  }
+  return error.message;
+}
+
 class OpenAIPageAnalysisProvider implements PageAnalysisProvider {
   readonly #client: OpenAI;
   readonly #model: string;
   readonly #reasoningEffort: ReasoningEffort;
 
-  constructor(apiKey: string, model: string, reasoningEffort: ReasoningEffort) {
+  constructor(
+    apiKey: string,
+    model: string,
+    reasoningEffort: ReasoningEffort,
+    baseURL?: string,
+  ) {
     this.#client = new OpenAI({
       apiKey,
-      maxRetries: 1,
+      baseURL,
+      maxRetries: CLOUD_RETRY_COUNT,
       timeout: DEFAULT_TIMEOUT_MS,
       logLevel: process.env.NODE_ENV === 'production' ? 'error' : 'warn',
     });
@@ -171,14 +201,14 @@ export function createPageAnalysisProvider(
     apiKey,
     environment.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
     resolveReasoningEffort(environment),
+    environment.OPENAI_BASE_URL?.trim() || undefined,
   );
   return {
     analyze: async (request) => {
       try {
         return await provider.analyze(request);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unknown provider error';
+        const message = providerErrorMessage(error);
         console.warn(
           '[AURA] Semantic page analysis unavailable; keeping local presentation.',
           message,

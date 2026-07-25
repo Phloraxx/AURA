@@ -38,6 +38,8 @@ const api: AuraShellApi = {
   getPageRuntimeState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getPageRuntimeState),
   getProfile: () => ipcRenderer.invoke(IPC_CHANNELS.getProfile),
+  getNativeSpeechVoices: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.nativeSpeechVoices),
   getSemanticAnalysisState: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getSemanticAnalysisState),
   navigate: (address) => ipcRenderer.invoke(IPC_CHANNELS.navigate, address),
@@ -47,6 +49,11 @@ const api: AuraShellApi = {
   resetProfile: () => ipcRenderer.invoke(IPC_CHANNELS.resetProfile),
   saveProfile: (profile) =>
     ipcRenderer.invoke(IPC_CHANNELS.saveProfile, profile),
+  scanPage: () => ipcRenderer.invoke(IPC_CHANNELS.wcagScan),
+  speakNative: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.nativeSpeechSpeak, request),
+  stopNativeSpeech: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.nativeSpeechStop),
   setAdaptationView: (view) =>
     ipcRenderer.invoke(IPC_CHANNELS.setAdaptationView, view),
   setOnboardingActive: (active) =>

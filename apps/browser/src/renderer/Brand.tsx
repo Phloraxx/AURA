@@ -1,6 +1,60 @@
 import { useId, type SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement>;
+export type AuraGuideMood =
+  | 'welcoming'
+  | 'asking'
+  | 'listening'
+  | 'thinking'
+  | 'celebrating'
+  | 'guiding'
+  | 'attention';
+
+export function AuraGuide({
+  mood = 'welcoming',
+}: {
+  mood?: AuraGuideMood;
+}): React.JSX.Element {
+  const id = useId().replaceAll(':', '');
+  return (
+    <svg
+      aria-label="AURA Guide"
+      className={`aura-guide mood-${mood}`}
+      role="img"
+      viewBox="0 0 180 190"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient id={`guide-body-${id}`} x1="45" x2="137" y1="31" y2="166">
+          <stop stopColor="#347557" />
+          <stop offset="1" stopColor="#173f32" />
+        </linearGradient>
+        <linearGradient id={`guide-leaf-${id}`} x1="40" x2="140" y1="30" y2="100">
+          <stop stopColor="#8bcf9b" />
+          <stop offset="1" stopColor="#4d9e70" />
+        </linearGradient>
+      </defs>
+      <g className="guide-crown">
+        <path d="M54 61C36 49 38 29 55 27c6-16 27-15 34-2 13-15 37-7 36 12 20-2 26 24 9 34H55c-9-2-14-5-17-12 4 2 10 3 16 2Z" fill={`url(#guide-leaf-${id})`} />
+        <path d="M73 49 62 23M96 50l7-32M116 54l20-20" fill="none" stroke="#285d46" strokeLinecap="round" strokeWidth="7" />
+        <circle cx="61" cy="25" fill="#b8e5a9" r="8" />
+        <circle cx="104" cy="18" fill="#8ed4a0" r="9" />
+        <circle cx="137" cy="34" fill="#a9dda2" r="8" />
+      </g>
+      <path className="guide-body" d="M56 59c-7 21-9 46-7 73 2 23 17 38 40 38 25 0 41-15 42-39 1-29-2-53-9-72-19 8-47 8-66 0Z" fill={`url(#guide-body-${id})`} />
+      <path d="M65 77c-10 16-18 35-19 55M116 78c11 17 18 35 18 55" fill="none" stroke="#2d6a4f" strokeLinecap="round" strokeWidth="12" />
+      <path d="M73 164 66 181M106 164l8 17" stroke="#173f32" strokeLinecap="round" strokeWidth="11" />
+      <g className="guide-face">
+        <ellipse cx="76" cy="96" fill="#eff8ec" rx="7" ry="8" />
+        <ellipse cx="105" cy="96" fill="#eff8ec" rx="7" ry="8" />
+        <circle cx="78" cy="98" fill="#183e32" r="3" />
+        <circle cx="103" cy="98" fill="#183e32" r="3" />
+        <path className="guide-mouth" d="M78 116c7 7 17 7 24 0" fill="none" stroke="#d9ead9" strokeLinecap="round" strokeWidth="4" />
+      </g>
+      <path className="guide-heart-leaf" d="M145 70c-13-15-31 3-12 20 19-17 1-35-12-20" fill="#8bcf9b" />
+    </svg>
+  );
+}
 
 /**
  * AURA Halo

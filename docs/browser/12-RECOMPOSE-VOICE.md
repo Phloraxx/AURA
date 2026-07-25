@@ -193,12 +193,17 @@ Primary OpenAI references:
 
 ### Output
 
-Spoken feedback uses the browser/macOS speech synthesis surface so no second
-cloud round trip is required. AURA waits for the installed voice inventory,
-prefers enhanced/premium local voices when available, exposes a compact voice
-selector, and remembers the person's selection. Spoken responses are
-intentionally short confirmations/guidance, while the visual page remains
-primary.
+Spoken feedback uses the native macOS `/usr/bin/say` system-voice path through
+Electron main, not Chromium's inconsistent Web Speech voice inventory. No
+second cloud round trip is required. AURA enumerates installed Mac voices,
+exposes a compact English-first Apple voice selector, remembers the person's
+choice, and safely passes text as process arguments without invoking a shell.
+Enhanced/premium voices are preferred, followed by familiar high-quality US
+English voices such as Ava and Samantha. A short Preview control lets the
+person hear the selected voice before relying on spoken replies. Additional
+enhanced or premium voices can be downloaded in macOS Accessibility settings
+and then appear in the same selector. Spoken responses remain short
+confirmations or guidance while the visual page remains primary.
 
 The AURA Halo is the voice/conversation companion. Its visual state comes only
 from real application state: idle, listening, transcribing, thinking, speaking,

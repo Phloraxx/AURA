@@ -1,4 +1,9 @@
 import { Buffer } from 'node:buffer';
+import {
+  execFile,
+  spawn,
+  type ChildProcessWithoutNullStreams,
+} from 'node:child_process';
 
 import {
   app,
@@ -20,6 +25,11 @@ import {
   voiceTranscriptionResponseSchema,
 } from '../shared/voice';
 import {
+  nativeSpeechRequestSchema,
+  parseMacVoiceList,
+  type NativeSpeechVoice,
+} from '../shared/native-speech';
+import {
   buildPageRecomposePlan,
   isMaterialRecomposeChange,
 } from '../page-recompose/plan';
@@ -31,6 +41,27 @@ const TRANSCRIPTION_MODEL =
 const localProvider = createLocalRecomposeProvider();
 const localRecomposeOperations = new LatestOperation();
 let transcriptionClient: OpenAI | null = null;
+let nativeSpeechProcess: ChildProcessWithoutNullStreams | null = null;
+
+function macVoices(): Promise<NativeSpeechVoice[]> {
+  if (process.platform !== 'darwin') return Promise.resolve([]);
+  return new Promise((resolve) => {
+    execFile('/usr/bin/say', ['-v', '?'], (error, stdout) => {
+      if (error !== null) {
+        resolve([]);
+        return;
+      }
+      resolve(parseMacVoiceList(stdout));
+    });
+  });
+}
+
+function stopNativeSpeech(): boolean {
+  if (nativeSpeechProcess === null) return false;
+  nativeSpeechProcess.kill();
+  nativeSpeechProcess = null;
+  return true;
+}
 
 export function invalidateLocalRecompose(): void {
   localRecomposeOperations.begin();
@@ -247,6 +278,34 @@ ipcMain.handle(IPC_CHANNELS.transcribeVoice, async (_event, untrusted) => {
     text: transcription.text,
   });
 });
+
+ipcMain.handle(IPC_CHANNELS.nativeSpeechVoices, () => macVoices());
+
+ipcMain.handle(IPC_CHANNELS.nativeSpeechStop, () => stopNativeSpeech());
+
+ipcMain.handle(
+  IPC_CHANNELS.nativeSpeechSpeak,
+  async (_event, untrusted): Promise<boolean> => {
+    const request = nativeSpeechRequestSchema.parse(untrusted);
+    if (process.platform !== 'darwin') return false;
+    stopNativeSpeech();
+    const args = ['-r', String(request.rate)];
+    if (request.voiceId !== null) args.push('-v', request.voiceId);
+    args.push(request.text);
+    return new Promise((resolve) => {
+      const child = spawn('/usr/bin/say', args);
+      nativeSpeechProcess = child;
+      child.once('error', () => {
+        if (nativeSpeechProcess === child) nativeSpeechProcess = null;
+        resolve(false);
+      });
+      child.once('close', (code) => {
+        if (nativeSpeechProcess === child) nativeSpeechProcess = null;
+        resolve(code === 0);
+      });
+    });
+  },
+);
 
 void app.whenReady().then(async () => {
   configureShellMediaPermissions();

@@ -1,3 +1,5 @@
+import { createServer } from 'node:http';
+
 import { describe, expect, it } from 'vitest';
 
 import type { PageModel } from '../../shared/page-model';
@@ -79,5 +81,53 @@ describe('page analysis provider', () => {
 
     expect(compact).toContain('"pageId":"page-1"');
     expect(compact).not.toContain('passwordValue');
+  });
+
+  it('retries transient cloud failures and keeps the local presentation active', async () => {
+    let requestCount = 0;
+    const server = createServer((_incoming, outgoing) => {
+      requestCount += 1;
+      outgoing.writeHead(500, {
+        'content-type': 'application/json',
+        'x-request-id': 'req-aura-test',
+      });
+      outgoing.end(
+        JSON.stringify({
+          error: {
+            message: 'Temporary server error',
+            type: 'server_error',
+          },
+        }),
+      );
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      server.close();
+      throw new Error('Test server did not bind to a TCP port.');
+    }
+
+    try {
+      const result = await createPageAnalysisProvider({
+        OPENAI_API_KEY: 'temporary-test-key',
+        OPENAI_BASE_URL: `http://127.0.0.1:${address.port}/v1`,
+      }).analyze({
+        currentIntent: null,
+        page,
+        profile: createDefaultBrowserProfile(),
+        screenshotDataUrl: null,
+      });
+
+      expect(requestCount).toBe(3);
+      expect(result.source).toBe('fallback');
+      expect(result.output).toBeNull();
+      expect(result.error).toContain('temporarily unavailable after retrying');
+      expect(result.error).toContain('Local AURA remains active');
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
   });
 });

@@ -26,11 +26,13 @@ On a normal webpage selected by the user, AURA should be able to:
 
 ### 1. Learn Me
 
-A first-run experiential calibration with one optional conversational note. AURA
-shows concrete alternatives and adapts the onboarding UI itself so the user
-experiences preferences instead of configuring a medical-style settings form.
+A bounded AI-led functional-needs interview with trusted deterministic
+coverage. The AURA Guide asks one short question at a time, acknowledges the
+answer, and adapts the onboarding UI itself. It models combinations across
+visual, auditory, motor, cognitive, attention, and language support without
+assigning a diagnosis.
 
-Required outcome: a useful persistent profile in roughly 60–90 seconds for a judge.
+Required outcome: a useful persistent profile in roughly two minutes.
 
 ### 2. Make This Mine
 
@@ -59,7 +61,7 @@ The result should be a page change, task guide, explanation, or explicit memory 
 
 The following may exist internally or as small supporting UI, but are not separate named modes in the event build:
 
-- accessibility score / AURA Fit,
+- factual automated WCAG evidence and explainable personalized AURA Fit,
 - Lens,
 - Focus Mode,
 - Reader Mode,
@@ -69,6 +71,10 @@ The following may exist internally or as small supporting UI, but are not separa
 - disability presets as user-facing modes.
 
 There is one primary transformation: **Make This Mine**.
+
+`Scan this page` is a supporting control, not a mode. Its standards-derived
+number and evidence boundary are defined in
+`13-INCLUSIVE-PERSONALIZATION.md`.
 
 ## Required comparison control
 

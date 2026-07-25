@@ -224,6 +224,27 @@ function extractRememberedPreference(message: string): string | null {
   return normalized.length >= 5 ? normalized.slice(0, 300) : null;
 }
 
+function isSearchSurfaceRequest(message: string): boolean {
+  return (
+    /\b(?:show|open|focus on|take me to|help me (?:use|with))\b.{0,60}\bsearch(?: box| field)?\b/.test(
+      message,
+    ) ||
+    /\bsearch(?: box| field)\b.{0,40}\b(?:show|open|focus)\b/.test(message)
+  );
+}
+
+function isFocusOnlyRequest(message: string): boolean {
+  return (
+    /\b(?:only|just)\s+(?:show|keep)\b.{0,60}\b(?:important|matters|need)\b/.test(
+      message,
+    ) ||
+    /\b(?:show|keep)\b.{0,40}\b(?:only|just)\b.{0,40}\b(?:important|matters|need)\b/.test(
+      message,
+    ) ||
+    /\b(?:easier to focus|focus on what matters)\b/.test(message)
+  );
+}
+
 export function deterministicConversationTurn(
   request: ConversationProviderRequest,
 ): ConversationTurnResponse {
@@ -296,6 +317,37 @@ export function deterministicConversationTurn(
     });
   }
 
+  if (isSearchSurfaceRequest(lower)) {
+    const goal = 'search this page';
+    const guide = findGoalGuide(request.page, 'search');
+    return conversationTurnResponseSchema.parse({
+      ...base,
+      actionFamily: 'goal_guide',
+      adaptationPatch:
+        guide === null
+          ? null
+          : {
+              deemphasizeTargetIds: [],
+              guide: {
+                ...guide,
+                title: 'Search this page',
+              },
+              highlightTargetIds: guide.steps
+                .slice(0, 1)
+                .map((step) => step.auraId),
+              primaryTargetIds: guide.steps.map((step) => step.auraId),
+            },
+      assistantMessage:
+        guide === null
+          ? 'I could not find a usable search control on this page.'
+          : 'I brought the page’s real search controls forward. Start with the highlighted field.',
+      intent: {
+        goal,
+        preserveAcrossNavigation: false,
+      },
+    });
+  }
+
   if (/\b(help|trying|want to|need to|find|apply|register|checkout|complete)\b/.test(lower)) {
     const goal = message
       .replace(
@@ -344,9 +396,10 @@ export function deterministicConversationTurn(
   }
 
   if (
-    /\b(easier|bigger|larger|small|calm|distract\w*|motion|detail|technical|simpl\w*)\b/.test(
+    /\b(easier|bigger|larger|small|calm|distract\w*|motion|detail|technical|simpl\w*|focus)\b/.test(
       lower,
-    )
+    ) ||
+    isFocusOnlyRequest(lower)
   ) {
     const adjustment = emptyAdjustment();
     const next = {
@@ -356,7 +409,9 @@ export function deterministicConversationTurn(
         : /\bbrief|concise|less detail\b/.test(lower)
           ? ('concise' as const)
           : null,
-      informationDensity: /\b(distract\w*|calm|simpl\w*|easier)\b/.test(lower)
+      informationDensity:
+        /\b(distract\w*|calm|simpl\w*|easier|focus)\b/.test(lower) ||
+        isFocusOnlyRequest(lower)
         ? ('calm' as const)
         : /\bmore detail\b/.test(lower)
           ? ('standard' as const)
@@ -508,7 +563,7 @@ class OpenAIConversationProvider implements ConversationProvider {
     this.#client = new OpenAI({
       apiKey,
       baseURL: options.baseURL,
-      maxRetries: 1,
+      maxRetries: 2,
       timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       logLevel: process.env.NODE_ENV === 'production' ? 'error' : 'warn',
     });
@@ -595,6 +650,13 @@ export function createConversationProvider(
     : null;
   return {
     turn: async (request) => {
+      const immediate = deterministicConversationTurn(request);
+      if (
+        isSearchSurfaceRequest(request.userMessage.toLocaleLowerCase()) ||
+        isFocusOnlyRequest(request.userMessage.toLocaleLowerCase())
+      ) {
+        return immediate;
+      }
       const providers = {
         cloud: cloudProvider,
         local: localProvider,

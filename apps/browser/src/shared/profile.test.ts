@@ -1,11 +1,29 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyFunctionalAnswers,
   applyCalibrationChoices,
   completeBrowserProfile,
   createDefaultBrowserProfile,
   summarizeBrowserProfile,
 } from './profile';
+
+describe('functional profile answers', () => {
+  it('combines support needs without assigning a diagnosis', () => {
+    const profile = applyFunctionalAnswers(createDefaultBrowserProfile(), [
+      { area: 'visual', difficulty: 'some_difficulty' },
+      { area: 'motor', difficulty: 'a_lot_of_difficulty' },
+      { area: 'attention', difficulty: 'some_difficulty' },
+    ]);
+
+    expect(profile.capabilities.visual).toBe('helpful');
+    expect(profile.capabilities.motor).toBe('important');
+    expect(profile.capabilities.attention).toBe('helpful');
+    expect(profile.preferences.targetSizePx).toBe(60);
+    expect(profile.preferences.reduceMotion).toBe(true);
+    expect(profile.functionalAnswers).toHaveLength(3);
+  });
+});
 
 describe('browser profile', () => {
   it('resolves visibly different preferences from different choices', () => {

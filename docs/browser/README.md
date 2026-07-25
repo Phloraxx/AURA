@@ -62,7 +62,8 @@ Otherwise defer it.
 11. `10-MOTION-PERSONALITY.md`
 12. `11-VIDEO-IDENTITY.md`
 13. `12-RECOMPOSE-VOICE.md`
-14. `DEFINITION-OF-DONE.md`
+14. `13-INCLUSIVE-PERSONALIZATION.md`
+15. `DEFINITION-OF-DONE.md`
 
 `STATUS.md` at repository root records the active milestone and release evidence.
 

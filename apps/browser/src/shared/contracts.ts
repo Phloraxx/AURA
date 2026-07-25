@@ -26,6 +26,11 @@ import type {
   VoiceTranscriptionRequest,
   VoiceTranscriptionResponse,
 } from './voice';
+import type { WcagScanResult } from './wcag';
+import type {
+  NativeSpeechRequest,
+  NativeSpeechVoice,
+} from './native-speech';
 
 export const IPC_CHANNELS = {
   adaptationCommand: 'aura:adaptation:command',
@@ -49,6 +54,9 @@ export const IPC_CHANNELS = {
   getPageRuntimeState: 'aura:page-runtime:get-state',
   getSemanticAnalysisState: 'aura:semantic:get-state',
   navigate: 'aura:navigation:open',
+  nativeSpeechSpeak: 'aura:voice:native-speak',
+  nativeSpeechStop: 'aura:voice:native-stop',
+  nativeSpeechVoices: 'aura:voice:native-voices',
   navigationState: 'aura:navigation:state',
   onboardingTurn: 'aura:onboarding:turn',
   pageIntelligenceState: 'aura:page-intelligence:state',
@@ -65,6 +73,9 @@ export const IPC_CHANNELS = {
   startRecompose: 'aura:recompose:start',
   transcribeVoice: 'aura:voice:transcribe',
   updateLearnedPreferences: 'aura:memory:update-preferences',
+  wcagScan: 'aura:wcag:scan',
+  wcagScanCommand: 'aura:wcag:scan-command',
+  wcagScanResult: 'aura:wcag:scan-result',
 } as const;
 
 export interface BrowserNavigationState {
@@ -106,6 +117,7 @@ export interface AuraShellApi {
   getProfile: () => Promise<BrowserProfile | null>;
   getSemanticAnalysisState: () => Promise<SemanticAnalysisState>;
   navigate: (address: string) => Promise<void>;
+  getNativeSpeechVoices: () => Promise<NativeSpeechVoice[]>;
   onboardingTurn: (
     request: OnboardingTurnRequest,
   ) => Promise<OnboardingTurnResponse>;
@@ -131,6 +143,9 @@ export interface AuraShellApi {
   refresh: () => Promise<void>;
   resetProfile: () => Promise<void>;
   saveProfile: (profile: BrowserProfile) => Promise<BrowserProfile>;
+  scanPage: () => Promise<WcagScanResult>;
+  speakNative: (request: NativeSpeechRequest) => Promise<boolean>;
+  stopNativeSpeech: () => Promise<boolean>;
   setAdaptationView: (view: AdaptationView) => Promise<boolean>;
   setOnboardingActive: (active: boolean) => Promise<void>;
   setPanelOpen: (open: boolean) => Promise<void>;

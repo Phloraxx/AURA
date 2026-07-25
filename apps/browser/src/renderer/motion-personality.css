@@ -310,31 +310,15 @@
   content: "";
 }
 
-.talk-heading::after {
-  display: block;
-  width: fit-content;
-  margin-top: 7px;
-  padding: 4px 8px;
-  border: 1px solid color-mix(in srgb, var(--aura-brand) 18%, var(--aura-border));
-  border-radius: 999px;
+.talk-presence {
+  margin: 7px 0 0;
   color: var(--aura-ink-secondary);
-  background: color-mix(in srgb, var(--aura-brand-soft) 52%, var(--aura-surface));
-  content: "Here with you";
-  font-size: var(--aura-ui-small-size, 12px);
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-size: var(--aura-ui-small-size, 14px);
+  line-height: var(--aura-ui-leading, 1.5);
 }
 
-.talk-card:has(.intent-chip):not(:has(.message.waiting)) .talk-heading::after {
-  content: "Keeping your goal in view";
-}
-
-.talk-card:has(.message.waiting) .talk-heading::after {
-  content: "Working with this page";
-}
-
-.talk-card:has(.memory-proposal) .talk-heading::after {
-  content: "Ready to remember";
+.talk-presence strong {
+  color: var(--aura-ink);
 }
 
 /* Context suggestions behave like quick prompts, not three more menu items. */

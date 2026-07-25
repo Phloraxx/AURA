@@ -12,3 +12,12 @@ playwright-report/
 test-results/
 *.log
 *.tsbuildinfo
+.DS_Store
+
+# Demo production intermediates. Keep only the final judge cut and its
+# human-editable narrative/source-of-truth files in Git.
+artifacts/demo-video/*
+!artifacts/demo-video/AURA-demo-complete-80s.mp4
+!artifacts/demo-video/DEMO-PLAN.md
+!artifacts/demo-video/LIVE-DEMO-RUNBOOK.md
+!artifacts/demo-video/narration.txt

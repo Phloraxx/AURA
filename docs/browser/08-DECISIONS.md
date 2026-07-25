@@ -337,3 +337,74 @@ Reason.
 
 Consequences/trade-offs.
 ```
+
+## ADR-032 — Inclusive personalization revision
+
+**Status:** Accepted
+
+Learn Me becomes a bounded AI-led interview across six functional support
+areas. AURA adds an original animated tree-sprite guide, an automated WCAG 2.2
+AA page indicator, and a system-first common-comfort UI.
+
+Trusted code guarantees question coverage and profile changes; AI may
+personalize but may not diagnose or infer unanswered needs. The guide is
+original AURA artwork, not a copied character or remote asset. Profile
+relevance does not affect the WCAG number, and all automated-testing
+limitations remain visible.
+
+ADR-003 still defines exactly three first-class experiences; Scan is a
+supporting control. ADR-026's feature freeze is lifted only for this revision.
+ADR-029's companion principle remains while the Halo evolves into the AURA
+Guide. The dark event identity is no longer the mandatory everyday shell theme.
+
+Reason: overlapping functional needs are a better basis for personalization
+than diagnosis presets. A calm guide improves continuity, while transparent
+standards evidence avoids an unvalidated personalized score.
+
+## ADR-033 — Evidence compares real scans and speech uses native macOS voices
+
+**Status:** Accepted
+
+`Scan this page` keeps an original automated WCAG result and, after Make This
+Mine settles, rescans the active AURA presentation. The UI explains resolved,
+remaining, introduced, and manual-review outcomes. It never manufactures a
+lower baseline or calls the result conformance.
+
+Spoken AURA replies use the native macOS `say` process through typed main-process
+IPC. OpenAI transcription remains the event input path. Chromium
+`speechSynthesis` is no longer the event output path because its exposed voice
+inventory and selection were inconsistent on the event Mac.
+
+Talk to AURA presents one companion state within its heading. It does not render
+a second standalone companion card or duplicate status badge.
+
+Reason: the judged experience needs honest measurable before/after evidence,
+one clear assistant presence, and predictable installed Mac voices without
+adding another cloud round trip.
+
+## ADR-034 — Separate standards evidence from personalized AURA Fit
+
+**Status:** Accepted
+
+Do not present the ratio of passed Axe rules as a WCAG percentage. Report
+automated WCAG A/AA evidence factually: passed rules, failed rules, severity,
+affected locations, unresolved manual checks, and the explicit boundary that
+conformance is not determined.
+
+Use a separate supporting **AURA Fit** heuristic out of 100 to communicate the
+relationship between the current page and active six-area support profile. Its
+five visible dimensions are Interaction, Visual comfort, Focus,
+Understanding, and Task simplicity. The calculation is deterministic,
+inspectable, and may award bounded adaptation credit only for transformations
+trusted AURA code actually activated. It is never labeled as WCAG conformance,
+certification, or diagnosis.
+
+Expose the local Qwen and cloud Luna contributions inside one compact,
+progressively disclosed intelligence detail rather than separate competing
+cards. Show whether each path applied a validated change, matched the immediate
+layout, remained in progress, or fell back.
+
+Reason: the former pass/fail-rule ratio routinely produced scores above 90
+even when one serious failure affected many elements. Factual standards
+evidence plus an explainable personalized fit better communicates both
+standards risk and AURA's visible value without manipulating WCAG.

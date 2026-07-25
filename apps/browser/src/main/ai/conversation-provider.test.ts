@@ -64,6 +64,31 @@ const page = {
   viewport: { height: 800, width: 1200 },
 } as unknown as PageModel;
 
+const searchablePage = {
+  ...page,
+  elements: [
+    ...page.elements,
+    {
+      accessibleName: 'Search Wikipedia',
+      auraId: 'search-1',
+      category: 'control',
+      formAuraId: 'search-form',
+      headingLevel: null,
+      inViewport: true,
+      interactive: true,
+      landmark: null,
+      rect: { height: 40, width: 320, x: 10, y: 80 },
+      role: 'searchbox',
+      states: [],
+      tag: 'input',
+      text: '',
+      textLength: 0,
+    },
+  ],
+  title: 'Wikipedia',
+  url: 'https://wikipedia.org/',
+} as unknown as PageModel;
+
 function request(userMessage: string): ConversationProviderRequest {
   return {
     currentIntent: null,
@@ -103,6 +128,26 @@ describe('deterministicConversationTurn', () => {
     expect(result.actionFamily).toBe('goal_guide');
     expect(result.intent?.goal).toBe('apply?');
     expect(result.adaptationPatch?.guide?.steps[0]?.auraId).toBe('action-1');
+  });
+
+  it('brings the real search control forward when the user asks to see it', () => {
+    const searchRequest = request('Show me the search.');
+    searchRequest.page = searchablePage;
+    const result = deterministicConversationTurn(searchRequest);
+
+    expect(result.actionFamily).toBe('goal_guide');
+    expect(result.intent?.goal).toBe('search this page');
+    expect(result.adaptationPatch?.primaryTargetIds).toContain('search-1');
+    expect(result.assistantMessage).toContain('search controls forward');
+  });
+
+  it('treats only-show-what-matters phrasing as a visible calm adjustment', () => {
+    const result = deterministicConversationTurn(
+      request('Show me only what matters.'),
+    );
+
+    expect(result.actionFamily).toBe('adjust');
+    expect(result.adjustment?.informationDensity).toBe('calm');
   });
 
   it('continues a preserved goal using matching controls on the new page', () => {
@@ -231,6 +276,20 @@ describe('deterministicConversationTurn', () => {
     }).turn(request('Explain this page.'));
     expect(result.source).toBe('fallback');
     expect(result.actionFamily).toBe('explain');
+  });
+
+  it('uses the immediate trusted path for a requested page control', async () => {
+    const searchRequest = request('Show me the search.');
+    searchRequest.page = searchablePage;
+    const result = await createConversationProvider({
+      AURA_LOCAL_CONVERSATION: '0',
+      OPENAI_API_KEY: 'temporary-test-key',
+      OPENAI_BASE_URL: 'http://127.0.0.1:1/v1',
+    }).turn(searchRequest);
+
+    expect(result.source).toBe('fallback');
+    expect(result.actionFamily).toBe('goal_guide');
+    expect(result.adaptationPatch?.primaryTargetIds).toContain('search-1');
   });
 
   it('times out safely without losing deterministic guidance', async () => {

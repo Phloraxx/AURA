@@ -1,0 +1,19 @@
+The web is built for everyone. But the same page can create very different barriers for different people.
+
+AURA is a personalized accessibility browser. It learns a person across six connected areas: visual, auditory, motor, cognitive, attention, and language support—because real needs rarely fit one label.
+
+On any page, AURA can scan for accessibility evidence and explain how well that page fits this person. Automated WCAG checks remain factual and separate. AURA Fit adds the individual context: small text, crowded choices, difficult controls, motion, and cognitive load.
+
+Then, one action: Make This Mine.
+
+AURA keeps the real website underneath, but reshapes its presentation. Its private on-device planner responds immediately. A deeper semantic planner understands the page’s purpose, brings forward what matters, and explains the improvement.
+
+AURA is also conversational. Ask, “Show me the search,” and the interface reorganizes around the real search control—not a generated imitation.
+
+Every change is reversible. Original restores the source website instantly.
+
+AURA does not diagnose people, and it does not replace accessible web design. It adds a personal, explainable layer of control.
+
+Because there is no single accessible interface.
+
+The web should adapt to the person.

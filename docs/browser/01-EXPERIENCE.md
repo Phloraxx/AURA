@@ -26,26 +26,17 @@ Secondary:
 
 `Use comfortable defaults`
 
-The required event path is experiential calibration plus one optional
-free-text preference. Voice may be added later but must not be implied as
-required by the primary flow.
+The required path is a bounded AI-led functional interview with large response
+choices and a deterministic fallback. Voice remains optional.
 
 ### Design rule
 
 Do not make onboarding an open-ended chatbot interview that can wander.
-
-Use a short deterministic backbone. OpenAI is reserved for converting the
-user's optional final note into at most one explicit learned preference.
-
-Target roughly four areas:
-
-1. **Reading comfort** — text size, spacing, detail preference.
-2. **Interaction comfort** — control/target size and focus visibility.
-3. **Attention/presentation** — motion and simultaneous information density.
-4. **Understanding style** — concise vs detailed explanations; preserve technical terms.
-
-The entire judged path should stay around **60–90 seconds**. It must remain
-fully useful without the optional note or an OpenAI response.
+Trusted code guarantees coverage of six functional areas. OpenAI may
+personalize question order, acknowledgement, wording, and bounded follow-ups;
+it may not diagnose or infer unanswered needs. The entire path should stay
+around **two minutes** and remain fully useful without OpenAI. The accepted
+contract is in `13-INCLUSIVE-PERSONALIZATION.md`.
 
 ### Conversation style
 

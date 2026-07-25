@@ -54,27 +54,43 @@ test('rehearses clean launch through Learn Me, Recompose, voice UI, Talk, Rememb
   try {
     const shell = await app.firstWindow();
     await expect(
-      shell.getByRole('heading', { name: 'Let’s find your comfortable web.' }),
+      shell.getByRole('heading', { name: 'Let’s shape the web around you.' }),
     ).toBeVisible();
-    await shell.getByRole('button', { name: 'Find my comfort' }).click();
-    await shell.getByRole('button', { name: /Comfortable A little larger/ }).click();
-    await shell.getByRole('button', { name: 'Continue' }).click();
-    await shell.getByRole('button', { name: /Comfortable 52-pixel/ }).click();
-    await shell.getByRole('button', { name: 'Continue' }).click();
-    await shell.getByRole('button', { name: /Calmer Reduce motion/ }).click();
-    await shell.getByRole('button', { name: 'Continue' }).click();
-    await shell.getByRole('button', { name: /Concise Short/ }).click();
-    await shell.getByRole('button', { name: 'Continue' }).click();
+    await expect(shell.getByRole('img', { name: 'AURA Guide' })).toBeVisible();
+    await shell.getByRole('button', { name: 'Start with AURA' }).click();
+    for (const answerName of [
+      /Some difficulty A little support/,
+      /A lot of difficulty This often/,
+      /Some difficulty A little support/,
+      /Some difficulty A little support/,
+      /Some difficulty A little support/,
+      /No difficulty This usually/,
+    ]) {
+      await shell.getByRole('radio', { name: answerName }).click();
+      await shell.getByRole('button', { name: 'Continue' }).click();
+    }
+    await expect(shell.getByText('6 of 6 areas understood')).toBeVisible();
     await shell.getByRole('button', { name: 'Start browsing' }).click();
 
     await expect(shell.getByText('Same website · different interface')).toBeVisible();
     await expect(shell.getByRole('button', { name: 'Speak to AURA' })).toBeVisible();
+    await shell.getByRole('button', { name: 'Scan this page' }).click();
+    await expect(
+      shell.getByText(/Original standards evidence:/),
+    ).toBeVisible();
+    await expect(shell.getByText('Personalized AURA Fit')).toBeVisible();
     await shell.getByRole('radio', { name: /Clear & Calm/ }).click();
     await expect(shell.getByRole('button', { name: 'Make This Mine' })).toBeEnabled({
       timeout: 20_000,
     });
     await shell.getByRole('button', { name: 'Make This Mine' }).click();
     await expect(shell.getByRole('button', { name: 'Original' })).toBeVisible();
+    await expect(
+      shell.getByText(/Adapted presentation evidence:/),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+      shell.getByText('How AURA’s two AI planners contributed'),
+    ).toBeVisible();
 
     const remote = app
       .context()

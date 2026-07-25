@@ -14,7 +14,7 @@ if [[ -f "${local_environment}" ]]; then
 fi
 
 if [[ ! -x "${app_binary}" ]]; then
-  print -u2 "AURA.app is missing. Run: corepack pnpm browser:package:mac"
+  print -u2 "AURA.app is missing. Rebuild it from a Node environment with pnpm, or restore apps/browser/out/AURA-darwin-arm64/AURA.app."
   exit 1
 fi
 

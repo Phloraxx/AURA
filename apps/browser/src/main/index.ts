@@ -63,6 +63,10 @@ import { invalidateLocalRecompose } from './feature-bridge';
 import { getPageViewBounds } from './layout';
 import { friendlyNavigationError, normalizeAddress } from './navigation';
 import { ProfileStore } from './profile-store';
+import {
+  wcagScanResultSchema,
+  type WcagScanResult,
+} from '../shared/wcag';
 
 const DEFAULT_URL =
   process.env.AURA_START_URL?.trim() || 'https://www.wikipedia.org/';
@@ -133,6 +137,14 @@ let conversationState: ConversationState = conversationStateSchema.parse({
 });
 let screenshotRequest = 0;
 let profileStore: ProfileStore | null = null;
+const pendingWcagScans = new Map<
+  string,
+  {
+    reject: (error: Error) => void;
+    resolve: (result: WcagScanResult) => void;
+    timeout: NodeJS.Timeout;
+  }
+>();
 
 const onboardingProvider = createOnboardingProvider();
 const pageAnalysisProvider = createPageAnalysisProvider();
@@ -471,6 +483,11 @@ function invalidateAdaptation(): void {
 
 function invalidatePageIntelligence(): void {
   screenshotRequest += 1;
+  for (const pending of pendingWcagScans.values()) {
+    clearTimeout(pending.timeout);
+    pending.reject(new Error('The page changed before the scan finished.'));
+  }
+  pendingWcagScans.clear();
   pageIntelligenceState = null;
   publishPageIntelligenceState();
 }
@@ -822,6 +839,45 @@ function registerIpc(): void {
     async (_event, untrustedRequest: unknown) => {
       const request = onboardingTurnRequestSchema.parse(untrustedRequest);
       return onboardingProvider.turn(request);
+    },
+  );
+  ipcMain.handle(IPC_CHANNELS.wcagScan, () => {
+    if (pageView === null || pageRuntimeState === null) {
+      throw new Error('Wait for the page connection before scanning.');
+    }
+    const scanId = randomUUID();
+    return new Promise<WcagScanResult>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingWcagScans.delete(scanId);
+        reject(new Error('The WCAG scan took too long. Try again.'));
+      }, 30_000);
+      pendingWcagScans.set(scanId, { reject, resolve, timeout });
+      pageView?.webContents.send(IPC_CHANNELS.wcagScanCommand, scanId);
+    });
+  });
+  ipcMain.on(
+    IPC_CHANNELS.wcagScanResult,
+    (event: IpcMainEvent, untrustedPayload: unknown) => {
+      if (event.sender !== pageView?.webContents) return;
+      const payload = z
+        .object({
+          error: z.string().optional(),
+          result: wcagScanResultSchema.optional(),
+          scanId: z.string().uuid(),
+        })
+        .safeParse(untrustedPayload);
+      if (!payload.success) return;
+      const pending = pendingWcagScans.get(payload.data.scanId);
+      if (pending === undefined) return;
+      clearTimeout(pending.timeout);
+      pendingWcagScans.delete(payload.data.scanId);
+      if (payload.data.result !== undefined) {
+        pending.resolve(payload.data.result);
+      } else {
+        pending.reject(
+          new Error(payload.data.error ?? 'The WCAG scan failed.'),
+        );
+      }
     },
   );
   ipcMain.handle(

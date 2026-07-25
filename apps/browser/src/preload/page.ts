@@ -1,4 +1,5 @@
 import { ipcRenderer } from 'electron';
+import axe from 'axe-core';
 
 import { createPageAdaptationRuntime } from '../page-adaptation/runtime';
 import { createPageIntelligenceRuntime } from '../page-intelligence/runtime';
@@ -19,6 +20,10 @@ import {
   type PageRuntimeCommand,
 } from '../shared/page-model';
 import type { RecomposePlan } from '../shared/recompose';
+import {
+  calculateWcagIndicator,
+  wcagScanResultSchema,
+} from '../shared/wcag';
 
 type PageRuntimePhase = 'dom-ready' | 'preload-started';
 
@@ -35,6 +40,82 @@ const PAGE_COMMAND_CHANNEL = 'aura:page-runtime:command';
 const ADAPTATION_COMMAND_CHANNEL = 'aura:adaptation:command';
 const ADAPTATION_EVENT_CHANNEL = 'aura:adaptation:event';
 const AURA_EVENT_THEME_ATTRIBUTE = 'data-aura-event-theme';
+const WCAG_SCAN_COMMAND_CHANNEL = 'aura:wcag:scan-command';
+const WCAG_SCAN_RESULT_CHANNEL = 'aura:wcag:scan-result';
+
+function areasForRule(id: string): Array<
+  'visual' | 'auditory' | 'motor' | 'cognitive' | 'attention' | 'language'
+> {
+  if (/audio|video|caption/i.test(id)) return ['auditory'];
+  if (/target|keyboard|focus|tabindex/i.test(id)) return ['motor'];
+  if (/color|contrast|image-alt|label-title|meta-viewport/i.test(id)) {
+    return ['visual'];
+  }
+  if (/heading|landmark|region|bypass|duplicate-id/i.test(id)) {
+    return ['cognitive', 'attention'];
+  }
+  if (/lang|label|link-name|button-name|definition|dlitem/i.test(id)) {
+    return ['language', 'cognitive'];
+  }
+  return ['cognitive'];
+}
+
+ipcRenderer.on(WCAG_SCAN_COMMAND_CHANNEL, (_event, scanId: string) => {
+  void (async () => {
+    try {
+      const result = await axe.run(document, {
+        resultTypes: ['passes', 'violations', 'incomplete'],
+        runOnly: {
+          type: 'tag',
+          values: [
+            'wcag2a',
+            'wcag2aa',
+            'wcag21a',
+            'wcag21aa',
+            'wcag22aa',
+          ],
+        },
+      });
+      const issueForRule = (
+        rule: (typeof result.violations)[number],
+      ): {
+        areas: ReturnType<typeof areasForRule>;
+        help: string;
+        helpUrl: string;
+        id: string;
+        impact: 'critical' | 'minor' | 'moderate' | 'serious' | null;
+        nodeCount: number;
+      } => ({
+        areas: areasForRule(rule.id),
+        help: rule.help,
+        helpUrl: rule.helpUrl,
+        id: rule.id,
+        impact: rule.impact ?? null,
+        nodeCount: rule.nodes.length,
+      });
+      const payload = wcagScanResultSchema.parse({
+        failedRules: result.violations.length,
+        indicator: calculateWcagIndicator(
+          result.passes.length,
+          result.violations.length,
+        ),
+        issues: result.violations.map(issueForRule),
+        needsReviewRules: result.incomplete.length,
+        pageTitle: document.title,
+        pageUrl: window.location.href,
+        passedRules: result.passes.length,
+        reviewItems: result.incomplete.map(issueForRule),
+        scannedAt: new Date().toISOString(),
+      });
+      ipcRenderer.send(WCAG_SCAN_RESULT_CHANNEL, { result: payload, scanId });
+    } catch (error) {
+      ipcRenderer.send(WCAG_SCAN_RESULT_CHANNEL, {
+        error: error instanceof Error ? error.message : 'The page scan failed.',
+        scanId,
+      });
+    }
+  })();
+});
 
 /** Keep AURA-owned page surfaces aligned with the event identity. */
 function installAuraEventTheme(): void {

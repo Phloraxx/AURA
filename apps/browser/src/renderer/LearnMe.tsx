@@ -1,153 +1,141 @@
 import { useMemo, useState } from 'react';
 
 import {
-  applyCalibrationChoices,
+  applyFunctionalAnswers,
   completeBrowserProfile,
   createDefaultBrowserProfile,
   summarizeBrowserProfile,
   type BrowserProfile,
-  type CalibrationChoice,
+  type FunctionalAnswer,
+  type FunctionalDifficulty,
+  type OnboardingTurnResponse,
 } from '../shared/profile';
-import { AuraBrand } from './Brand';
+import { AuraBrand, AuraGuide, type AuraGuideMood } from './Brand';
 
 interface LearnMeProps {
   initialProfile: BrowserProfile | undefined;
   onComplete: (profile: BrowserProfile) => Promise<void>;
 }
 
-const INITIAL_CHOICES: CalibrationChoice[] = [
-  { area: 'reading', choice: 'comfortable' },
-  { area: 'interaction', choice: 'comfortable' },
-  { area: 'attention', choice: 'calm' },
-  {
-    area: 'understanding',
-    choice: 'balanced',
-    preserveTechnicalTerms: true,
-  },
-];
-
-const STEP_LABELS = ['Welcome', 'Reading', 'Interaction', 'Focus', 'Language', 'Review'];
-
-function replaceChoice(
-  choices: CalibrationChoice[],
-  nextChoice: CalibrationChoice,
-): CalibrationChoice[] {
-  return [
-    ...choices.filter((choice) => choice.area !== nextChoice.area),
-    nextChoice,
-  ];
-}
-
-function ChoiceButton({
-  checked,
-  children,
-  description,
-  onClick,
-}: {
-  checked: boolean;
-  children: React.ReactNode;
+const ANSWERS: Array<{
   description: string;
-  onClick: () => void;
-}): React.JSX.Element {
-  return (
-    <button
-      aria-pressed={checked}
-      className={checked ? 'comfort-choice selected' : 'comfort-choice'}
-      onClick={onClick}
-      type="button"
-    >
-      <span>{children}</span>
-      <small>{description}</small>
-    </button>
-  );
-}
+  label: string;
+  value: FunctionalDifficulty;
+}> = [
+  { value: 'no_difficulty', label: 'No difficulty', description: 'This usually works comfortably' },
+  { value: 'some_difficulty', label: 'Some difficulty', description: 'A little support would help' },
+  { value: 'a_lot_of_difficulty', label: 'A lot of difficulty', description: 'This often gets in the way' },
+  { value: 'cannot_reliably', label: 'Cannot reliably', description: 'I need another way to do this' },
+  { value: 'not_sure', label: 'Not sure', description: 'AURA can start neutral' },
+];
 
 export function LearnMe({
   initialProfile,
   onComplete,
 }: LearnMeProps): React.JSX.Element {
-  const [step, setStep] = useState(0);
-  const [choices, setChoices] =
-    useState<CalibrationChoice[]>(INITIAL_CHOICES);
-  const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [phase, setPhase] = useState<'intro' | 'interview' | 'review'>('intro');
+  const [answers, setAnswers] = useState<FunctionalAnswer[]>([]);
+  const [turn, setTurn] = useState<OnboardingTurnResponse | null>(null);
+  const [selected, setSelected] = useState<FunctionalDifficulty | null>(null);
+  const [detail, setDetail] = useState('');
+  const [memories, setMemories] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const baseProfile = useMemo(
     () => initialProfile ?? createDefaultBrowserProfile(),
     [initialProfile],
   );
   const previewProfile = useMemo(
-    () => applyCalibrationChoices(baseProfile, choices),
-    [baseProfile, choices],
+    () => applyFunctionalAnswers(baseProfile, answers),
+    [answers, baseProfile],
   );
 
-  const reading = choices.find((choice) => choice.area === 'reading');
-  const interaction = choices.find((choice) => choice.area === 'interaction');
-  const attention = choices.find((choice) => choice.area === 'attention');
-  const understanding = choices.find(
-    (choice) => choice.area === 'understanding',
-  );
-
-  function choose(choice: CalibrationChoice): void {
-    setChoices((current) => replaceChoice(current, choice));
-  }
-
-  async function finish(): Promise<void> {
-    setSaving(true);
+  async function ask(nextAnswers: FunctionalAnswer[], words = ''): Promise<void> {
+    setBusy(true);
     setError(null);
     try {
-      let learnedPreference: string | null = null;
-      if (note.trim()) {
-        const response = await window.aura.onboardingTurn({
-          choices,
-          userResponse: note,
-        });
-        learnedPreference = response.learnedPreference;
+      const response = await window.aura.onboardingTurn({
+        answers: nextAnswers,
+        choices: [],
+        userResponse: words,
+      });
+      setTurn(response);
+      if (
+        response.learnedPreference !== null &&
+        !memories.includes(response.learnedPreference)
+      ) {
+        setMemories((current) => [...current, response.learnedPreference!].slice(-6));
       }
-
-      const withMemory: BrowserProfile = {
-        ...previewProfile,
-        learnedPreferences: learnedPreference ? [learnedPreference] : [],
-      };
-      const completed = completeBrowserProfile(
-        withMemory,
-        summarizeBrowserProfile(withMemory),
-      );
-      await onComplete(completed);
+      if (response.complete) setPhase('review');
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : 'AURA could not save this profile.',
-      );
-      setSaving(false);
+      setError(caughtError instanceof Error ? caughtError.message : 'AURA could not continue.');
+    } finally {
+      setBusy(false);
     }
   }
 
-  async function skip(): Promise<void> {
-    setSaving(true);
+  async function begin(): Promise<void> {
+    setPhase('interview');
+    await ask([]);
+  }
+
+  async function answerQuestion(): Promise<void> {
+    if (turn?.nextQuestion === null || turn === null || selected === null) return;
+    const nextAnswers = [
+      ...answers.filter((answer) => answer.area !== turn.nextQuestion?.area),
+      { area: turn.nextQuestion.area, difficulty: selected },
+    ];
+    setAnswers(nextAnswers);
+    setSelected(null);
+    const words = detail.trim();
+    setDetail('');
+    await ask(nextAnswers, words);
+  }
+
+  async function finish(): Promise<void> {
+    setBusy(true);
     setError(null);
     try {
-      const profile = applyCalibrationChoices(
-        createDefaultBrowserProfile(),
-        INITIAL_CHOICES,
+      const withAnswers = applyFunctionalAnswers(baseProfile, answers);
+      const withMemory = {
+        ...withAnswers,
+        learnedPreferences: memories,
+      };
+      await onComplete(
+        completeBrowserProfile(withMemory, summarizeBrowserProfile(withMemory)),
       );
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'AURA could not save this profile.');
+      setBusy(false);
+    }
+  }
+
+  async function useDefaults(): Promise<void> {
+    setBusy(true);
+    try {
+      const profile = createDefaultBrowserProfile();
       await onComplete(
         completeBrowserProfile(profile, summarizeBrowserProfile(profile)),
       );
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : 'AURA could not save this profile.',
-      );
-      setSaving(false);
+      setError(caughtError instanceof Error ? caughtError.message : 'AURA could not save this profile.');
+      setBusy(false);
     }
   }
 
+  const mood: AuraGuideMood = busy
+    ? 'thinking'
+    : phase === 'intro'
+      ? 'welcoming'
+      : phase === 'review'
+        ? 'celebrating'
+        : (turn?.mascotMood ?? 'asking');
+  const answeredCount = answers.length;
+
   return (
     <main
-      className={`learn-me density-${previewProfile.preferences.informationDensity}`}
+      className="learn-me ai-oobe"
+      data-reduce-motion={previewProfile.preferences.reduceMotion ? 'true' : 'false'}
       style={{
         '--preview-line-height': previewProfile.preferences.lineSpacing,
         '--preview-scale': previewProfile.preferences.textScale,
@@ -156,175 +144,116 @@ export function LearnMe({
     >
       <header className="learn-me-header">
         <AuraBrand />
-        <button className="text-button" disabled={saving} onClick={() => void skip()} type="button">
+        <button className="text-button" disabled={busy} onClick={() => void useDefaults()} type="button">
           Use comfortable defaults
         </button>
       </header>
 
-      <section className="learn-me-card" aria-labelledby="learn-me-title">
-        <div className="onboarding-progress" aria-label={`Step ${step + 1} of ${STEP_LABELS.length}`}>
-          {STEP_LABELS.map((label, index) => (
-            <span className={index <= step ? 'active' : ''} key={label}>
-              <i aria-hidden="true" />
-              <b>{label}</b>
-            </span>
-          ))}
-        </div>
-
-        {step === 0 ? (
-          <div className="learn-me-copy intro-step">
-            <p className="eyebrow">Learn Me</p>
-            <h1 id="learn-me-title">Let’s find your comfortable web.</h1>
+      <section className="ai-oobe-layout">
+        <aside className="guide-stage" aria-live="polite">
+          <AuraGuide mood={mood} />
+          <div className="guide-speech">
+            <strong>{busy ? 'I’m listening…' : phase === 'review' ? 'Your AURA is ready.' : 'Hi, I’m the AURA Guide.'}</strong>
             <p>
-              AURA adapts around how you prefer to read, focus, understand, and
-              interact. This is not a diagnosis—just four quick comfort choices
-              you can change later.
+              {busy
+                ? 'I’m choosing the most useful next question.'
+                : turn?.assistantMessage ??
+                  'I’ll learn what makes websites comfortable for you—without asking for a diagnosis.'}
             </p>
-            <div className="intro-principles">
-              <span>About one minute</span>
-              <span>Stored on this Mac</span>
-              <span>Always editable</span>
-            </div>
           </div>
-        ) : null}
+        </aside>
 
-        {step === 1 ? (
-          <div className="learn-me-copy">
-            <p className="eyebrow">Reading comfort</p>
-            <h1 id="learn-me-title">Which text feels easiest?</h1>
-            <p>The preview changes immediately. Choose comfort, not a test result.</p>
-            <div className="comfort-grid" role="group" aria-label="Reading presentation">
-              <ChoiceButton checked={reading?.area === 'reading' && reading.choice === 'standard'} description="Original size and a familiar page width" onClick={() => choose({ area: 'reading', choice: 'standard' })}>
-                Standard
-              </ChoiceButton>
-              <ChoiceButton checked={reading?.area === 'reading' && reading.choice === 'comfortable'} description="A little larger, with more space" onClick={() => choose({ area: 'reading', choice: 'comfortable' })}>
-                Comfortable
-              </ChoiceButton>
-              <ChoiceButton checked={reading?.area === 'reading' && reading.choice === 'largest'} description="Largest text and a focused reading width" onClick={() => choose({ area: 'reading', choice: 'largest' })}>
-                Largest
-              </ChoiceButton>
-            </div>
-            <div className="live-preview" aria-live="polite">
-              <strong>A calmer page can make the next step easier to find.</strong>
-              <span>This preview uses your current text size and spacing.</span>
-            </div>
+        <section className="learn-me-card" aria-labelledby="learn-me-title">
+          <div className="functional-progress" aria-label={`${answeredCount} of 6 areas understood`}>
+            <span><b>{answeredCount}</b> of 6 areas understood</span>
+            <progress max={6} value={answeredCount} />
           </div>
-        ) : null}
 
-        {step === 2 ? (
-          <div className="learn-me-copy">
-            <p className="eyebrow">Interaction comfort</p>
-            <h1 id="learn-me-title">How large should controls feel?</h1>
-            <p>Pick the size that feels easy to select without needing precision.</p>
-            <div className="comfort-grid" role="group" aria-label="Control size">
-              <ChoiceButton checked={interaction?.area === 'interaction' && interaction.choice === 'standard'} description="44-pixel minimum targets" onClick={() => choose({ area: 'interaction', choice: 'standard' })}>Standard</ChoiceButton>
-              <ChoiceButton checked={interaction?.area === 'interaction' && interaction.choice === 'comfortable'} description="52-pixel minimum targets" onClick={() => choose({ area: 'interaction', choice: 'comfortable' })}>Comfortable</ChoiceButton>
-              <ChoiceButton checked={interaction?.area === 'interaction' && interaction.choice === 'largest'} description="60-pixel minimum targets" onClick={() => choose({ area: 'interaction', choice: 'largest' })}>Largest</ChoiceButton>
+          {phase === 'intro' ? (
+            <div className="learn-me-copy intro-step">
+              <p className="eyebrow">Learn Me</p>
+              <h1 id="learn-me-title">Let’s shape the web around you.</h1>
+              <p>
+                I’ll ask six short questions about everyday web tasks. Your
+                answers can overlap, change later, and never become a medical label.
+              </p>
+              <ul className="trust-list">
+                <li>About two minutes</li>
+                <li>Stored on this Mac</li>
+                <li>AI-personalized, with a reliable offline path</li>
+              </ul>
+              <button className="primary-action" disabled={busy} onClick={() => void begin()} type="button">
+                Start with AURA
+              </button>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {step === 3 ? (
-          <div className="learn-me-copy">
-            <p className="eyebrow">Focus and motion</p>
-            <h1 id="learn-me-title">How much should AURA show at once?</h1>
-            <p>Everything remains available. This controls emphasis and pacing.</p>
-            <div className="comfort-grid" role="group" aria-label="Information density">
-              <ChoiceButton checked={attention?.area === 'attention' && attention.choice === 'standard'} description="Keep the page’s normal density and motion" onClick={() => choose({ area: 'attention', choice: 'standard' })}>Full page</ChoiceButton>
-              <ChoiceButton checked={attention?.area === 'attention' && attention.choice === 'calm'} description="Reduce motion and soften secondary content" onClick={() => choose({ area: 'attention', choice: 'calm' })}>Calmer</ChoiceButton>
-              <ChoiceButton checked={attention?.area === 'attention' && attention.choice === 'step_by_step'} description="Prefer one clear action or section at a time" onClick={() => choose({ area: 'attention', choice: 'step_by_step' })}>Step by step</ChoiceButton>
+          {phase === 'interview' && turn?.nextQuestion ? (
+            <div className="learn-me-copy question-step" key={turn.nextQuestion.area}>
+              <p className="eyebrow">Your web experience</p>
+              <h1 id="learn-me-title">{turn.nextQuestion.prompt}</h1>
+              <p>{turn.nextQuestion.helpText}</p>
+              <div className="answer-list" role="radiogroup" aria-label="Choose difficulty">
+                {ANSWERS.map((answer) => (
+                  <button
+                    aria-checked={selected === answer.value}
+                    className={selected === answer.value ? 'answer-choice selected' : 'answer-choice'}
+                    key={answer.value}
+                    onClick={() => setSelected(answer.value)}
+                    role="radio"
+                    type="button"
+                  >
+                    <span>{answer.label}</span>
+                    <small>{answer.description}</small>
+                  </button>
+                ))}
+              </div>
+              <label className="oobe-detail">
+                <span>Tell AURA more (optional)</span>
+                <textarea
+                  maxLength={1_000}
+                  onChange={(event) => setDetail(event.currentTarget.value)}
+                  placeholder="For example: Moving banners make it hard to keep my place."
+                  rows={2}
+                  value={detail}
+                />
+              </label>
+              <button className="primary-action" disabled={busy || selected === null} onClick={() => void answerQuestion()} type="button">
+                {busy ? 'Choosing what to ask next…' : 'Continue'}
+              </button>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {step === 4 ? (
-          <div className="learn-me-copy">
-            <p className="eyebrow">Explanation style</p>
-            <h1 id="learn-me-title">How should AURA explain things?</h1>
-            <div className="comfort-grid" role="group" aria-label="Explanation detail">
-              {(['concise', 'balanced', 'detailed'] as const).map((choice) => (
-                <ChoiceButton
-                  checked={understanding?.area === 'understanding' && understanding.choice === choice}
-                  description={{
-                    concise: 'Short, direct explanations',
-                    balanced: 'Enough context without overload',
-                    detailed: 'More context and supporting detail',
-                  }[choice]}
-                  key={choice}
-                  onClick={() => choose({
-                    area: 'understanding',
-                    choice,
-                    preserveTechnicalTerms:
-                      understanding?.area === 'understanding'
-                        ? understanding.preserveTechnicalTerms
-                        : true,
-                  })}
-                >
-                  {choice.charAt(0).toUpperCase() + choice.slice(1)}
-                </ChoiceButton>
-              ))}
-            </div>
-            <label className="check-choice">
-              <input
-                checked={understanding?.area === 'understanding' ? understanding.preserveTechnicalTerms : true}
-                onChange={(event) => choose({
-                  area: 'understanding',
-                  choice: understanding?.area === 'understanding' ? understanding.choice : 'balanced',
-                  preserveTechnicalTerms: event.currentTarget.checked,
-                })}
-                type="checkbox"
-              />
-              Keep technical terms, and explain them when needed
-            </label>
-          </div>
-        ) : null}
-
-        {step === 5 ? (
-          <div className="learn-me-copy">
-            <p className="eyebrow">Your AURA</p>
-            <h1 id="learn-me-title">One last thing—only if useful.</h1>
-            <p>
-              Tell AURA one preference we did not ask about. AURA can turn your
-              own words into one editable memory. You can leave this blank.
-            </p>
-            <label className="note-field">
-              <span>Anything else that makes websites easier for you?</span>
-              <textarea
-                maxLength={1_000}
-                onChange={(event) => setNote(event.currentTarget.value)}
-                placeholder="For example: Keep technical words, but explain them briefly."
-                rows={4}
-                value={note}
-              />
-            </label>
-            <div className="profile-summary">
-              <strong>Your current profile</strong>
+          {phase === 'review' ? (
+            <div className="learn-me-copy review-step">
+              <p className="eyebrow">Your first AURA</p>
+              <h1 id="learn-me-title">Here’s how I’ll begin.</h1>
               <p>{summarizeBrowserProfile(previewProfile)}</p>
+              <div className="profile-summary">
+                <strong>Support combination</strong>
+                <ul>
+                  {Object.entries(previewProfile.capabilities)
+                    .filter(([, level]) => level !== 'default')
+                    .map(([area, level]) => (
+                      <li key={area}><span>{area}</span><b>{level}</b></li>
+                    ))}
+                  {Object.values(previewProfile.capabilities).every((level) => level === 'default') ? (
+                    <li><span>Comfort baseline</span><b>standard</b></li>
+                  ) : null}
+                </ul>
+              </div>
+              <p className="evidence-note">
+                This is a functional comfort profile, not a diagnosis. You can
+                re-run Learn Me whenever your needs change.
+              </p>
+              <button className="primary-action" disabled={busy} onClick={() => void finish()} type="button">
+                {busy ? 'Creating your AURA…' : 'Start browsing'}
+              </button>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {error ? <p className="onboarding-error" role="alert">{error}</p> : null}
-
-        <footer className="onboarding-actions">
-          <button
-            className="secondary-action"
-            disabled={step === 0 || saving}
-            onClick={() => setStep((current) => Math.max(0, current - 1))}
-            type="button"
-          >
-            Back
-          </button>
-          {step < STEP_LABELS.length - 1 ? (
-            <button className="primary-action" onClick={() => setStep((current) => current + 1)} type="button">
-              {step === 0 ? 'Find my comfort' : 'Continue'}
-            </button>
-          ) : (
-            <button className="primary-action" disabled={saving} onClick={() => void finish()} type="button">
-              {saving ? 'Creating your AURA…' : 'Start browsing'}
-            </button>
-          )}
-        </footer>
+          {error ? <p className="onboarding-error" role="alert">{error}</p> : null}
+        </section>
       </section>
     </main>
   );

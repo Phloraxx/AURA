@@ -6,9 +6,28 @@
 judge-hardening pass reconciles the conversation, Recompose, voice,
 and design work before one focused integration commit.
 
-**Current milestone:** W7 — Judge-proofing / release freeze
+**Current milestone:** W8 — Inclusive personalization revision
 
-**Product state:** Learn Me, full-page AURA Recompose, Talk to AURA, explicit memory, local Qwen acceleration, cloud refinement, voice input/output, native packaging, automated rehearsal, and repository CI are implemented. Feature scope is frozen; only measured event-smoke bugs may be changed.
+**Product state:** the W7 browser remains the tested baseline. W8 is the
+accepted implementation of bounded AI-led Learn Me, six-area functional
+profiles, the original AURA Guide, factual automated WCAG evidence, explainable
+personalized AURA Fit, and the common-comfort shell baseline. Existing W7
+reliability gates remain required.
+
+**W8 verification on the event Mac (2026-07-25):**
+
+- repository lint passed;
+- all workspace typechecks passed;
+- shared tests: 10/10;
+- API tests: 16/16;
+- extension tests: 36/36;
+- browser tests: 87 passed, 2 intentionally skipped;
+- Electron E2E: 3/3, including the complete new Learn Me path, original-page
+  scan, Make This Mine, and adapted-presentation rescan;
+- API, extension, shared, and browser production builds passed;
+- the `darwin-arm64` Electron package completed and the new OOBE, evidence scan,
+  AURA Fit, dual-planner detail, and native Apple voice controls were visually
+  exercised on macOS.
 
 ## Primary product
 
@@ -125,9 +144,12 @@ Event voice scope is intentionally small and reliable:
 - push-to-talk microphone recording in Talk to AURA;
 - transcription through `gpt-4o-mini-transcribe` after the person stops recording;
 - transcript enters the same existing Talk to AURA pipeline as typed input;
-- optional short spoken replies use the browser/macOS speech-synthesis surface;
-- installed enhanced/premium voices are preferred, the person can choose a
-  voice, and that choice is remembered locally;
+- optional short spoken replies use macOS's native `/usr/bin/say` service
+  rather than Chromium's synthetic browser voice;
+- installed Apple voices are enumerated from `say -v ?`; enhanced/premium
+  voices are preferred, followed by familiar US English voices such as Ava and
+  Samantha; the person can preview a voice, choose it, and have that choice
+  remembered locally;
 - the existing AURA Halo reflects honest listening, transcribing, thinking,
   speaking, remembering, idle, and error states;
 - starting a new dictation stops any currently spoken AURA reply.
@@ -149,7 +171,14 @@ build all applications
 Electron Playwright E2E under Xvfb
 ```
 
-The current unit/integration suite contains **141 passing tests** across Browser, shared package, API, and legacy extension, with two live-provider browser tests skipped unless explicitly enabled. Electron E2E covers clean launch, Learn Me, judge Recompose presets, full-page Recompose presence, request-driven visible Recompose changes, Step by Step progression, Talk to AURA, Remember, navigation/session intent, Original restoration, restart/persistent memory, and serious/critical Axe checks.
+The current unit/integration suite contains **149 passing tests** across Browser,
+shared package, API, and legacy extension, with two live-provider browser tests
+skipped unless explicitly enabled. Electron E2E covers clean launch, Learn Me,
+the original WCAG evidence scan, automatic adapted-presentation rescan, judge
+Recompose presets, full-page Recompose presence, request-driven visible
+Recompose changes, Step by Step progression, Talk to AURA, Remember,
+navigation/session intent, Original restoration, restart/persistent memory, and
+serious/critical Axe checks.
 
 The latest event-Mac hardening pass additionally verified:
 
@@ -167,24 +196,43 @@ The latest event-Mac hardening pass additionally verified:
   validation, measured at about 3.1 seconds for the live Luna goal request;
 - visible conversation-driven Recompose regeneration for presentation
   adjustments and goal guidance;
+- honest before/after automated WCAG evidence with failure reasons, manual-review
+  items, and resolved/remaining/introduced issue comparison; the user's profile
+  explains relevance but never changes the factual standards outcome;
+- an explainable AURA Fit breakdown across Interaction, Visual comfort, Focus,
+  Understanding, and Task simplicity; live Wikipedia evidence measured 47 →
+  89 for Clear & Calm while separately reporting the resolved standards
+  failure and remaining human review;
+- one progressively disclosed intelligence detail proving the separate local
+  Qwen and cloud Luna paths and exposing whether each applied, matched, remained
+  in progress, or fell back;
+- one compact Talk to AURA surface rather than two competing companion cards;
+- visible transformation evidence showing the understood page purpose, useful
+  elements, promoted targets, and deeper semantic changes without technical
+  model timings;
+- Apple-native voice enumeration and speech through `/usr/bin/say`, visually
+  verified with the packaged app's Samantha selection and Preview control and
+  directly smoke-tested with a native macOS voice;
 - 44px minimum voice controls and race-safe spoken-reply state;
 - a newly packaged and launched ad-hoc-signed `darwin-arm64` application;
-- lint, all typechecks, 141 unit/integration tests, all builds, and all three
+- lint, all typechecks, 149 unit/integration tests, all builds, and all three
   Electron E2E journeys passing on the event Mac.
 
 PR #8's final CI run completed successfully before merge.
 
 ## Portability and packaging
 
-Repository scripts invoke pnpm through Corepack so a clean machine does not require a separately exposed global `pnpm` binary. Electron Forge performs its own package-manager lookup, so the macOS packaging script prepends the repository's `scripts/corepack-bin/pnpm` shim and still resolves the pinned Corepack pnpm version.
+Repository scripts call `pnpm` directly so they work on machines where
+Corepack is unavailable. Install pnpm once with `npm install -g pnpm@11.9.0`
+when it is not already on `PATH`.
 
 ```bash
-corepack pnpm install --frozen-lockfile
-corepack pnpm lint
-corepack pnpm typecheck
-corepack pnpm test
-corepack pnpm build
-corepack pnpm browser:package:mac
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm browser:package:mac
 ```
 
 The final design/package pass successfully cross-packaged the `darwin-arm64` bundle and verified that the `.app` embeds the generated AURA icon. Execution, microphone permission, local Qwen latency, and live voice/API behavior on the actual Mac remain part of the manual event smoke test.
@@ -194,7 +242,7 @@ The final design/package pass successfully cross-packaged the `darwin-arm64` bun
 After packaging:
 
 ```bash
-corepack pnpm browser:event
+pnpm browser:event
 ```
 
 The launcher prompts for a temporary `OPENAI_API_KEY` when one is not already present, defaults to `gpt-5.6-luna`, and defaults page analysis to medium reasoning.
@@ -219,7 +267,11 @@ Only one manual operational gate remains:
 
 > Run the packaged `AURA.app` on the actual event Apple-Silicon Mac with the installed `qwen3.5:4b-mlx`, a real temporary OpenAI key, microphone permission, and the event Wi-Fi or planned hotspot.
 
-Exercise at minimum:
+The current pass has completed packaging, launch, native voice enumeration,
+direct native speech output, page connection, original scan, Clear & Calm
+Recompose, automatic adapted scan, and visible restoration controls on this
+Mac. Before the event, repeat this smoke with the actual event OpenAI key,
+microphone permission, and network:
 
 ```text
 Learn Me

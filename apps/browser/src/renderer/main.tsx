@@ -7,6 +7,7 @@ import './design-system.css';
 import './motion-personality.css';
 import './video-theme.css';
 import './recompose-ui.css';
+import './inclusive-comfort.css';
 
 const root = document.querySelector('#root');
 
