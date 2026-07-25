@@ -19,4 +19,22 @@ fi
 
 export OPENAI_MODEL="${OPENAI_MODEL:-gpt-5.6-luna}"
 export AURA_PAGE_REASONING_EFFORT="${AURA_PAGE_REASONING_EFFORT:-medium}"
+export AURA_OLLAMA_URL="${AURA_OLLAMA_URL:-http://127.0.0.1:11434}"
+export AURA_LOCAL_MODEL="${AURA_LOCAL_MODEL:-qwen3.5:4b-mlx}"
+export AURA_TRANSCRIPTION_MODEL="${AURA_TRANSCRIPTION_MODEL:-gpt-4o-mini-transcribe}"
+
+# Local Qwen is an acceleration layer, not a launch dependency. Give the event
+# operator an immediate preflight signal while preserving deterministic/cloud
+# fallback if Ollama is stopped or the model tag is missing.
+if command -v curl >/dev/null 2>&1; then
+  tags="$(curl --silent --show-error --max-time 2 "${AURA_OLLAMA_URL}/api/tags" 2>/dev/null || true)"
+  if [[ -z "${tags}" ]]; then
+    print -u2 "AURA warning: Ollama is not responding at ${AURA_OLLAMA_URL}; deterministic/cloud paths will still work."
+  elif [[ "${tags}" != *"${AURA_LOCAL_MODEL}"* ]]; then
+    print -u2 "AURA warning: ${AURA_LOCAL_MODEL} was not found in Ollama; deterministic/cloud paths will still work."
+  else
+    print "AURA local fast path: ${AURA_LOCAL_MODEL} is available."
+  fi
+fi
+
 exec "${app_binary}"
