@@ -442,7 +442,7 @@ export function TalkToAura({
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
-                void send(message);
+                void send(event.currentTarget.value);
               }
             }}
             placeholder={
@@ -498,71 +498,60 @@ export function TalkToAura({
           </p>
         ) : voiceState === 'transcribing' ? (
           <p className="voice-status" role="status">
-            Turning that into a request…
+            <span aria-hidden="true" /> Turning that into a request…
           </p>
         ) : null}
+        {error === null ? null : (
+          <p className="conversation-error" role="alert">
+            {error}
+          </p>
+        )}
       </form>
 
       <details
-        className="memory-editor"
+        className="memory-manager"
         onToggle={(event) => setMemoryOpen(event.currentTarget.open)}
         open={memoryOpen}
       >
         <summary>What AURA remembers</summary>
         <p>
-          Only preferences you explicitly taught AURA are stored here. You can
-          edit or forget them.
+          These are preferences you explicitly asked AURA to remember. You can
+          edit or forget them at any time.
         </p>
         {memoryDrafts.length === 0 ? (
-          <p className="muted">No learned preferences yet.</p>
+          <span className="memory-empty">Nothing saved yet.</span>
         ) : (
           <div className="memory-list">
             {memoryDrafts.map((preference, index) => (
-              <div className="memory-item" key={`memory-${index}`}>
-                <label htmlFor={`memory-${index}`}>
-                  Preference {index + 1}
-                </label>
-                <textarea
+              <div className="memory-row" key={`${index}-${preference}`}>
+                <label htmlFor={`memory-${index}`}>Preference {index + 1}</label>
+                <input
                   id={`memory-${index}`}
                   onChange={(event) => {
                     const next = [...memoryDrafts];
                     next[index] = event.target.value;
                     setMemoryDrafts(next);
                   }}
-                  rows={2}
                   value={preference}
                 />
                 <button
-                  onClick={() => {
-                    const next = memoryDrafts.filter(
-                      (_item, itemIndex) => itemIndex !== index,
-                    );
-                    void forgetMemory(next);
-                  }}
+                  onClick={() =>
+                    void forgetMemory(
+                      memoryDrafts.filter((_, itemIndex) => itemIndex !== index),
+                    )
+                  }
                   type="button"
                 >
                   Forget
                 </button>
               </div>
             ))}
+            <button className="memory-save" onClick={() => void saveMemory()} type="button">
+              Save memory changes
+            </button>
           </div>
         )}
-        {memoryDrafts.length > 0 ? (
-          <button
-            className="primary-compact"
-            onClick={() => void saveMemory()}
-            type="button"
-          >
-            Save memory
-          </button>
-        ) : null}
       </details>
-
-      {error === null ? null : (
-        <p className="conversation-error" role="alert">
-          {error}
-        </p>
-      )}
     </section>
   );
 }
