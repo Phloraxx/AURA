@@ -105,7 +105,13 @@ test('rehearses clean launch through Learn Me, Recompose, voice UI, Talk, Rememb
     await expect(shell.getByText('Remember this preference?')).toBeVisible();
     await shell.getByRole('button', { name: 'Remember', exact: true }).click();
     await shell.getByRole('button', { name: 'Original' }).click();
-    await expect(shell.getByText(/The original .* is restored/)).toBeVisible();
+    await expect(shell.getByRole('button', { name: 'Original' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(
+      shell.getByText('The original website is restored. Your AURA version is preserved.'),
+    ).toBeVisible();
     await expect
       .poll(() =>
         remote?.evaluate(
