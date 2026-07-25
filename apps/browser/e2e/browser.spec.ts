@@ -249,7 +249,9 @@ test('runs Step by Step, conversation, memory, navigation, and Original in Elect
     });
 
     await message.fill('Remember that I prefer short explanations.');
-    await message.press('Enter');
+    const send = shell.getByRole('button', { name: 'Send' });
+    await expect(send).toBeEnabled();
+    await send.click();
     await expect(shell.getByText('Remember this preference?')).toBeVisible();
     await shell.getByRole('button', { name: 'Remember', exact: true }).click();
     await expect(

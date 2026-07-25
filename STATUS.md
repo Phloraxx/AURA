@@ -2,21 +2,21 @@
 
 **Primary branch:** `main`
 
-**Integration:** PR #2 (`aura-browser` → `main`) merged successfully after green GitHub CI.
+**Integration:** PR #8 (`feature/recompose-voice` → `main`) merged after green GitHub CI. PR #9 is the final microphone-permission hardening pass.
 
 **Current milestone:** W7 — Judge-proofing / release freeze
 
-**Product state:** W1 through W6 are implemented. W7 hardening, real-site coverage, native packaging, automated rehearsal, and repository CI are complete. Feature scope is frozen.
+**Product state:** Learn Me, full-page AURA Recompose, Talk to AURA, explicit memory, local Qwen acceleration, cloud refinement, voice input/output, native packaging, automated rehearsal, and repository CI are implemented. Feature scope is frozen; only measured event-smoke bugs may be changed.
 
 ## Primary product
 
 AURA has exactly three first-class experiences:
 
 1. **Learn Me** — short capability/preference calibration with persistent local profile.
-2. **Make This Mine** — immediate deterministic adaptation plus validated semantic refinement of the real page.
-3. **Talk to AURA** — Adjust, Explain, Goal/Guide, and explicit Remember interactions grounded in the current page.
+2. **Make This Mine** — immediate full-page AURA Recompose of the real website, followed by local and cloud refinement.
+3. **Talk to AURA** — Adjust, Explain, Goal/Guide, explicit Remember, push-to-talk dictation, and optional short spoken replies grounded in the current page.
 
-`Original ↔ AURA` is mandatory and restores without page reload.
+`Original ↔ AURA` is mandatory and restores without page reload or loss of underlying page/form state.
 
 ## Event target
 
@@ -27,12 +27,42 @@ AURA has exactly three first-class experiences:
 - isolated remote page preload
 - `electron-vite` for development/build
 - Electron Forge for native packaging
+- local Ollama fast path using `qwen3.5:4b-mlx`
+- OpenAI deep refinement using `gpt-5.6-luna`
 
 The packaged app path is:
 
 ```text
 apps/browser/out/AURA-darwin-arm64/AURA.app
 ```
+
+## AURA Recompose
+
+`Make This Mine` no longer treats the website's original layout as sacred. AURA preserves the website's meaning, state, and real actions while rendering a trusted alternative interface above the original page.
+
+The event build exposes four non-diagnostic judge presets plus the person's learned profile:
+
+- **Clear & Calm** — fewer simultaneous choices and quieter hierarchy;
+- **Easier to See** — large reflowed content and high-visibility controls;
+- **Easy to Control** — large explicit controls and generous spacing;
+- **Step by Step** — progressive disclosure with one clear stage at a time;
+- **My profile** — the person's Learn Me profile and remembered preferences.
+
+The visible transformation is progressive:
+
+```text
+Make This Mine
+      ↓
+deterministic Recompose appears immediately
+      ↓
+local Qwen chooses/prioritizes real page targets
+      ↓
+GPT-5.6 Luna can add deeper semantic/goal refinement
+      ↓
+ready
+```
+
+Only complete schema-validated plans are applied. Model output never supplies executable HTML, JavaScript, or CSS.
 
 ## Page Intelligence
 
@@ -48,24 +78,46 @@ Implemented and verified:
 - stale page/revision rejection;
 - CDP Accessibility/DOMSnapshot enrichment remains an optional fallback; the verified event baseline does not depend on it.
 
-The real-site matrix is maintained in `tests/sites.md` and currently contains 27 sites across articles/news, commerce, universities, government/public services, technical documentation, forms, SPAs, listings, and public-information sites.
+The real-site matrix is maintained in `tests/sites.md` and contains 27 sites across articles/news, commerce, universities, government/public services, technical documentation, forms, SPAs, listings, and public-information sites.
 
-All 27 have verified local personalized adaptation and successful Original restoration. Live semantic-AI evidence exists for representative late/random sites.
+The original matrix verified local personalized adaptation/restoration across all 27. The final event smoke must now specifically exercise the new full-page Recompose experience on arbitrary dense pages such as a marketplace/listing page.
 
 ## AI configuration
 
 Event budget: approximately **USD 50**.
 
+Cloud:
+
 ```text
 OPENAI_MODEL=gpt-5.6-luna
 AURA_PAGE_REASONING_EFFORT=medium
+AURA_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
 ```
 
-The flagship page-analysis call defaults to medium reasoning because earlier high-reasoning W4 runs produced good plans but typically took roughly 10–24 seconds. The effort is externally configurable, so `high` can be restored for the event without a code change if the final live Mac test shows a material quality regression.
+Local:
 
-Onboarding and conversation retain their already-verified reasoning settings until measured evidence justifies a change.
+```text
+AURA_LOCAL_MODEL=qwen3.5:4b-mlx
+AURA_OLLAMA_URL=http://127.0.0.1:11434
+```
 
-OpenAI failure never removes deterministic adaptation.
+The local model is used as a low-latency structural planner. It receives a compact ranked PageModel, returns only typed target/structure decisions, runs with deterministic settings, and is kept warm for the event session. If Ollama or the model is unavailable, deterministic Recompose remains active and cloud refinement can still continue.
+
+GPT-5.6 Luna remains the deeper multimodal provider. Page analysis defaults to medium reasoning because earlier high-reasoning runs produced useful plans but materially higher latency. `high` remains an environment override for the final event comparison.
+
+OpenAI failure never removes the deterministic/local interface.
+
+## Voice
+
+Event voice scope is intentionally small and reliable:
+
+- push-to-talk microphone recording in Talk to AURA;
+- transcription through `gpt-4o-mini-transcribe` after the person stops recording;
+- transcript enters the same existing Talk to AURA pipeline as typed input;
+- optional short spoken replies use the browser/macOS speech-synthesis surface;
+- starting a new dictation stops any currently spoken AURA reply.
+
+The packaged app includes `NSMicrophoneUsageDescription`. Electron session permission handling explicitly allows audio media only for AURA's trusted local shell and denies arbitrary remote-page media requests.
 
 ## Automated verification
 
@@ -82,13 +134,13 @@ build all applications
 Electron Playwright E2E under Xvfb
 ```
 
-The established local suite contains 113 passing unit/integration tests plus Electron E2E coverage. The E2E journey covers clean launch, Learn Me, Make This Mine, Talk to AURA, Remember, navigation/session intent, Original restoration, restart, persistent memory, and serious/critical Axe checks.
+The current unit/integration suite contains **125 passing tests** across Browser, shared package, API, and legacy extension, with two live-provider browser tests skipped unless explicitly enabled. Electron E2E covers clean launch, Learn Me, judge Recompose presets, full-page Recompose presence, Step by Step progression, Talk to AURA, Remember, navigation/session intent, Original restoration, restart/persistent memory, and serious/critical Axe checks.
 
-PR #2's final CI run completed successfully before merge.
+PR #8's final CI run completed successfully before merge.
 
-## Portability fix
+## Portability and packaging
 
-Repository scripts invoke pnpm through Corepack so a clean machine does not require a separately exposed global `pnpm` binary. Electron Forge performs its own package-manager lookup, so the macOS packaging script prepends the repository's tiny `scripts/corepack-bin/pnpm` shim; Forge still resolves the pinned Corepack pnpm version instead of depending on a global install.
+Repository scripts invoke pnpm through Corepack so a clean machine does not require a separately exposed global `pnpm` binary. Electron Forge performs its own package-manager lookup, so the macOS packaging script prepends the repository's `scripts/corepack-bin/pnpm` shim and still resolves the pinned Corepack pnpm version.
 
 ```bash
 corepack pnpm install --frozen-lockfile
@@ -99,7 +151,7 @@ corepack pnpm build
 corepack pnpm browser:package:mac
 ```
 
-The final hardening pass successfully cross-packaged the `darwin-arm64` bundle and verified that the `.app` embeds the generated AURA `.icns` byte-for-byte. Execution on the actual Mac remains part of the manual event smoke test.
+The final design/package pass successfully cross-packaged the `darwin-arm64` bundle and verified that the `.app` embeds the generated AURA icon. Execution, microphone permission, local Qwen latency, and live voice/API behavior on the actual Mac remain part of the manual event smoke test.
 
 ## Event launcher
 
@@ -113,37 +165,46 @@ The launcher prompts for a temporary `OPENAI_API_KEY` when one is not already pr
 
 No OpenAI key is committed to the repository.
 
-## Release hardening and design pass
+## Design identity
 
-The final audit-driven pass closes the remaining product-story gaps without expanding the event into new modes:
+The judged build uses the AURA promo-film identity: near-black indigo surfaces, restrained violet/blue light, the AURA Halo, system-display typography, short physical microinteractions, and a profile-aware reduced-motion path.
 
-- flagship page analysis now receives the active session goal;
-- preserved goals can continue across navigation and guide matching original controls;
-- task guidance exposes a current `Step X of N` and one current original-page target;
-- AURA's trusted shell now honors resolved text scale, line spacing, interaction target size, information density, and reduced-motion preference;
-- `Original → conversational adjustment → semantic refinement` keeps the adaptation session state synchronized;
-- explicit requests to keep technical details remove active additive simplifications for the current page;
-- “Use comfortable defaults” now applies the same comfortable choices shown in Learn Me;
-- screenshot privacy checks cover all supported contenteditable spellings;
-- page-preload readiness is cached per document in Electron main, replayed to a
-  remounted shell, and invalidated only when a full main-frame navigation
-  begins; Electron regression coverage now exercises both shell reload and
-  remote-page refresh;
-- the app has one AURA visual identity across native icon, favicon, browser wordmark, panel mark, and custom interface glyphs;
-- light/dark appearance, keyboard focus, reduced motion, and profile-sized controls are part of the shell design system.
+The design contracts are documented in:
 
-The design contract is documented in `docs/browser/09-DESIGN-SYSTEM.md`.
+- `docs/browser/09-DESIGN-SYSTEM.md`
+- `docs/browser/10-MOTION-PERSONALITY.md`
+- `docs/browser/11-VIDEO-IDENTITY.md`
+
+Recompose/voice architecture is documented in `docs/browser/12-RECOMPOSE-VOICE.md`.
 
 ## Remaining release gate
 
 Only one manual operational gate remains:
 
-> Run the packaged `AURA.app` on the actual event Mac with the real temporary OpenAI key using the event Wi-Fi or planned hotspot, then exercise Learn Me → arbitrary real site → Make This Mine → Talk to AURA → Remember → Original.
+> Run the packaged `AURA.app` on the actual event Apple-Silicon Mac with the installed `qwen3.5:4b-mlx`, a real temporary OpenAI key, microphone permission, and the event Wi-Fi or planned hotspot.
 
-During that run, compare the default page reasoning (`medium`) with `high` on at least one difficult page. Keep `medium` unless `high` produces a clearly better judged result worth the added latency and API usage.
+Exercise at minimum:
 
-Any bug found by that smoke test may be fixed. No new features should be added.
+```text
+Learn Me
+→ dense arbitrary site / marketplace
+→ Clear & Calm Recompose
+→ Easier to See Recompose
+→ Step by Step Recompose
+→ Original
+→ local Qwen warm-path latency check
+→ Talk to AURA by keyboard
+→ push-to-talk dictation
+→ spoken AURA reply
+→ Remember
+→ navigation with goal preserved
+→ Original restoration
+```
+
+During that run, compare page reasoning `medium` with `high` on one difficult page. Keep `medium` unless `high` produces a clearly better judged result worth the extra latency/API usage.
+
+Any bug found by that smoke test may be fixed. No additional product modes or unrelated features should be added.
 
 ## Source of truth
 
-Read `docs/browser/README.md` first, then follow its reading order. `docs/browser/08-DECISIONS.md` records accepted architecture/release decisions.
+Read `docs/browser/README.md` first, then follow its reading order. `docs/browser/08-DECISIONS.md` records accepted architecture/release decisions and `docs/browser/12-RECOMPOSE-VOICE.md` records the final Recompose/local-AI/voice event architecture.
