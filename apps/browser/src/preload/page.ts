@@ -2,14 +2,19 @@ import { ipcRenderer } from 'electron';
 
 import { createPageAdaptationRuntime } from '../page-adaptation/runtime';
 import { createPageIntelligenceRuntime } from '../page-intelligence/runtime';
+import { refinePageRecomposeWithSemantic } from '../page-recompose/plan';
+import { createPageRecomposeRuntime } from '../page-recompose/runtime';
 import {
   adaptationCommandSchema,
   type AdaptationCommand,
+  type AdaptationEvent,
 } from '../shared/adaptation';
 import {
   pageRuntimeCommandSchema,
+  type PageModel,
   type PageRuntimeCommand,
 } from '../shared/page-model';
+import type { RecomposePlan } from '../shared/recompose';
 
 type PageRuntimePhase = 'dom-ready' | 'preload-started';
 
@@ -27,20 +32,11 @@ const ADAPTATION_COMMAND_CHANNEL = 'aura:adaptation:command';
 const ADAPTATION_EVENT_CHANNEL = 'aura:adaptation:event';
 const AURA_EVENT_THEME_ATTRIBUTE = 'data-aura-event-theme';
 
-/**
- * AURA-owned companion UI is rendered inside arbitrary websites by the
- * adaptation runtime. Keep it visually consistent with the judged browser's
- * promo-film identity without restyling the host website itself.
- *
- * Selectors intentionally have slightly higher specificity than the runtime's
- * baseline semantic styles. Every declaration remains scoped to AURA-owned or
- * AURA-state attributes, so ordinary page components are untouched.
- */
+/** Keep AURA-owned page surfaces aligned with the event identity. */
 function installAuraEventTheme(): void {
   if (document.querySelector(`style[${AURA_EVENT_THEME_ATTRIBUTE}]`) !== null) {
     return;
   }
-
   const host = document.head ?? document.documentElement;
   if (host === null) return;
 
@@ -65,17 +61,11 @@ html[data-aura-presentation="on"] body [data-aura-owned] {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif !important;
 }
 html[data-aura-presentation="on"] body [data-aura-owned] h2,
-html[data-aura-presentation="on"] body [data-aura-owned] strong {
-  color: #f8f5ff !important;
-}
+html[data-aura-presentation="on"] body [data-aura-owned] strong { color: #f8f5ff !important; }
 html[data-aura-presentation="on"] body [data-aura-owned] p,
-html[data-aura-presentation="on"] body [data-aura-owned] dd {
-  color: #d0c9dd !important;
-}
+html[data-aura-presentation="on"] body [data-aura-owned] dd { color: #d0c9dd !important; }
 html[data-aura-presentation="on"] body [data-aura-owned] dt,
-html[data-aura-presentation="on"] body [data-aura-owned="guide-status"] {
-  color: #aaa0c1 !important;
-}
+html[data-aura-presentation="on"] body [data-aura-owned="guide-status"] { color: #aaa0c1 !important; }
 html[data-aura-presentation="on"] body [data-aura-owned] dl div {
   border: 1px solid rgba(182,163,255,.14) !important;
   color: #f7f4ff !important;
@@ -99,36 +89,63 @@ html[data-aura-presentation="on"] body [data-aura-owned="summary"] ol button[ari
   background: linear-gradient(135deg, rgba(126,82,232,.38), rgba(75,111,215,.3)), #171322 !important;
   box-shadow: 0 0 0 2px rgba(115,201,255,.13), 0 0 20px rgba(105,105,255,.14) !important;
 }
-html[data-aura-presentation="on"] body [data-aura-owned="simplification"] {
-  border-left: 3px solid #8b63ff !important;
-}
+html[data-aura-presentation="on"] body [data-aura-owned="simplification"] { border-left: 3px solid #8b63ff !important; }
 html[data-aura-presentation="on"] body [data-aura-owned="restore"] {
   color: #eee9ff !important;
   background: #100e19 !important;
 }
 `.trim();
-
   host.append(style);
 }
 
 function report(phase: PageRuntimePhase): void {
-  const event: PageRuntimeEvent = {
+  ipcRenderer.send(PAGE_RUNTIME_CHANNEL, {
     phase,
     readyState: document.readyState,
     title: document.title,
     url: window.location.href,
+  } satisfies PageRuntimeEvent);
+}
+
+function combineEvents(
+  pageId: string,
+  view: 'aura' | 'original',
+  operation: AdaptationEvent['operation'],
+  events: AdaptationEvent[],
+): AdaptationEvent {
+  const failed = events.find((event) => event.status === 'failed');
+  return {
+    changedTargetCount: events.reduce(
+      (total, event) => total + event.changedTargetCount,
+      0,
+    ),
+    error: failed?.error ?? null,
+    operation,
+    pageId,
+    status: failed ? 'failed' : view === 'original' ? 'restored' : 'applied',
+    view,
   };
-  ipcRenderer.send(PAGE_RUNTIME_CHANNEL, event);
+}
+
+function sourceRank(source: RecomposePlan['source']): number {
+  if (source === 'cloud') return 2;
+  if (source === 'local') return 1;
+  return 0;
 }
 
 let currentPageId: string | null = null;
 let currentRevision: number | null = null;
+let currentPageModel: PageModel | null = null;
+let currentReduceMotion = false;
+let currentRecomposePlan: RecomposePlan | null = null;
 const intelligenceRuntime = createPageIntelligenceRuntime((model) => {
   currentPageId = model.pageId;
   currentRevision = model.revision;
+  currentPageModel = model;
   ipcRenderer.send(PAGE_MODEL_CHANNEL, model);
 });
 const adaptationRuntime = createPageAdaptationRuntime();
+const recomposeRuntime = createPageRecomposeRuntime();
 
 ipcRenderer.on(
   PAGE_COMMAND_CHANNEL,
@@ -158,19 +175,89 @@ ipcRenderer.on(
             ? 'presentation'
             : command.type === 'apply-semantic'
               ? 'semantic'
-              : 'view',
+              : command.type === 'apply-recompose'
+                ? 'recompose'
+                : 'view',
         pageId: command.pageId,
         status: 'failed',
         view:
-          command.type === 'set-adaptation-view'
-            ? command.view
-            : 'original',
+          command.type === 'set-adaptation-view' ? command.view : 'original',
       });
       return;
     }
+
+    if (command.type === 'apply-recompose') {
+      if (
+        currentRecomposePlan !== null &&
+        sourceRank(command.plan.source) < sourceRank(currentRecomposePlan.source)
+      ) {
+        ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, {
+          changedTargetCount: currentRecomposePlan.sections.reduce(
+            (count, section) => count + section.items.length,
+            0,
+          ),
+          error: null,
+          operation: 'recompose',
+          pageId: command.pageId,
+          status: 'applied',
+          view: 'aura',
+        });
+        return;
+      }
+      currentReduceMotion = command.reduceMotion;
+      currentRecomposePlan = command.plan;
+      ipcRenderer.send(
+        ADAPTATION_EVENT_CHANNEL,
+        recomposeRuntime.applyPlan(command.plan, command.reduceMotion),
+      );
+      return;
+    }
+
+    if (command.type === 'set-adaptation-view') {
+      const events = [adaptationRuntime.handleCommand(command)];
+      if (currentRecomposePlan !== null) {
+        events.push(recomposeRuntime.setView(command.pageId, command.view));
+      }
+      ipcRenderer.send(
+        ADAPTATION_EVENT_CHANNEL,
+        combineEvents(command.pageId, command.view, 'view', events),
+      );
+      return;
+    }
+
+    if (
+      command.type === 'apply-presentation' ||
+      command.type === 'update-presentation'
+    ) {
+      currentReduceMotion = command.settings.reduceMotion;
+      ipcRenderer.send(
+        ADAPTATION_EVENT_CHANNEL,
+        adaptationRuntime.handleCommand(command),
+      );
+      return;
+    }
+
+    const semanticEvent = adaptationRuntime.handleCommand(command);
+    const events = [semanticEvent];
+    if (
+      semanticEvent.status !== 'failed' &&
+      currentRecomposePlan !== null &&
+      currentPageModel !== null
+    ) {
+      currentRecomposePlan = refinePageRecomposeWithSemantic(
+        {
+          ...currentRecomposePlan,
+          revision: currentPageModel.revision,
+        },
+        command.plan,
+      );
+      events.push(
+        recomposeRuntime.applyPlan(currentRecomposePlan, currentReduceMotion),
+      );
+    }
     ipcRenderer.send(
       ADAPTATION_EVENT_CHANNEL,
-      adaptationRuntime.handleCommand(command),
+      combineEvents(command.pageId, semanticEvent.view, 'semantic', events),
     );
   },
 );
@@ -178,6 +265,9 @@ ipcRenderer.on(
 window.addEventListener(
   'pagehide',
   () => {
+    currentRecomposePlan = null;
+    currentPageModel = null;
+    recomposeRuntime.stop();
     adaptationRuntime.stop();
     intelligenceRuntime.stop();
   },

@@ -10,7 +10,9 @@ export default defineConfig({
       outDir: '.vite/main',
       rollupOptions: {
         external: ['electron'],
-        input: resolve('src/main/index.ts'),
+        input: {
+          index: resolve('src/main/entry.ts'),
+        },
       },
     },
   },

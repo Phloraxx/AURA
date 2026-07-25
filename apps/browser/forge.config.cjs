@@ -8,6 +8,10 @@ module.exports = {
       cacheRoot: path.resolve(__dirname, '../../.cache/electron'),
     },
     executableName: 'AURA',
+    extendInfo: {
+      NSMicrophoneUsageDescription:
+        'AURA uses the microphone only when you choose voice input in Talk to AURA.',
+    },
     ignore: [
       /^\/node_modules/,
       /^\/out/,

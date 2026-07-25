@@ -122,3 +122,21 @@ export function CheckIcon(props: IconProps): React.JSX.Element {
     </svg>
   );
 }
+
+export function MicrophoneIcon(props: IconProps): React.JSX.Element {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" {...props}>
+      <rect x="8.25" y="3.5" width="7.5" height="11" rx="3.75" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M5.8 11.8a6.2 6.2 0 0 0 12.4 0M12 18v2.5M9.2 20.5h5.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+export function SpeakerIcon(props: IconProps): React.JSX.Element {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" {...props}>
+      <path d="M5 10v4h3.2l4.3 3.5v-11L8.2 10H5Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" />
+      <path d="M15.5 9.2a4 4 0 0 1 0 5.6M17.8 6.8a7.2 7.2 0 0 1 0 10.4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
