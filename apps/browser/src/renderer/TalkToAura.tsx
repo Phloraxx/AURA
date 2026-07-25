@@ -7,7 +7,7 @@ import {
 
 import type { ConversationState } from '../shared/conversation';
 import type { BrowserProfile } from '../shared/profile';
-import { MicrophoneIcon, SpeakerIcon } from './Brand';
+import { AuraMark, MicrophoneIcon, SpeakerIcon } from './Brand';
 
 const SUGGESTIONS = [
   'Make this easier',
@@ -26,6 +26,16 @@ interface TalkToAuraProps {
 }
 
 type VoiceState = 'idle' | 'listening' | 'transcribing';
+type CompanionState =
+  | 'error'
+  | 'idle'
+  | 'listening'
+  | 'remembering'
+  | 'speaking'
+  | 'thinking'
+  | 'transcribing';
+
+const VOICE_STORAGE_KEY = 'aura.preferredVoiceURI';
 
 function shortSpokenReply(text: string): string {
   const compact = text.replace(/\s+/g, ' ').trim();
@@ -53,6 +63,49 @@ function latestAssistantMessageId(state: ConversationState): string | null {
   );
 }
 
+function voiceScore(voice: SpeechSynthesisVoice): number {
+  const name = voice.name.toLocaleLowerCase();
+  const language = voice.lang.toLocaleLowerCase();
+  let score = language.startsWith('en') ? 100 : 0;
+  if (/(premium|enhanced)/.test(name)) score += 80;
+  if (/(ava|samantha|serena|daniel|allison|zoe|susan)/.test(name)) score += 30;
+  if (voice.localService) score += 15;
+  if (voice.default) score += 10;
+  return score;
+}
+
+function preferredVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  return [...voices].sort(
+    (left, right) =>
+      voiceScore(right) - voiceScore(left) ||
+      left.name.localeCompare(right.name),
+  )[0] ?? null;
+}
+
+function companionPresentation(
+  companionState: CompanionState,
+  hasGoal: boolean,
+): { detail: string; label: string } {
+  switch (companionState) {
+    case 'error':
+      return { detail: 'I need a little help before we continue.', label: 'Something needs attention' };
+    case 'listening':
+      return { detail: 'Speak naturally. I’ll use the current page as context.', label: 'I’m listening' };
+    case 'remembering':
+      return { detail: 'You decide whether this becomes a lasting preference.', label: 'Ready to remember' };
+    case 'speaking':
+      return { detail: 'You can interrupt me by starting another request.', label: 'Speaking with you' };
+    case 'thinking':
+      return { detail: 'Using this page, your profile, and what you’ve taught me.', label: 'Working with this page' };
+    case 'transcribing':
+      return { detail: 'Turning your voice into a page-aware request.', label: 'Understanding your voice' };
+    case 'idle':
+      return hasGoal
+        ? { detail: 'Your current goal stays with you as you browse.', label: 'Keeping your goal in view' }
+        : { detail: 'Ask for an adjustment, explanation, or a path forward.', label: 'Here with you' };
+  }
+}
+
 export function TalkToAura({
   disabled,
   onConfirmMemory,
@@ -70,16 +123,45 @@ export function TalkToAura({
   const [error, setError] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [voiceReplies, setVoiceReplies] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<
+    SpeechSynthesisVoice[]
+  >([]);
+  const [selectedVoiceUri, setSelectedVoiceUri] = useState('');
+  const [speaking, setSpeaking] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingTimeoutRef = useRef<number | null>(null);
   const lastSpokenMessageId = useRef<string | null>(null);
+  const speechRequestRef = useRef(0);
 
   useEffect(() => {
     setMemoryDrafts(profile.learnedPreferences);
   }, [profile.learnedPreferences]);
+
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const loadVoices = (): void => {
+      const voices = window.speechSynthesis.getVoices();
+      setAvailableVoices(voices);
+      setSelectedVoiceUri((current) => {
+        if (voices.some((voice) => voice.voiceURI === current)) return current;
+        let stored = '';
+        try {
+          stored = window.localStorage.getItem(VOICE_STORAGE_KEY) ?? '';
+        } catch {
+          // Voice selection can still work when renderer storage is unavailable.
+        }
+        if (voices.some((voice) => voice.voiceURI === stored)) return stored;
+        return preferredVoice(voices)?.voiceURI ?? '';
+      });
+    };
+    loadVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    return () =>
+      window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+  }, []);
 
   useEffect(() => {
     logRef.current?.scrollTo({
@@ -110,20 +192,45 @@ export function TalkToAura({
     const utterance = new SpeechSynthesisUtterance(
       shortSpokenReply(latest.content),
     );
-    utterance.rate = 0.98;
+    const speechRequest = speechRequestRef.current + 1;
+    speechRequestRef.current = speechRequest;
+    utterance.rate = 0.96;
     utterance.pitch = 1;
-    const voices = window.speechSynthesis.getVoices();
     utterance.voice =
-      voices.find(
-        (voice) =>
-          voice.lang.toLocaleLowerCase().startsWith('en') &&
-          /(samantha|ava|daniel|serena)/i.test(voice.name),
-      ) ??
-      voices.find((voice) => voice.lang.toLocaleLowerCase().startsWith('en')) ??
+      availableVoices.find((voice) => voice.voiceURI === selectedVoiceUri) ??
+      preferredVoice(availableVoices) ??
       null;
+    utterance.addEventListener(
+      'start',
+      () => {
+        if (speechRequestRef.current === speechRequest) setSpeaking(true);
+      },
+      { once: true },
+    );
+    utterance.addEventListener(
+      'end',
+      () => {
+        if (speechRequestRef.current === speechRequest) setSpeaking(false);
+      },
+      { once: true },
+    );
+    utterance.addEventListener(
+      'error',
+      () => {
+        if (speechRequestRef.current === speechRequest) setSpeaking(false);
+      },
+      { once: true },
+    );
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
-  }, [state.messages, state.status, voiceReplies, voiceState]);
+  }, [
+    availableVoices,
+    selectedVoiceUri,
+    state.messages,
+    state.status,
+    voiceReplies,
+    voiceState,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -132,6 +239,7 @@ export function TalkToAura({
       }
       recorderRef.current?.stop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      speechRequestRef.current += 1;
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     };
   }, []);
@@ -139,7 +247,9 @@ export function TalkToAura({
   async function send(nextMessage: string): Promise<void> {
     const trimmed = nextMessage.trim();
     if (!trimmed || disabled || state.status === 'responding') return;
+    speechRequestRef.current += 1;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setSpeaking(false);
     setMessage('');
     setError(null);
     try {
@@ -203,7 +313,9 @@ export function TalkToAura({
       return;
     }
     setError(null);
+    speechRequestRef.current += 1;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setSpeaking(false);
     if (
       !navigator.mediaDevices?.getUserMedia ||
       typeof MediaRecorder === 'undefined'
@@ -326,8 +438,47 @@ export function TalkToAura({
     }
   }
 
+  const companionState: CompanionState =
+    error !== null
+      ? 'error'
+      : voiceState === 'listening'
+        ? 'listening'
+        : voiceState === 'transcribing'
+          ? 'transcribing'
+          : state.status === 'responding'
+            ? 'thinking'
+            : speaking
+              ? 'speaking'
+              : state.pendingMemory !== null
+                ? 'remembering'
+                : 'idle';
+  const companion = companionPresentation(
+    companionState,
+    state.currentIntent !== null,
+  );
+  const englishVoices = availableVoices.filter((voice) =>
+    voice.lang.toLocaleLowerCase().startsWith('en'),
+  );
+  const voiceChoices =
+    englishVoices.length > 0 ? englishVoices : availableVoices;
+
   return (
     <section className="talk-card" aria-labelledby="talk-title">
+      <div
+        aria-label={`AURA: ${companion.label}`}
+        className="aura-companion"
+        data-state={companionState}
+        role="status"
+      >
+        <span className="aura-companion-mark" aria-hidden="true">
+          <AuraMark />
+        </span>
+        <span className="aura-companion-copy">
+          <strong>{companion.label}</strong>
+          <span>{companion.detail}</span>
+        </span>
+      </div>
+
       <div className="talk-heading">
         <div>
           <p className="eyebrow">Talk to AURA</p>
@@ -404,31 +555,62 @@ export function TalkToAura({
       <form className="conversation-form" onSubmit={submit}>
         <div className="conversation-label-row">
           <label htmlFor="aura-message">Ask or tell AURA</label>
-          <button
-            aria-label={
-              voiceReplies
-                ? 'Turn spoken AURA replies off'
-                : 'Turn spoken AURA replies on'
-            }
-            aria-pressed={voiceReplies}
-            className="voice-reply-toggle"
-            onClick={() => {
-              if (voiceReplies && 'speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
+          <span className="voice-controls">
+            {voiceReplies && availableVoices.length > 0 ? (
+              <label className="voice-choice">
+                <span className="visually-hidden">AURA voice</span>
+                <select
+                  aria-label="AURA voice"
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setSelectedVoiceUri(next);
+                    try {
+                      window.localStorage.setItem(VOICE_STORAGE_KEY, next);
+                    } catch {
+                      // The selection still applies for this session.
+                    }
+                  }}
+                  value={selectedVoiceUri}
+                >
+                  {[...voiceChoices]
+                    .sort((left, right) => left.name.localeCompare(right.name))
+                    .map((voice) => (
+                      <option key={voice.voiceURI} value={voice.voiceURI}>
+                        {voice.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            ) : null}
+            <button
+              aria-label={
+                voiceReplies
+                  ? 'Turn spoken AURA replies off'
+                  : 'Turn spoken AURA replies on'
               }
-              if (!voiceReplies) {
-                lastSpokenMessageId.current = latestAssistantMessageId(state);
-              }
-              setVoiceReplies(!voiceReplies);
-            }}
-            type="button"
-          >
-            <SpeakerIcon
-              aria-hidden="true"
-              className="interface-icon compact"
-            />
-            {voiceReplies ? 'Voice on' : 'Voice off'}
-          </button>
+              aria-pressed={voiceReplies}
+              className="voice-reply-toggle"
+              onClick={() => {
+                if (voiceReplies && 'speechSynthesis' in window) {
+                  speechRequestRef.current += 1;
+                  window.speechSynthesis.cancel();
+                  setSpeaking(false);
+                }
+                if (!voiceReplies) {
+                  lastSpokenMessageId.current =
+                    latestAssistantMessageId(state);
+                }
+                setVoiceReplies(!voiceReplies);
+              }}
+              type="button"
+            >
+              <SpeakerIcon
+                aria-hidden="true"
+                className="interface-icon compact"
+              />
+              {voiceReplies ? 'Voice on' : 'Voice off'}
+            </button>
+          </span>
         </div>
         <div className="conversation-composer">
           <textarea

@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { createServer } from 'node:http';
 
 import { describe, expect, it } from 'vitest';
@@ -9,6 +10,24 @@ import {
   deterministicConversationTurn,
   type ConversationProviderRequest,
 } from './conversation-provider';
+
+const localConversationOutput = {
+  actionFamily: 'goal_guide',
+  adaptationPatch: {
+    deemphasizeTargetIds: [],
+    guide: {
+      steps: [{ auraId: 'action-1', instruction: 'Use Apply now.' }],
+      title: 'Apply',
+    },
+    highlightTargetIds: ['action-1'],
+    primaryTargetIds: ['action-1'],
+  },
+  adjustment: null,
+  assistantMessage: 'Start with the highlighted Apply now button.',
+  explanation: null,
+  intent: { goal: 'apply', preserveAcrossNavigation: true },
+  memoryProposal: null,
+} as const;
 
 const page = {
   elements: [
@@ -109,15 +128,71 @@ describe('deterministicConversationTurn', () => {
       const result = await createConversationProvider(process.env).turn(
         request('I need help applying on this page.'),
       );
-      expect(result.source).toBe('ai');
+      expect(['ai', 'local']).toContain(result.source);
       expect(result.actionFamily).toBe('goal_guide');
       expect(result.usage?.totalTokens).toBeGreaterThan(0);
     },
     45_000,
   );
 
+  it('uses local Ollama conversation with an explicit 8K context', async () => {
+    let receivedBody: Record<string, unknown> | null = null;
+    const server = createServer((incoming, outgoing) => {
+      const chunks: Buffer[] = [];
+      incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
+      incoming.on('end', () => {
+        receivedBody = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<
+          string,
+          unknown
+        >;
+        outgoing.writeHead(200, { 'content-type': 'application/json' });
+        outgoing.end(
+          JSON.stringify({
+            eval_count: 42,
+            message: { content: JSON.stringify(localConversationOutput) },
+            prompt_eval_count: 512,
+          }),
+        );
+      });
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      server.close();
+      throw new Error('Test server did not bind to a TCP port.');
+    }
+    try {
+      const result = await createConversationProvider({
+        AURA_OLLAMA_URL: `http://127.0.0.1:${address.port}`,
+      }).turn(request('Help me apply.'));
+
+      expect(result.source).toBe('local');
+      expect(result.actionFamily).toBe('goal_guide');
+      expect(result.usage).toEqual({
+        inputTokens: 512,
+        outputTokens: 42,
+        totalTokens: 554,
+      });
+      expect(receivedBody).not.toBeNull();
+      expect(receivedBody?.['format']).toBe('json');
+      expect(receivedBody?.['think']).toBe(false);
+      expect(receivedBody?.['options']).toEqual(
+        expect.objectContaining({
+          num_ctx: 8_192,
+          num_predict: 700,
+        }),
+      );
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
+  });
+
   it('falls back when the configured provider is unavailable', async () => {
     const result = await createConversationProvider({
+      AURA_LOCAL_CONVERSATION: '0',
       OPENAI_API_KEY: 'temporary-test-key',
       OPENAI_BASE_URL: 'http://127.0.0.1:1/v1',
     }).turn(request('Explain this page.'));
@@ -139,6 +214,7 @@ describe('deterministicConversationTurn', () => {
     }
     try {
       const result = await createConversationProvider({
+        AURA_LOCAL_CONVERSATION: '0',
         AURA_OPENAI_TIMEOUT_MS: '25',
         OPENAI_API_KEY: 'temporary-test-key',
         OPENAI_BASE_URL: `http://127.0.0.1:${address.port}/v1`,

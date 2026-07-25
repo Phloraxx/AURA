@@ -5,7 +5,9 @@ import type { SemanticPlan } from '../shared/semantic-analysis';
 import {
   buildPageRecomposePlan,
   inferPresetFromSettings,
+  isMaterialRecomposeChange,
   refinePageRecomposeWithSemantic,
+  shouldAcceptRecomposePlan,
 } from './plan';
 
 function element(
@@ -183,7 +185,8 @@ const semantic: SemanticPlan = {
   primaryTargetIds: ['search', 'filter'],
   revision: 2,
   simplifications: [],
-  summary: 'Search, set your budget, then compare a small number of relevant services.',
+  summary:
+    'Search, set your budget, then compare a small number of relevant services.',
 };
 
 describe('AURA Recompose planning', () => {
@@ -195,7 +198,9 @@ describe('AURA Recompose planning', () => {
 
     expect(plan.archetype).toBe('listing');
     expect(plan.source).toBe('deterministic');
-    expect(plan.sections.some((section) => section.kind === 'results')).toBe(true);
+    expect(plan.sections.some((section) => section.kind === 'results')).toBe(
+      true,
+    );
     const results = plan.sections.find((section) => section.kind === 'results');
     expect(results?.items.map((item) => item.targetAuraId)).toEqual([
       'gig-1',
@@ -203,6 +208,11 @@ describe('AURA Recompose planning', () => {
       'gig-3',
     ]);
     expect(results?.items.length).toBeLessThanOrEqual(5);
+    expect(
+      plan.sections
+        .flatMap((section) => section.items)
+        .filter((item) => item.action?.prominence === 'primary'),
+    ).toHaveLength(1);
   });
 
   it('uses only real current-page targets from a local model plan', () => {
@@ -216,7 +226,8 @@ describe('AURA Recompose planning', () => {
         resultTargetIds: ['gig-3', 'gig-1', 'not-real'],
         sectionOrder: ['results', 'actions', 'content'],
         supportingTargetIds: ['heading', 'missing'],
-        summary: 'Prioritize affordable logo services and the real search control.',
+        summary:
+          'Prioritize affordable logo services and the real search control.',
       },
       page,
       preset: 'step_by_step',
@@ -233,6 +244,85 @@ describe('AURA Recompose planning', () => {
     expect(plan.source).toBe('local');
   });
 
+  it('distinguishes a real local rearrangement from source-only refinement', () => {
+    const page = listingPage();
+    const initial = buildPageRecomposePlan({
+      page,
+      preset: 'clear_calm',
+    });
+    const sameShape = buildPageRecomposePlan({
+      local: {
+        archetype: initial.archetype,
+        confidence: 0.95,
+        primaryTargetIds: [],
+        resultTargetIds: [],
+        sectionOrder: [],
+        supportingTargetIds: [],
+        summary: 'The existing layout already prioritizes the useful content.',
+      },
+      page,
+      preset: 'clear_calm',
+      source: 'local',
+    });
+    const rearranged = buildPageRecomposePlan({
+      local: {
+        archetype: 'listing',
+        confidence: 0.95,
+        primaryTargetIds: ['filter'],
+        resultTargetIds: ['gig-3', 'gig-1'],
+        sectionOrder: ['results', 'actions', 'content'],
+        supportingTargetIds: ['heading'],
+        summary: 'Results first.',
+      },
+      page,
+      preset: 'clear_calm',
+      source: 'local',
+    });
+
+    expect(isMaterialRecomposeChange(initial, sameShape)).toBe(false);
+    expect(isMaterialRecomposeChange(initial, rearranged)).toBe(true);
+  });
+
+  it('lets an explicit experience replace semantic AI while rejecting stale refinements', () => {
+    const page = listingPage();
+    const clearCalm = buildPageRecomposePlan({
+      page,
+      preset: 'clear_calm',
+    });
+    const semanticClearCalm = refinePageRecomposeWithSemantic(
+      clearCalm,
+      semantic,
+    );
+    const easierToSee = buildPageRecomposePlan({
+      page,
+      preset: 'easier_to_see',
+    });
+    const staleLocalClearCalm = buildPageRecomposePlan({
+      local: {
+        archetype: 'listing',
+        confidence: 0.9,
+        primaryTargetIds: ['search'],
+        resultTargetIds: ['gig-1'],
+        sectionOrder: ['actions', 'results', 'content'],
+        supportingTargetIds: ['heading'],
+        summary: 'Old Clear and Calm request.',
+      },
+      page,
+      preset: 'clear_calm',
+      source: 'local',
+    });
+
+    expect(
+      shouldAcceptRecomposePlan(semanticClearCalm, easierToSee),
+    ).toBe(true);
+    expect(
+      shouldAcceptRecomposePlan(easierToSee, staleLocalClearCalm),
+    ).toBe(false);
+    expect(
+      shouldAcceptRecomposePlan(semanticClearCalm, staleLocalClearCalm),
+    ).toBe(false);
+  });
+
   it('folds a complete cloud semantic plan into the already-usable interface', () => {
     const initial = buildPageRecomposePlan({
       page: listingPage(),
@@ -243,7 +333,9 @@ describe('AURA Recompose planning', () => {
     expect(refined.source).toBe('cloud');
     expect(refined.title).toBe('Find a logo designer');
     expect(refined.sections[0]?.id).toBe('guide');
-    expect(refined.sections.some((section) => section.id === 'facts')).toBe(true);
+    expect(refined.sections.some((section) => section.id === 'facts')).toBe(
+      true,
+    );
     expect(refined.summary).toContain('compare');
   });
 

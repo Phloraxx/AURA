@@ -2,7 +2,8 @@
 
 ## Goal
 
-Use OpenAI for semantic understanding and conversational personalization without turning AURA into a slow chain of agents.
+Use local Ollama and OpenAI for semantic understanding and conversational
+personalization without turning AURA into a slow chain of agents.
 
 The event build uses **few rich structured calls**. Perceived latency and
 reliability are primary, and total use must stay within the approximately
@@ -29,6 +30,20 @@ Electron main
 ```
 
 There is no required localhost Hono server in the judged path.
+
+Talk to AURA uses a separate local-first provider chain in the same Electron
+main process:
+
+```text
+local Ollama structured conversation
+        ↓ unavailable or invalid
+OpenAI structured conversation
+        ↓ unavailable or invalid
+deterministic action-family fallback
+```
+
+The local response crosses the same Zod and current-page target validation
+boundaries as a cloud response.
 
 The existing `apps/api` remains available for legacy extension work or a later production architecture.
 
@@ -133,6 +148,10 @@ Every actionable target references an AURA ID and PageModel revision.
 ### 3. `conversationTurn`
 
 Purpose: make Talk to AURA change or explain the current browsing experience.
+
+The event implementation attempts this operation through local Ollama first.
+OpenAI remains a quality fallback, and the deterministic parser remains the
+final reliability fallback.
 
 Input:
 
@@ -250,6 +269,8 @@ A post-transform critique call is allowed only as a W7 experiment after W4 is al
 5. Cache the semantic state for conversation.
 6. Do not resend/reanalyze the entire page on every chat turn.
 7. Abort/ignore page-analysis output when navigation makes its revision stale.
+8. Give local conversation a compact balanced target set and an explicit 8192
+   token context instead of relying on Ollama's machine-dependent default.
 
 Do not introduce Responses WebSocket/persistent-connection complexity until ordinary Responses latency is measured as an actual blocker.
 

@@ -2,10 +2,14 @@ import { ipcRenderer } from 'electron';
 
 import { createPageAdaptationRuntime } from '../page-adaptation/runtime';
 import { createPageIntelligenceRuntime } from '../page-intelligence/runtime';
-import { refinePageRecomposeWithSemantic } from '../page-recompose/plan';
+import {
+  refinePageRecomposeWithSemantic,
+  shouldAcceptRecomposePlan,
+} from '../page-recompose/plan';
 import { createPageRecomposeRuntime } from '../page-recompose/runtime';
 import {
   adaptationCommandSchema,
+  isAdaptationCommandCurrent,
   type AdaptationCommand,
   type AdaptationEvent,
 } from '../shared/adaptation';
@@ -127,12 +131,6 @@ function combineEvents(
   };
 }
 
-function sourceRank(source: RecomposePlan['source']): number {
-  if (source === 'cloud') return 2;
-  if (source === 'local') return 1;
-  return 0;
-}
-
 let currentPageId: string | null = null;
 let currentRevision: number | null = null;
 let currentPageModel: PageModel | null = null;
@@ -145,7 +143,9 @@ const intelligenceRuntime = createPageIntelligenceRuntime((model) => {
   ipcRenderer.send(PAGE_MODEL_CHANNEL, model);
 });
 const adaptationRuntime = createPageAdaptationRuntime();
-const recomposeRuntime = createPageRecomposeRuntime();
+const recomposeRuntime = createPageRecomposeRuntime((event) => {
+  ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, event);
+});
 
 ipcRenderer.on(
   PAGE_COMMAND_CHANNEL,
@@ -161,10 +161,11 @@ ipcRenderer.on(
     const parsed = adaptationCommandSchema.safeParse(untrustedCommand);
     if (!parsed.success) return;
     const command = parsed.data;
-    const current =
-      command.pageId === currentPageId &&
-      (command.type === 'set-adaptation-view' ||
-        command.revision === currentRevision);
+    const current = isAdaptationCommandCurrent(
+      command,
+      currentPageId,
+      currentRevision,
+    );
     if (!current) {
       ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, {
         changedTargetCount: 0,
@@ -189,26 +190,27 @@ ipcRenderer.on(
     if (command.type === 'apply-recompose') {
       if (
         currentRecomposePlan !== null &&
-        sourceRank(command.plan.source) < sourceRank(currentRecomposePlan.source)
+        !shouldAcceptRecomposePlan(currentRecomposePlan, command.plan)
       ) {
-        ipcRenderer.send(ADAPTATION_EVENT_CHANNEL, {
-          changedTargetCount: currentRecomposePlan.sections.reduce(
-            (count, section) => count + section.items.length,
-            0,
+        ipcRenderer.send(
+          ADAPTATION_EVENT_CHANNEL,
+          recomposeRuntime.applyPlan(
+            currentRecomposePlan,
+            currentReduceMotion,
+            false,
           ),
-          error: null,
-          operation: 'recompose',
-          pageId: command.pageId,
-          status: 'applied',
-          view: 'aura',
-        });
+        );
         return;
       }
       currentReduceMotion = command.reduceMotion;
       currentRecomposePlan = command.plan;
       ipcRenderer.send(
         ADAPTATION_EVENT_CHANNEL,
-        recomposeRuntime.applyPlan(command.plan, command.reduceMotion),
+        recomposeRuntime.applyPlan(
+          command.plan,
+          command.reduceMotion,
+          command.plan.source === 'deterministic',
+        ),
       );
       return;
     }
@@ -252,7 +254,11 @@ ipcRenderer.on(
         command.plan,
       );
       events.push(
-        recomposeRuntime.applyPlan(currentRecomposePlan, currentReduceMotion),
+        recomposeRuntime.applyPlan(
+          currentRecomposePlan,
+          currentReduceMotion,
+          false,
+        ),
       );
     }
     ipcRenderer.send(

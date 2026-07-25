@@ -16,6 +16,17 @@ function canGuide(element: PageElement): boolean {
   );
 }
 
+export function isConversationPageCurrent(
+  expected: Pick<PageModel, 'pageId' | 'revision'>,
+  current: PageModel | null,
+): boolean {
+  return (
+    current !== null &&
+    current.pageId === expected.pageId &&
+    current.revision === expected.revision
+  );
+}
+
 export function validateConversationTurn(
   untrustedResponse: ConversationTurnResponse,
   page: PageModel,

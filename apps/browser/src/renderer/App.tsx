@@ -76,7 +76,7 @@ type LocalRecomposeStatus =
       durationMs: number;
       error: string | null;
       model: string;
-      status: 'fallback' | 'ready';
+      status: 'fallback' | 'matched' | 'ready';
     };
 
 function presetLabel(preset: RecomposePreset): string {
@@ -99,33 +99,43 @@ export function App(): React.JSX.Element {
     useState<BrowserNavigationState>(EMPTY_NAVIGATION);
   const [address, setAddress] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
-  const [runtimeEvent, setRuntimeEvent] = useState<PageRuntimeEvent | null>(null);
+  const [runtimeEvent, setRuntimeEvent] = useState<PageRuntimeEvent | null>(
+    null,
+  );
   const [pageIntelligence, setPageIntelligence] =
     useState<PageIntelligenceState | null>(null);
-  const [adaptation, setAdaptation] = useState<AdaptationState>(EMPTY_ADAPTATION);
+  const [adaptation, setAdaptation] =
+    useState<AdaptationState>(EMPTY_ADAPTATION);
   const [semanticAnalysis, setSemanticAnalysis] =
     useState<SemanticAnalysisState>(EMPTY_SEMANTIC_ANALYSIS);
   const [conversation, setConversation] =
     useState<ConversationState>(EMPTY_CONVERSATION);
-  const [profile, setProfile] = useState<BrowserProfile | null | undefined>(undefined);
+  const [profile, setProfile] = useState<BrowserProfile | null | undefined>(
+    undefined,
+  );
   const [selectedPreset, setSelectedPreset] =
     useState<RecomposePreset>('personalized');
-  const [appliedPreset, setAppliedPreset] = useState<RecomposePreset | null>(null);
-  const [localRecompose, setLocalRecompose] =
-    useState<LocalRecomposeStatus>({ status: 'idle' });
+  const [appliedPreset, setAppliedPreset] = useState<RecomposePreset | null>(
+    null,
+  );
+  const [localRecompose, setLocalRecompose] = useState<LocalRecomposeStatus>({
+    status: 'idle',
+  });
   const editingAddress = useRef(false);
   const lastPageId = useRef<string | null>(null);
+  const localRecomposeRequest = useRef(0);
 
   useEffect(() => {
     const removeNavigationListener = window.aura.onNavigationState((state) => {
       setNavigation(state);
       if (!editingAddress.current) setAddress(state.url);
     });
-    const removeRuntimeListener = window.aura.onPageRuntimeEvent(setRuntimeEvent);
-    const removeIntelligenceListener = window.aura.onPageIntelligenceState(
-      setPageIntelligence,
-    );
-    const removeAdaptationListener = window.aura.onAdaptationState(setAdaptation);
+    const removeRuntimeListener =
+      window.aura.onPageRuntimeEvent(setRuntimeEvent);
+    const removeIntelligenceListener =
+      window.aura.onPageIntelligenceState(setPageIntelligence);
+    const removeAdaptationListener =
+      window.aura.onAdaptationState(setAdaptation);
     const removeSemanticListener =
       window.aura.onSemanticAnalysisState(setSemanticAnalysis);
     const removeConversationListener =
@@ -154,6 +164,7 @@ export function App(): React.JSX.Element {
     const pageId = pageIntelligence?.model.pageId ?? null;
     if (pageId !== lastPageId.current) {
       lastPageId.current = pageId;
+      localRecomposeRequest.current += 1;
       setAppliedPreset(null);
       setLocalRecompose({ status: 'idle' });
     }
@@ -224,10 +235,33 @@ export function App(): React.JSX.Element {
 
     const resolvedProfile = profileForRecomposePreset(profile, selectedPreset);
     const model = pageIntelligence.model;
+    const request = localRecomposeRequest.current + 1;
+    localRecomposeRequest.current = request;
     setAppliedPreset(selectedPreset);
     setLocalRecompose({ status: 'running' });
 
-    const applied = await window.aura.applyPresentation(resolvedProfile);
+    // Dispatch both operations in the same turn. Starting the local request
+    // immediately invalidates any slower refinement from the previous preset,
+    // while the synchronous presentation IPC is still registered first.
+    const presentationResult = window.aura.applyPresentation(resolvedProfile);
+    const localResult = window.aura
+      .applyLocalRecompose({
+        currentGoal: conversation.currentIntent?.goal ?? null,
+        page: model,
+        preset: selectedPreset,
+        profile: resolvedProfile,
+      })
+      .then(
+        (result) => ({ error: null, result }),
+        (error: unknown) => ({ error, result: null }),
+      );
+    const applied = await presentationResult;
+    if (
+      request !== localRecomposeRequest.current ||
+      lastPageId.current !== model.pageId
+    ) {
+      return;
+    }
     if (!applied) {
       setLocalRecompose({
         durationMs: 0,
@@ -238,31 +272,36 @@ export function App(): React.JSX.Element {
       return;
     }
 
-    void window.aura
-      .applyLocalRecompose({
-        currentGoal: conversation.currentIntent?.goal ?? null,
-        page: model,
-        preset: selectedPreset,
-        profile: resolvedProfile,
-      })
-      .then((result) => {
-        if (lastPageId.current !== model.pageId) return;
-        setLocalRecompose({
-          durationMs: result.durationMs,
-          error: result.error,
-          model: result.model,
-          status: result.applied ? 'ready' : 'fallback',
-        });
-      })
-      .catch((error: unknown) => {
-        if (lastPageId.current !== model.pageId) return;
+    void localResult.then(({ error, result }) => {
+      if (
+        request !== localRecomposeRequest.current ||
+        lastPageId.current !== model.pageId
+      ) {
+        return;
+      }
+      if (result === null) {
         setLocalRecompose({
           durationMs: 0,
-          error: error instanceof Error ? error.message : 'Local Qwen is unavailable.',
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Local Qwen is unavailable.',
           model: 'qwen3.5:4b-mlx',
           status: 'fallback',
         });
+        return;
+      }
+      setLocalRecompose({
+        durationMs: result.durationMs,
+        error: result.error,
+        model: result.model,
+        status: result.applied
+          ? 'ready'
+          : result.output !== null && result.error === null
+            ? 'matched'
+            : 'fallback',
       });
+    });
   }
 
   async function setAdaptationView(view: AdaptationView): Promise<void> {
@@ -322,12 +361,14 @@ export function App(): React.JSX.Element {
 
   const localStatusCopy =
     localRecompose.status === 'running'
-      ? 'Qwen is choosing the best real controls and content locally…'
+      ? 'Choosing the most useful content and controls on this Mac…'
       : localRecompose.status === 'ready'
-        ? `Local Qwen personalized this page in ${Math.round(localRecompose.durationMs)} ms.`
-        : localRecompose.status === 'fallback'
-          ? 'The deterministic AURA version is active; cloud refinement can continue without the local model.'
-          : null;
+        ? `Applied in ${Math.round(localRecompose.durationMs)} ms.`
+        : localRecompose.status === 'matched'
+          ? `Checked in ${Math.round(localRecompose.durationMs)} ms. No extra rearrangement was needed.`
+          : localRecompose.status === 'fallback'
+            ? 'AURA’s built-in page structure remains active.'
+            : null;
 
   return (
     <main
@@ -409,7 +450,10 @@ export function App(): React.JSX.Element {
           onClick={togglePanel}
           type="button"
         >
-          <AuraSparkIcon aria-hidden="true" className="interface-icon compact" />
+          <AuraSparkIcon
+            aria-hidden="true"
+            className="interface-icon compact"
+          />
           {panelOpen ? 'Close AURA' : 'Open AURA'}
         </button>
       </header>
@@ -427,8 +471,7 @@ export function App(): React.JSX.Element {
           </div>
 
           <p className="panel-copy">
-            Keep the real website underneath, but rebuild the experience around
-            the person using it.
+            Adapt this page or ask for help without leaving what you are doing.
           </p>
 
           <details className="profile-card">
@@ -441,7 +484,9 @@ export function App(): React.JSX.Element {
 
           <div className="runtime-status" aria-live="polite">
             <span
-              className={pageConnectionReady ? 'status-light ready' : 'status-light'}
+              className={
+                pageConnectionReady ? 'status-light ready' : 'status-light'
+              }
               aria-hidden="true"
             />
             <div>
@@ -456,7 +501,7 @@ export function App(): React.JSX.Element {
                 {pageConnectionFailed
                   ? navigation.error
                   : pageConnectionReady
-                    ? 'Ready to recompose the real page and preserve its actions.'
+                    ? 'The page is ready for AURA.'
                     : 'Waiting for the AURA page preload.'}
               </span>
             </div>
@@ -499,7 +544,8 @@ export function App(): React.JSX.Element {
           >
             {adaptation.status === 'applying'
               ? 'Reshaping this page…'
-              : adaptation.status === 'ready' && appliedPreset !== selectedPreset
+              : adaptation.status === 'ready' &&
+                  appliedPreset !== selectedPreset
                 ? `Remake as ${presetLabel(selectedPreset)}`
                 : 'Make This Mine'}
           </button>
@@ -519,7 +565,7 @@ export function App(): React.JSX.Element {
                   : 'The original website is restored. Your AURA version is preserved.'
                 : pageIntelligence === null
                   ? 'AURA is understanding this page before making changes.'
-                  : 'AURA starts with a deterministic redesign, then local and cloud intelligence can refine it while you watch.')}
+                  : 'AURA can create a calmer view while preserving the original page.')}
           </p>
 
           {localStatusCopy !== null ? (
@@ -528,7 +574,8 @@ export function App(): React.JSX.Element {
               className={`local-recompose-status ${localRecompose.status}`}
             >
               <span aria-hidden="true">
-                {localRecompose.status === 'ready' ? (
+                {localRecompose.status === 'ready' ||
+                localRecompose.status === 'matched' ? (
                   <CheckIcon className="status-glyph" />
                 ) : (
                   <AuraSparkIcon className="status-glyph" />
@@ -537,10 +584,12 @@ export function App(): React.JSX.Element {
               <div>
                 <strong>
                   {localRecompose.status === 'running'
-                    ? 'Personalizing locally…'
+                    ? 'Refining on this Mac…'
                     : localRecompose.status === 'ready'
-                      ? 'Local fast path ready'
-                      : 'Local fast path skipped'}
+                      ? 'On-device refinement ready'
+                      : localRecompose.status === 'matched'
+                        ? 'First layout already matched'
+                        : 'Built-in layout active'}
                 </strong>
                 <p>{localStatusCopy}</p>
               </div>
@@ -562,17 +611,17 @@ export function App(): React.JSX.Element {
               <div>
                 <strong>
                   {semanticAnalysis.status === 'analyzing'
-                    ? 'Deep refinement is continuing…'
+                    ? 'Refining page details…'
                     : semanticAnalysis.status === 'ready'
                       ? semanticAnalysis.pagePurpose
-                      : 'Your local AURA version is active'}
+                      : 'AURA is ready'}
                 </strong>
                 <p>
                   {semanticAnalysis.status === 'analyzing'
-                    ? 'You can use the page now. AURA will safely fold deeper page understanding into the interface when it arrives.'
+                    ? 'You can keep using the page while this finishes.'
                     : semanticAnalysis.status === 'ready'
                       ? semanticAnalysis.summary
-                      : 'Cloud refinement is unavailable, but the recomposed page and local/deterministic paths remain usable.'}
+                      : 'The current adapted page remains usable.'}
                 </p>
               </div>
             </section>

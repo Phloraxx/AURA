@@ -45,6 +45,7 @@ test('rehearses clean launch through Learn Me, Recompose, voice UI, Talk, Rememb
     args: [resolve('.vite/main/index.js')],
     env: {
       ...PROCESS_ENV,
+      AURA_LOCAL_CONVERSATION: '0',
       AURA_START_URL: ARTICLE_URL,
       AURA_USER_DATA_DIR: userData,
       OPENAI_API_KEY: '',
@@ -94,6 +95,31 @@ test('rehearses clean launch through Learn Me, Recompose, voice UI, Talk, Rememb
       )
       .toEqual({ active: 'on', preset: 'clear_calm' });
 
+    const showOnOriginal = remote?.getByRole('button', {
+      name: /Show (on original page|source)/,
+    }).first();
+    expect(showOnOriginal).toBeDefined();
+    await showOnOriginal?.click();
+    await expect(
+      shell.getByRole('button', { name: 'Original' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await remote?.waitForTimeout(1_100);
+    await expect
+      .poll(() =>
+        remote?.evaluate(
+          () => document.querySelector('[data-aura-recompose-root]') === null,
+        ),
+      )
+      .toBe(true);
+    await shell.getByRole('button', { name: 'AURA', exact: true }).click();
+    await expect
+      .poll(() =>
+        remote?.evaluate(
+          () => document.querySelector('[data-aura-recompose-root]') !== null,
+        ),
+      )
+      .toBe(true);
+
     const message = shell.getByRole('textbox', { name: 'Ask or tell AURA' });
     await message.fill('The page is too distracting.');
     await message.press('Enter');
@@ -112,6 +138,14 @@ test('rehearses clean launch through Learn Me, Recompose, voice UI, Talk, Rememb
           () =>
             document.querySelector('[data-aura-recompose-root]') === null &&
             !document.documentElement.hasAttribute('data-aura-recomposed'),
+        ),
+      )
+      .toBe(true);
+    await shell.getByRole('button', { name: 'Make This Mine' }).click();
+    await expect
+      .poll(() =>
+        remote?.evaluate(
+          () => document.querySelector('[data-aura-recompose-root]') !== null,
         ),
       )
       .toBe(true);
@@ -150,6 +184,7 @@ test('keeps the page runtime connected across shell and page reloads', async () 
     args: [resolve('.vite/main/index.js')],
     env: {
       ...PROCESS_ENV,
+      AURA_LOCAL_CONVERSATION: '0',
       AURA_START_URL: ARTICLE_URL,
       AURA_USER_DATA_DIR: userData,
       OPENAI_API_KEY: '',
@@ -183,6 +218,7 @@ test('runs Step by Step, conversation, memory, navigation, and Original in Elect
     args: [resolve('.vite/main/index.js')],
     env: {
       ...PROCESS_ENV,
+      AURA_LOCAL_CONVERSATION: '0',
       AURA_START_URL: ARTICLE_URL,
       AURA_USER_DATA_DIR: userData,
       OPENAI_API_KEY: '',
@@ -289,6 +325,7 @@ test('runs Step by Step, conversation, memory, navigation, and Original in Elect
     args: [resolve('.vite/main/index.js')],
     env: {
       ...PROCESS_ENV,
+      AURA_LOCAL_CONVERSATION: '0',
       AURA_START_URL: ARTICLE_URL,
       AURA_USER_DATA_DIR: userData,
       OPENAI_API_KEY: '',

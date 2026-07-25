@@ -5,9 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RecomposePlan } from '../shared/recompose';
 import { createPageRecomposeRuntime } from './runtime';
 
-function plan(
-  preset: RecomposePlan['preset'] = 'clear_calm',
-): RecomposePlan {
+function plan(preset: RecomposePlan['preset'] = 'clear_calm'): RecomposePlan {
   return {
     archetype: 'listing',
     pageId: 'page-1',
@@ -76,6 +74,7 @@ function installFixture(): void {
 
 describe('AURA Recompose runtime', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     document.documentElement.removeAttribute('data-aura-recomposed');
     installFixture();
     vi.restoreAllMocks();
@@ -89,7 +88,9 @@ describe('AURA Recompose runtime', () => {
     expect(result.status).toBe('applied');
     expect(document.documentElement.dataset.auraRecomposed).toBe('on');
     expect(document.querySelector('[data-aura-recompose-root]')).not.toBeNull();
-    expect(document.querySelector('[data-aura-id="real-button"]')).not.toBeNull();
+    expect(
+      document.querySelector('[data-aura-id="real-button"]'),
+    ).not.toBeNull();
     expect(document.querySelector<HTMLTextAreaElement>('#draft')?.value).toBe(
       'Keep this exact draft',
     );
@@ -114,6 +115,42 @@ describe('AURA Recompose runtime', () => {
     expect(clicked).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the original page visible after Show source until AURA is explicitly restored', () => {
+    vi.useFakeTimers();
+    const onEvent = vi.fn();
+    const runtime = createPageRecomposeRuntime(onEvent);
+    const target = document.querySelector<HTMLElement>(
+      '[data-aura-id="result-one"]',
+    );
+    if (target !== null) target.scrollIntoView = vi.fn();
+    runtime.applyPlan(plan(), true);
+
+    const showSource = [
+      ...document.querySelectorAll<HTMLButtonElement>(
+        '[data-aura-recompose-root] button',
+      ),
+    ].find((button) => button.textContent === 'Show source');
+    showSource?.click();
+
+    expect(document.querySelector('[data-aura-recompose-root]')).toBeNull();
+    expect(document.documentElement.dataset.auraRecomposed).toBeUndefined();
+    expect(target?.dataset.auraHighlight).toBe('on');
+    expect(onEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'view',
+        status: 'restored',
+        view: 'original',
+      }),
+    );
+
+    vi.runAllTimers();
+    expect(target?.dataset.auraHighlight).toBeUndefined();
+    expect(document.querySelector('[data-aura-recompose-root]')).toBeNull();
+
+    runtime.setView('page-1', 'aura');
+    expect(document.querySelector('[data-aura-recompose-root]')).not.toBeNull();
+  });
+
   it('restores Original and then rebuilds AURA without losing form state', () => {
     const runtime = createPageRecomposeRuntime();
     runtime.applyPlan(plan(), true);
@@ -131,6 +168,25 @@ describe('AURA Recompose runtime', () => {
     expect(draft?.value).toBe('Judge typed this after AURA opened');
   });
 
+  it('reopens AURA for a fresh Make action but not for a background refinement', () => {
+    const runtime = createPageRecomposeRuntime();
+    const refined = {
+      ...plan(),
+      source: 'local' as const,
+      summary: 'Locally refined.',
+    };
+    runtime.applyPlan(plan(), true);
+    runtime.setView('page-1', 'original');
+
+    const background = runtime.applyPlan(refined, true, false);
+    expect(background.view).toBe('original');
+    expect(document.querySelector('[data-aura-recompose-root]')).toBeNull();
+
+    const freshMake = runtime.applyPlan(plan(), true);
+    expect(freshMake.view).toBe('aura');
+    expect(document.querySelector('[data-aura-recompose-root]')).not.toBeNull();
+  });
+
   it('makes Step by Step genuinely progressive', () => {
     const runtime = createPageRecomposeRuntime();
     runtime.applyPlan(plan('step_by_step'), true);
@@ -142,9 +198,9 @@ describe('AURA Recompose runtime', () => {
     expect(sections[0]?.hidden).toBe(false);
     expect(sections[1]?.hidden).toBe(true);
 
-    const next = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent === 'Next',
-    );
+    const next = [
+      ...document.querySelectorAll<HTMLButtonElement>('button'),
+    ].find((button) => button.textContent === 'Next');
     next?.click();
 
     expect(document.body.textContent).toContain('Step 2 of 2');

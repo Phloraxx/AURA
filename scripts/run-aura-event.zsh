@@ -5,6 +5,13 @@ set -euo pipefail
 script_directory="${0:A:h}"
 repository_directory="${script_directory:h}"
 app_binary="${repository_directory}/apps/browser/out/AURA-darwin-arm64/AURA.app/Contents/MacOS/AURA"
+local_environment="${repository_directory}/.env"
+
+if [[ -f "${local_environment}" ]]; then
+  set -a
+  source "${local_environment}"
+  set +a
+fi
 
 if [[ ! -x "${app_binary}" ]]; then
   print -u2 "AURA.app is missing. Run: corepack pnpm browser:package:mac"
@@ -21,6 +28,8 @@ export OPENAI_MODEL="${OPENAI_MODEL:-gpt-5.6-luna}"
 export AURA_PAGE_REASONING_EFFORT="${AURA_PAGE_REASONING_EFFORT:-medium}"
 export AURA_OLLAMA_URL="${AURA_OLLAMA_URL:-http://127.0.0.1:11434}"
 export AURA_LOCAL_MODEL="${AURA_LOCAL_MODEL:-qwen3.5:4b-mlx}"
+export AURA_LOCAL_CONTEXT="${AURA_LOCAL_CONTEXT:-8192}"
+export AURA_LOCAL_CONVERSATION="${AURA_LOCAL_CONVERSATION:-1}"
 export AURA_TRANSCRIPTION_MODEL="${AURA_TRANSCRIPTION_MODEL:-gpt-4o-mini-transcribe}"
 
 # Local Qwen is an acceleration layer, not a launch dependency. Give the event

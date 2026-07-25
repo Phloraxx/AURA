@@ -266,12 +266,13 @@ Start measurement with:
 
 ```text
 OPENAI_MODEL=gpt-5.6-luna
-reasoning.effort=high
+reasoning.effort=medium
 ```
 
 Use structured outputs and image input. Model choice remains configurable. The
 event budget is approximately USD 50, so record request usage and avoid
-re-analyzing an unchanged page.
+re-analyzing an unchanged page. `high` remains an explicit event-Mac override
+for a measured quality comparison, as recorded in ADR-027.
 
 Do not implement automatic model routing before core reliability is finished.
 

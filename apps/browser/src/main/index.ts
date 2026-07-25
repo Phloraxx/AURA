@@ -50,7 +50,10 @@ import {
 import { createConversationProvider } from './ai/conversation-provider';
 import { createOnboardingProvider } from './ai/onboarding-provider';
 import { createPageAnalysisProvider } from './ai/page-analysis-provider';
-import { validateConversationTurn } from './ai/validate-conversation';
+import {
+  isConversationPageCurrent,
+  validateConversationTurn,
+} from './ai/validate-conversation';
 import { validatePageAnalysis } from './ai/validate-page-analysis';
 import { getPageViewBounds } from './layout';
 import { friendlyNavigationError, normalizeAddress } from './navigation';
@@ -323,10 +326,14 @@ async function runConversationTurn(
     semanticPlan: activeSemanticPlan,
     userMessage: request.userMessage,
   });
-  if (
-    pageIntelligenceState === null ||
-    pageIntelligenceState.model.pageId !== model.pageId
-  ) {
+  if (providerResponse.usage !== null) {
+    console.info(
+      `[AURA] ${providerResponse.source} conversation used ` +
+        `${providerResponse.usage.inputTokens} input and ` +
+        `${providerResponse.usage.outputTokens} output tokens.`,
+    );
+  }
+  if (!isConversationPageCurrent(model, pageIntelligenceState?.model ?? null)) {
     const staleResponse = conversationTurnResponseSchema.parse({
       ...providerResponse,
       adaptationPatch: null,

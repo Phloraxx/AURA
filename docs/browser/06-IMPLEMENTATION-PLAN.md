@@ -18,8 +18,8 @@ Locked decisions:
 - remote AURA runtime as preload;
 - runtime-first PageModel + screenshot + selective CDP enrichment;
 - direct OpenAI from Electron main for the event;
-- GPT-5.6 Luna with high reasoning as the event baseline,
-  environment-configurable;
+- GPT-5.6 Luna with medium page reasoning as the release baseline,
+  environment-configurable to high for a measured event-Mac comparison;
 - conservative reversible adaptation tiers;
 - four reliable conversation action families;
 - real-site testing as a release gate.

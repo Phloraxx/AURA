@@ -18,6 +18,26 @@ function clean(value: string | null | undefined, max = 260): string | null {
     : `${normalized.slice(0, Math.max(1, max - 1)).trim()}…`;
 }
 
+function sourceRank(source: RecomposePlan['source']): number {
+  if (source === 'cloud') return 2;
+  if (source === 'local') return 1;
+  return 0;
+}
+
+/**
+ * User-triggered deterministic plans begin a new experience and always win.
+ * Background refinements may improve only the currently selected experience;
+ * they must never revive an older preset or downgrade a cloud result.
+ */
+export function shouldAcceptRecomposePlan(
+  current: RecomposePlan,
+  incoming: RecomposePlan,
+): boolean {
+  if (incoming.source === 'deterministic') return true;
+  if (incoming.preset !== current.preset) return false;
+  return sourceRank(incoming.source) >= sourceRank(current.source);
+}
+
 function label(element: PageElement): string | null {
   return clean(element.accessibleName ?? element.text, 160);
 }
@@ -60,7 +80,9 @@ function ranked(
 }
 
 function byIds(page: PageModel, ids: string[]): PageElement[] {
-  const map = new Map(page.elements.map((element) => [element.auraId, element]));
+  const map = new Map(
+    page.elements.map((element) => [element.auraId, element]),
+  );
   const seen = new Set<string>();
   return ids
     .map((id) => map.get(id))
@@ -100,7 +122,7 @@ function actionFor(
     behavior: field ? 'focus' : 'click',
     label: field
       ? `Use ${label(element) ?? 'this field'}`
-      : label(element) ?? 'Open',
+      : (label(element) ?? 'Open'),
     prominence: primary ? 'primary' : 'secondary',
   };
 }
@@ -155,10 +177,7 @@ function pageHeading(page: PageModel): string {
   );
 }
 
-function deterministicTargets(
-  page: PageModel,
-  archetype: RecomposeArchetype,
-) {
+function deterministicTargets(page: PageModel, archetype: RecomposeArchetype) {
   const primary = ranked(page, (element) => element.interactive, 6);
   let results: PageElement[] = [];
   if (archetype === 'listing') {
@@ -169,11 +188,7 @@ function deterministicTargets(
       results = byIds(page, repeated.representativeAuraIds).slice(0, 8);
     }
     if (results.length < 3) {
-      results = ranked(
-        page,
-        (element) => element.repetitionKey !== null,
-        8,
-      );
+      results = ranked(page, (element) => element.repetitionKey !== null, 8);
     }
   } else if (archetype === 'form') {
     results = page.forms[0]
@@ -201,8 +216,43 @@ function reorder(
   if (!preferred?.length) return sections;
   const rank = new Map(preferred.map((kind, index) => [kind, index]));
   return [...sections].sort(
-    (left, right) =>
-      (rank.get(left.kind) ?? 99) - (rank.get(right.kind) ?? 99),
+    (left, right) => (rank.get(left.kind) ?? 99) - (rank.get(right.kind) ?? 99),
+  );
+}
+
+/**
+ * Returns true only when a refined plan would visibly change the useful
+ * structure or actions of the deterministic surface. Model prose, timing, and
+ * source labels are intentionally ignored.
+ */
+export function isMaterialRecomposeChange(
+  current: RecomposePlan,
+  refined: RecomposePlan,
+): boolean {
+  const visibleShape = (plan: RecomposePlan) => ({
+    archetype: plan.archetype,
+    sections: plan.sections.map((section) => ({
+      items: section.items.map((item) => ({
+        action:
+          item.action === null
+            ? null
+            : {
+                auraId: item.action.auraId,
+                behavior: item.action.behavior,
+                prominence: item.action.prominence,
+              },
+        targetAuraId: item.targetAuraId,
+        title: item.title,
+      })),
+      kind: section.kind,
+      title: section.title,
+    })),
+    title: plan.title,
+  });
+
+  return (
+    JSON.stringify(visibleShape(current)) !==
+    JSON.stringify(visibleShape(refined))
   );
 }
 
@@ -232,7 +282,11 @@ export function buildPageRecomposePlan({
   const supporting = local?.supportingTargetIds.length
     ? byIds(page, local.supportingTargetIds)
     : fallback.supporting;
-  const primaryIds = new Set(primary.map((element) => element.auraId));
+  // A calm hierarchy has one obvious next action. Other real controls remain
+  // available without competing as equally prominent calls to action.
+  const primaryIds = new Set(
+    primary.slice(0, 1).map((element) => element.auraId),
+  );
   const maxItems =
     preset === 'step_by_step' ? 4 : preset === 'clear_calm' ? 5 : 8;
   const sections: RecomposeSection[] = [];
@@ -374,11 +428,7 @@ export function refinePageRecomposeWithSemantic(
 }
 
 export function inferPresetFromSettings(settings: {
-  informationDensity?:
-    | 'standard'
-    | 'calm'
-    | 'step_by_step'
-    | undefined;
+  informationDensity?: 'standard' | 'calm' | 'step_by_step' | undefined;
   reduceMotion: boolean;
   targetSizePx: number;
   textScale: number;

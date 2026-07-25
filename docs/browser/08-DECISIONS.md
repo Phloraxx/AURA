@@ -123,7 +123,7 @@ Known profile preferences apply immediately when **Make This Mine** is pressed. 
 
 ## ADR-014 — Preserve the real page; avoid DOM reconstruction
 
-**Status:** Accepted
+**Status:** Superseded by ADR-030
 
 Keep original controls and application state. The event build should prefer styling, emphasis, de-emphasis, safe collapse, targeted reversible text replacement, and small AURA-owned companion UI.
 
@@ -261,6 +261,50 @@ Every pull request into `main` and every push to `main` runs repository verifica
 - Electron Playwright E2E under Xvfb.
 
 Reason: local Mac verification remains essential for native packaging and real-site behavior, but merge health must also be independently reproducible in GitHub.
+
+## ADR-029 — Talk to AURA is local-first and the Halo is its companion
+
+**Status:** Accepted
+
+Use the installed Ollama model as the first structured provider for
+`conversationTurn`. Use OpenAI as the second provider when configured, then
+retain the deterministic action-family implementation as the final fallback.
+Every provider returns the same schema-validated contract and all page targets
+are revalidated against the current PageModel.
+
+Set the event local context explicitly to 8192 tokens through
+`AURA_LOCAL_CONTEXT`; do not rely on Ollama's 4096-token default. Increase it
+only after measured prompt-token and unified-memory evidence.
+
+Represent assistant presence through the existing AURA Halo with honest
+idle/listening/transcribing/thinking/speaking/remembering/error states. Do not
+introduce a separate mascot identity, autonomous interruption surface, or
+model-generated animation instructions. Spoken output uses installed local
+macOS voices, prefers higher-quality voices, and keeps an explicit user choice.
+
+Reason: this makes Talk to AURA natural and useful without a network dependency,
+while preserving the product's three experiences, validation boundary,
+deterministic recovery, reduced-motion behavior, and canonical visual identity.
+
+## ADR-030 — Recompose is a trusted presentation of the real page
+
+**Status:** Accepted
+
+Make This Mine may render an AURA-owned alternative presentation above the
+original document. The original document stays loaded and retains state.
+Recompose content and actions are built only by trusted AURA code from validated
+PageModel targets; model-generated HTML or JavaScript is never rendered or
+executed. Every actionable item resolves back to a current real-page target, and
+`Original ↔ AURA` must switch presentations without reloading the page.
+
+Do not reparent arbitrary site component trees or imitate site controls that
+cannot be connected safely. If a target no longer resolves, use a safe
+focus/scroll fallback or omit the action.
+
+Reason: the original ADR-014 correctly protected site state but prohibited the
+trusted Recompose surface that became the flagship experience. This decision
+preserves that safety boundary while allowing a materially personalized
+interface.
 
 ## Decision template
 

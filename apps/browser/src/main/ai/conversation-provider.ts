@@ -5,17 +5,29 @@ import {
   conversationModelOutputSchema,
   conversationTurnResponseSchema,
   type ConversationMessage,
+  type ConversationModelOutput,
   type ConversationTurnResponse,
   type SessionIntent,
 } from '../../shared/conversation';
-import type { PageModel } from '../../shared/page-model';
+import type { PageElement, PageModel } from '../../shared/page-model';
 import type { BrowserProfile } from '../../shared/profile';
 import type { SemanticPlan } from '../../shared/semantic-analysis';
 import { compactPageModel } from './page-analysis-provider';
+import {
+  resolveLocalModelConfig,
+  resolveLocalTimeout,
+} from './local-model-config';
 import { CONVERSATION_INSTRUCTIONS } from './prompts/conversation';
 
 const DEFAULT_MODEL = 'gpt-5.6-luna';
 const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_LOCAL_TIMEOUT_MS = 20_000;
+
+interface OllamaConversationResponse {
+  eval_count?: number;
+  message?: { content?: string };
+  prompt_eval_count?: number;
+}
 
 export interface ConversationProviderRequest {
   currentIntent: SessionIntent | null;
@@ -51,6 +63,93 @@ function compactSemanticPlan(plan: SemanticPlan | null): object | null {
     pagePurpose: plan.pagePurpose,
     primaryTargetIds: plan.primaryTargetIds,
     summary: plan.summary,
+  };
+}
+
+function selectConversationTargets(
+  page: PageModel,
+  semanticPlan: SemanticPlan | null,
+): PageElement[] {
+  const available = [...page.elements]
+    .filter((element) => element.visible)
+    .sort((left, right) => right.score - left.score);
+  const selected = new Map<string, PageElement>();
+  const add = (elements: PageElement[], limit: number): void => {
+    for (const element of elements) {
+      if (selected.size >= 52 || limit <= 0) return;
+      if (selected.has(element.auraId)) continue;
+      selected.set(element.auraId, element);
+      limit -= 1;
+    }
+  };
+  const ids = new Set([
+    ...(semanticPlan?.primaryTargetIds ?? []),
+    ...(semanticPlan?.guide?.steps.map((step) => step.auraId) ?? []),
+    ...page.forms.flatMap((form) => form.controlAuraIds),
+  ]);
+
+  add(available.filter((element) => ids.has(element.auraId)), 16);
+  add(available.filter((element) => element.interactive), 18);
+  add(available.filter((element) => element.category === 'heading'), 8);
+  add(
+    available.filter(
+      (element) =>
+        element.category === 'region' ||
+        element.category === 'text' ||
+        element.category === 'list',
+    ),
+    12,
+  );
+  add(available, 52 - selected.size);
+  return [...selected.values()];
+}
+
+function compactLocalConversationContext(
+  request: ConversationProviderRequest,
+): object {
+  return {
+    currentIntent: request.currentIntent,
+    page: {
+      elements: selectConversationTargets(
+        request.page,
+        request.semanticPlan,
+      ).map((element) => ({
+        auraId: element.auraId,
+        category: element.category,
+        formAuraId: element.formAuraId,
+        inViewport: element.inViewport,
+        interactive: element.interactive,
+        name: element.accessibleName,
+        role: element.role,
+        text: element.text?.replace(/\s+/g, ' ').trim().slice(0, 220) ?? null,
+      })),
+      forms: request.page.forms.slice(0, 6),
+      pageId: request.page.pageId,
+      repeatedStructures: request.page.repeatedStructures.slice(0, 6),
+      revision: request.page.revision,
+      title: request.page.title,
+      url: request.page.url,
+    },
+    profile: {
+      learnedPreferences: request.profile.learnedPreferences,
+      preferences: request.profile.preferences,
+      summary: request.profile.summary,
+    },
+    recentConversation: request.recentConversation.slice(-8),
+    semanticState: compactSemanticPlan(request.semanticPlan),
+    userMessage: request.userMessage,
+  };
+}
+
+function localOutputExample(): ConversationModelOutput {
+  return {
+    actionFamily: 'answer',
+    adaptationPatch: null,
+    adjustment: null,
+    assistantMessage: 'A concise response grounded in the current page.',
+    explanation: null,
+    intent: null,
+    memoryProposal: null,
   };
 }
 
@@ -269,6 +368,84 @@ export function deterministicConversationTurn(
   });
 }
 
+class OllamaConversationProvider implements ConversationProvider {
+  readonly #baseUrl: string;
+  readonly #contextLength: number;
+  readonly #model: string;
+  readonly #timeoutMs: number;
+
+  constructor(options: {
+    baseUrl: string;
+    contextLength: number;
+    model: string;
+    timeoutMs: number;
+  }) {
+    this.#baseUrl = options.baseUrl;
+    this.#contextLength = options.contextLength;
+    this.#model = options.model;
+    this.#timeoutMs = options.timeoutMs;
+  }
+
+  async turn(
+    request: ConversationProviderRequest,
+  ): Promise<ConversationTurnResponse> {
+    const response = await fetch(`${this.#baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        format: 'json',
+        keep_alive: -1,
+        messages: [
+          {
+            role: 'system',
+            content: [
+              CONVERSATION_INSTRUCTIONS,
+              'Return exactly one JSON object and no Markdown or prose outside it.',
+              `Use exactly this object shape: ${JSON.stringify(localOutputExample())}`,
+            ].join('\n\n'),
+          },
+          {
+            role: 'user',
+            content: JSON.stringify(compactLocalConversationContext(request)),
+          },
+        ],
+        model: this.#model,
+        options: {
+          num_ctx: this.#contextLength,
+          num_predict: 700,
+          temperature: 0.1,
+        },
+        stream: false,
+        think: false,
+      }),
+      signal: AbortSignal.timeout(this.#timeoutMs),
+    });
+    if (!response.ok) {
+      throw new Error(`Local conversation model returned HTTP ${response.status}.`);
+    }
+    const body = (await response.json()) as OllamaConversationResponse;
+    const raw = body.message?.content;
+    if (!raw) {
+      throw new Error('Local conversation model returned no structured response.');
+    }
+    const output = conversationModelOutputSchema.parse(JSON.parse(raw));
+    const inputTokens = body.prompt_eval_count ?? 0;
+    const outputTokens = body.eval_count ?? 0;
+    return conversationTurnResponseSchema.parse({
+      ...output,
+      source: 'local',
+      usage:
+        inputTokens > 0 || outputTokens > 0
+          ? {
+              inputTokens,
+              outputTokens,
+              totalTokens: inputTokens + outputTokens,
+            }
+          : null,
+    });
+  }
+}
+
 class OpenAIConversationProvider implements ConversationProvider {
   readonly #client: OpenAI;
   readonly #model: string;
@@ -338,36 +515,62 @@ class OpenAIConversationProvider implements ConversationProvider {
 export function createConversationProvider(
   environment: NodeJS.ProcessEnv = process.env,
 ): ConversationProvider {
+  const localConfig = resolveLocalModelConfig(environment);
+  const localEnabled =
+    environment.AURA_LOCAL_CONVERSATION?.trim().toLocaleLowerCase() !== '0' &&
+    environment.AURA_LOCAL_CONVERSATION?.trim().toLocaleLowerCase() !== 'false';
+  const localProvider = localEnabled
+    ? new OllamaConversationProvider({
+        ...localConfig,
+        timeoutMs: resolveLocalTimeout(
+          environment.AURA_LOCAL_CONVERSATION_TIMEOUT_MS,
+          DEFAULT_LOCAL_TIMEOUT_MS,
+        ),
+      })
+    : null;
   const apiKey = environment.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
-    return {
-      turn: (request) =>
-        Promise.resolve(deterministicConversationTurn(request)),
-    };
-  }
-  const provider = new OpenAIConversationProvider(
-    apiKey,
-    environment.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
-    {
-      ...(environment.OPENAI_BASE_URL?.trim()
-        ? { baseURL: environment.OPENAI_BASE_URL.trim() }
-        : {}),
-      timeoutMs:
-        Number.parseInt(environment.AURA_OPENAI_TIMEOUT_MS ?? '', 10) ||
-        DEFAULT_TIMEOUT_MS,
-    },
-  );
+  const cloudProvider = apiKey
+    ? new OpenAIConversationProvider(
+        apiKey,
+        environment.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
+        {
+          ...(environment.OPENAI_BASE_URL?.trim()
+            ? { baseURL: environment.OPENAI_BASE_URL.trim() }
+            : {}),
+          timeoutMs:
+            Number.parseInt(environment.AURA_OPENAI_TIMEOUT_MS ?? '', 10) ||
+            DEFAULT_TIMEOUT_MS,
+        },
+      )
+    : null;
   return {
     turn: async (request) => {
-      try {
-        return await provider.turn(request);
-      } catch (error) {
-        console.warn(
-          '[AURA] Conversation AI unavailable; using deterministic guidance.',
-          error instanceof Error ? error.message : String(error),
-        );
-        return deterministicConversationTurn(request);
+      if (localProvider !== null) {
+        try {
+          return await localProvider.turn(request);
+        } catch (error) {
+          console.warn(
+            '[AURA] Local conversation unavailable; trying the next safe path.',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
       }
+      if (cloudProvider !== null) {
+        try {
+          return await cloudProvider.turn(request);
+        } catch (error) {
+          console.warn(
+            '[AURA] Cloud conversation unavailable; using deterministic guidance.',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+      if (localProvider === null && cloudProvider === null) {
+        console.warn(
+          '[AURA] Conversation models are disabled or unavailable; using deterministic guidance.',
+        );
+      }
+      return deterministicConversationTurn(request);
     },
   };
 }

@@ -19,12 +19,17 @@ import {
   voiceTranscriptionRequestSchema,
   voiceTranscriptionResponseSchema,
 } from '../shared/voice';
-import { buildPageRecomposePlan } from '../page-recompose/plan';
+import {
+  buildPageRecomposePlan,
+  isMaterialRecomposeChange,
+} from '../page-recompose/plan';
 import { createLocalRecomposeProvider } from './ai/local-recompose-provider';
+import { LatestOperation } from './latest-operation';
 
 const TRANSCRIPTION_MODEL =
   process.env.AURA_TRANSCRIPTION_MODEL?.trim() || 'gpt-4o-mini-transcribe';
 const localProvider = createLocalRecomposeProvider();
+const localRecomposeOperations = new LatestOperation();
 let transcriptionClient: OpenAI | null = null;
 
 function sameDocument(left: string, right: string): boolean {
@@ -68,7 +73,8 @@ function configureShellMediaPermissions(): void {
           ? details.mediaTypes
           : [];
       callback(
-        mediaTypes.length > 0 && mediaTypes.every((mediaType) => mediaType === 'audio'),
+        mediaTypes.length > 0 &&
+          mediaTypes.every((mediaType) => mediaType === 'audio'),
       );
     },
   );
@@ -135,8 +141,7 @@ function deterministicPlan(
     page: request.page,
     preset: request.preset,
     source: 'deterministic',
-    subtitle:
-      'AURA is rebuilding this real page now while local and cloud intelligence refine it.',
+    subtitle: 'A calmer view of this page, connected to the original controls.',
   });
 }
 
@@ -147,10 +152,12 @@ ipcMain.handle(IPC_CHANNELS.startRecompose, (_event, untrusted) => {
 
 ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
   const request = localRecomposeRequestSchema.parse(untrusted);
+  const operation = localRecomposeOperations.begin();
+  const initialPlan = deterministicPlan(request);
 
   // The visual transformation starts before the local model returns. This makes
   // model latency visible as progressive refinement instead of a loading wait.
-  if (!sendRecomposePlan(request, deterministicPlan(request))) {
+  if (!sendRecomposePlan(request, initialPlan)) {
     return localRecomposeResultSchema.parse({
       applied: false,
       durationMs: 0,
@@ -162,6 +169,13 @@ ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
   }
 
   const result = await localProvider.analyze(request);
+  if (!localRecomposeOperations.isCurrent(operation)) {
+    return localRecomposeResultSchema.parse({
+      ...result,
+      applied: false,
+      error: 'A newer personalization request replaced this refinement.',
+    });
+  }
   if (result.output === null) {
     return localRecomposeResultSchema.parse({
       ...result,
@@ -178,9 +192,17 @@ ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
     page: request.page,
     preset: request.preset,
     source: 'local',
-    subtitle:
-      'AURA used the local model to choose the parts of this real page that matter most.',
+    subtitle: 'Organized around the parts of this page that matter most.',
   });
+  if (!isMaterialRecomposeChange(initialPlan, plan)) {
+    return localRecomposeResultSchema.parse({
+      ...result,
+      // The deterministic surface was already the same useful structure. Do
+      // not claim that the local model caused a second visual transformation.
+      applied: false,
+      error: null,
+    });
+  }
   if (!sendRecomposePlan(request, plan)) {
     return localRecomposeResultSchema.parse({
       ...result,
@@ -211,10 +233,11 @@ ipcMain.handle(IPC_CHANNELS.transcribeVoice, async (_event, untrusted) => {
     `aura-voice.${extensionForMimeType(request.mimeType)}`,
     { type: request.mimeType },
   );
-  const transcription = await getTranscriptionClient().audio.transcriptions.create({
-    file,
-    model: TRANSCRIPTION_MODEL,
-  });
+  const transcription =
+    await getTranscriptionClient().audio.transcriptions.create({
+      file,
+      model: TRANSCRIPTION_MODEL,
+    });
   return voiceTranscriptionResponseSchema.parse({
     durationMs: Math.round((performance.now() - startedAt) * 10) / 10,
     text: transcription.text,

@@ -26,8 +26,12 @@ Before editing code, read in order:
 8. `docs/browser/06-IMPLEMENTATION-PLAN.md`
 9. `docs/browser/07-TESTING-DEMO.md`
 10. `docs/browser/08-DECISIONS.md`
-11. `docs/browser/DEFINITION-OF-DONE.md`
-12. `STATUS.md`
+11. `docs/browser/09-DESIGN-SYSTEM.md`
+12. `docs/browser/10-MOTION-PERSONALITY.md`
+13. `docs/browser/11-VIDEO-IDENTITY.md`
+14. `docs/browser/12-RECOMPOSE-VOICE.md`
+15. `docs/browser/DEFINITION-OF-DONE.md`
+16. `STATUS.md`
 
 Older extension-era documents are non-authoritative unless the browser source of truth explicitly references them.
 
@@ -42,7 +46,8 @@ Material architecture/scope changes require an ADR update before or with code.
 - Do not reintroduce AURA Fit, Lens, Rescue, Reader, Focus, Simplify, or Task Mode as independent primary UI.
 - Do not build Windows parity before the Mac event build is polished.
 - Do not build engine forks, browser sync, password manager, updater, bookmark ecosystem, or extension-store work.
-- Text conversation is required; voice is stretch.
+- Text conversation is required; the event voice surface is limited to
+  push-to-talk transcription and optional short spoken replies.
 - Prefer a complete vertical experience over architecture churn.
 
 ## Locked browser architecture
@@ -68,8 +73,10 @@ Material architecture/scope changes require an ADR update before or with code.
 
 ## AI rules
 
-- Browser event build calls OpenAI from Electron main; do not require the Hono API server.
+- Browser event build calls AI providers from Electron main; do not require the Hono API server.
 - Event model: `gpt-5.6-luna`. Flagship page analysis defaults to `medium` reasoning and is environment-configurable; onboarding/conversation retain their verified settings unless measured evidence justifies a change.
+- Talk to AURA uses local Ollama first, optional OpenAI second, and the deterministic action-family fallback last.
+- Local requests use an explicit, environment-configurable context window; the event default is 8192 tokens.
 - Use Responses API + structured outputs; page screenshots may be image input.
 - AI returns typed semantic/adaptation requests; trusted AURA code performs changes.
 - Never execute model-generated JavaScript or arbitrary generated HTML.

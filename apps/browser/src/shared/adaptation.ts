@@ -73,6 +73,24 @@ export type AdaptationState = z.infer<typeof adaptationStateSchema>;
 export type AdaptationView = z.infer<typeof adaptationViewSchema>;
 export type PresentationSettings = z.infer<typeof presentationSettingsSchema>;
 
+/**
+ * Recompose plans target stable AURA IDs for the lifetime of a document.
+ * Unlike semantic and presentation commands, they can safely survive ordinary
+ * same-document mutations while a slower local model is running.
+ */
+export function isAdaptationCommandCurrent(
+  command: AdaptationCommand,
+  pageId: string | null,
+  revision: number | null,
+): boolean {
+  if (command.pageId !== pageId) return false;
+  return (
+    command.type === 'set-adaptation-view' ||
+    command.type === 'apply-recompose' ||
+    command.revision === revision
+  );
+}
+
 export function presentationSettingsFromProfile(
   profile: BrowserProfile,
 ): PresentationSettings {

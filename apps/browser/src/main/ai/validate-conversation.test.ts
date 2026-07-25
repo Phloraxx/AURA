@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { ConversationTurnResponse } from '../../shared/conversation';
 import type { PageModel } from '../../shared/page-model';
-import { validateConversationTurn } from './validate-conversation';
+import {
+  isConversationPageCurrent,
+  validateConversationTurn,
+} from './validate-conversation';
 
 const page = {
   elements: [
@@ -52,5 +55,21 @@ describe('validateConversationTurn', () => {
       'real-region',
     ]);
     expect(validated.adaptationPatch?.guide?.steps).toHaveLength(1);
+  });
+
+  it('treats a newer revision of the same page as stale conversation context', () => {
+    const expected = {
+      pageId: 'page-1',
+      revision: 3,
+    } as PageModel;
+
+    expect(isConversationPageCurrent(expected, expected)).toBe(true);
+    expect(
+      isConversationPageCurrent(expected, {
+        ...expected,
+        revision: 4,
+      }),
+    ).toBe(false);
+    expect(isConversationPageCurrent(expected, null)).toBe(false);
   });
 });

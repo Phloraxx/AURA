@@ -20,6 +20,14 @@ const MAX_TEXT_LENGTH = 600;
 const MUTATION_QUIET_WINDOW_MS = 320;
 const INITIAL_SETTLE_MAX_MS = 1_200;
 const HIGHLIGHT_DURATION_MS = 2_000;
+const AURA_RUNTIME_SELECTOR = [
+  '[data-aura-owned]',
+  '[data-aura-recompose-root]',
+  'style[data-aura-event-theme]',
+  'style[data-aura-presentation-style]',
+  'style[data-aura-recompose-style]',
+  'style[data-aura-semantic-style]',
+].join(',');
 
 const INTERACTIVE_ROLES = new Set([
   'button',
@@ -178,9 +186,7 @@ function getReferencedText(element: Element, attribute: string): string {
   const ids = normalizeText(element.getAttribute(attribute)).split(' ');
   if (ids.length === 0) return '';
   return normalizeText(
-    ids
-      .map((id) => document.getElementById(id)?.textContent ?? '')
-      .join(' '),
+    ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' '),
   );
 }
 
@@ -207,7 +213,10 @@ function getNativeLabel(element: Element): string {
   if (element instanceof HTMLTableElement) {
     return normalizeText(element.caption?.textContent ?? '');
   }
-  if (element instanceof HTMLImageElement || element instanceof HTMLAreaElement) {
+  if (
+    element instanceof HTMLImageElement ||
+    element instanceof HTMLAreaElement
+  ) {
     return normalizeText(element.alt);
   }
   if (
@@ -266,7 +275,10 @@ function implicitRole(element: Element): string | null {
   return null;
 }
 
-function accessibleNameFor(element: Element, role: string | null): string | null {
+function accessibleNameFor(
+  element: Element,
+  role: string | null,
+): string | null {
   const labelledBy = getReferencedText(element, 'aria-labelledby');
   if (labelledBy.length > 0) return shorten(labelledBy);
 
@@ -337,7 +349,10 @@ function landmarkFor(element: Element, role: string | null): string | null {
     main: 'main',
     nav: 'navigation',
   };
-  if (tag === 'header' && element.closest('article, aside, main, section') === null) {
+  if (
+    tag === 'header' &&
+    element.closest('article, aside, main, section') === null
+  ) {
     return 'banner';
   }
   return byTag[tag] ?? null;
@@ -354,16 +369,24 @@ function categoryFor(
   if (tag === 'form' || role === 'form') return 'form';
   if (interactive) return 'control';
   if (landmark === 'navigation') return 'navigation';
-  if (landmark !== null || ['article', 'section'].includes(tag)) return 'region';
+  if (landmark !== null || ['article', 'section'].includes(tag))
+    return 'region';
   if (tag === 'table' || role === 'table' || role === 'grid') return 'table';
-  if (['li', 'ol', 'ul'].includes(tag) || ['list', 'listitem'].includes(role ?? '')) {
+  if (
+    ['li', 'ol', 'ul'].includes(tag) ||
+    ['list', 'listitem'].includes(role ?? '')
+  ) {
     return 'list';
   }
   if (['figure', 'img'].includes(tag) || role === 'img') return 'media';
   return 'text';
 }
 
-function isVisible(element: Element, style: CSSStyleDeclaration, rect: PageRect | null): boolean {
+function isVisible(
+  element: Element,
+  style: CSSStyleDeclaration,
+  rect: PageRect | null,
+): boolean {
   if (
     element.hasAttribute('hidden') ||
     element.getAttribute('aria-hidden') === 'true' ||
@@ -404,7 +427,12 @@ function isEligible(
   textLength: number,
 ): boolean {
   const tag = element.tagName.toLocaleLowerCase();
-  if (interactive || role !== null || landmark !== null || SEMANTIC_TAGS.has(tag)) {
+  if (
+    interactive ||
+    role !== null ||
+    landmark !== null ||
+    SEMANTIC_TAGS.has(tag)
+  ) {
     if (tag === 'p' || tag === 'li' || tag === 'label') return textLength >= 20;
     if (tag === 'img') return accessibleNameFor(element, role) !== null;
     return true;
@@ -490,7 +518,12 @@ function collectElements(): Element[] {
     for (const element of root.querySelectorAll('*')) {
       if (seen.has(element)) continue;
       seen.add(element);
-      if (element.closest('[data-aura-owned]') !== null) continue;
+      if (
+        element.matches(AURA_RUNTIME_SELECTOR) ||
+        element.closest(AURA_RUNTIME_SELECTOR) !== null
+      ) {
+        continue;
+      }
       output.push(element);
       if (element.shadowRoot !== null) roots.push(element.shadowRoot);
     }
@@ -498,17 +531,34 @@ function collectElements(): Element[] {
   return output;
 }
 
+function isAuraRuntimeNode(node: Node): boolean {
+  return (
+    node instanceof Element &&
+    (node.matches(AURA_RUNTIME_SELECTOR) ||
+      node.closest(AURA_RUNTIME_SELECTOR) !== null)
+  );
+}
+
+function isAuraRuntimeMutation(mutation: MutationRecord): boolean {
+  if (isAuraRuntimeNode(mutation.target)) return true;
+  if (mutation.type !== 'childList') return false;
+  const changed = [...mutation.addedNodes, ...mutation.removedNodes];
+  return changed.length > 0 && changed.every(isAuraRuntimeNode);
+}
+
 function buildCandidate(
   element: Element,
   sourceOrder: number,
   ensureAuraId: (element: Element) => string,
 ): RankablePageElement | null {
-  const role = normalizeText(element.getAttribute('role')) || implicitRole(element);
+  const role =
+    normalizeText(element.getAttribute('role')) || implicitRole(element);
   const interactive = isInteractive(element, role);
   const landmark = landmarkFor(element, role);
   const rawText = normalizeText(safeTextContent(element));
   const textLength = rawText.length;
-  if (!isEligible(element, role, interactive, landmark, textLength)) return null;
+  if (!isEligible(element, role, interactive, landmark, textLength))
+    return null;
 
   const style = window.getComputedStyle(element);
   const rect = rectFor(element);
@@ -519,7 +569,10 @@ function buildCandidate(
   const category = categoryFor(element, role, interactive, landmark);
   const form = element.closest('form');
   const headingMatch = /^h([1-6])$/.exec(element.tagName.toLocaleLowerCase());
-  const ariaLevel = Number.parseInt(element.getAttribute('aria-level') ?? '', 10);
+  const ariaLevel = Number.parseInt(
+    element.getAttribute('aria-level') ?? '',
+    10,
+  );
   const headingLevel =
     headingMatch?.[1] !== undefined
       ? Number.parseInt(headingMatch[1], 10)
@@ -629,7 +682,8 @@ export function createPageIntelligenceRuntime(
   let observer: MutationObserver | null = null;
 
   function ensureAuraId(element: Element): string {
-    const existing = auraIds.get(element) ?? element.getAttribute('data-aura-id');
+    const existing =
+      auraIds.get(element) ?? element.getAttribute('data-aura-id');
     if (existing !== null && existing !== undefined && existing.length > 0) {
       auraIds.set(element, existing);
       if (element.getAttribute('data-aura-id') !== existing) {
@@ -676,7 +730,8 @@ export function createPageIntelligenceRuntime(
       .filter((element) => element.category === 'form')
       .map((form) => {
         const controls = elements.filter(
-          (element) => element.formAuraId === form.auraId && element.interactive,
+          (element) =>
+            element.formAuraId === form.auraId && element.interactive,
         );
         return {
           accessibleName: form.accessibleName,
@@ -689,7 +744,11 @@ export function createPageIntelligenceRuntime(
         };
       })
       .filter((form, index, allForms) => {
-        return allForms.findIndex((candidate) => candidate.auraId === form.auraId) === index;
+        return (
+          allForms.findIndex(
+            (candidate) => candidate.auraId === form.auraId,
+          ) === index
+        );
       });
     const visibleAuraIds = candidates
       .filter(
@@ -715,15 +774,11 @@ export function createPageIntelligenceRuntime(
       pageId,
       privacy: {
         hasEditableControl:
-          document.querySelector(
-            EDITABLE_CONTROL_SELECTOR,
-          ) !== null,
+          document.querySelector(EDITABLE_CONTROL_SELECTOR) !== null,
         hasNonEmptyEditableControl: [
           ...document.querySelectorAll<
             HTMLInputElement | HTMLTextAreaElement | HTMLElement
-          >(
-            EDITABLE_CONTROL_SELECTOR,
-          ),
+          >(EDITABLE_CONTROL_SELECTOR),
         ].some((element) => {
           if (
             element instanceof HTMLInputElement ||
@@ -767,7 +822,8 @@ export function createPageIntelligenceRuntime(
   }
 
   function handleCommand(command: PageRuntimeCommand): boolean {
-    if (command.pageId !== pageId || command.revision !== revision) return false;
+    if (command.pageId !== pageId || command.revision !== revision)
+      return false;
     if (command.type === 'capture-now') {
       publish('manual');
       return true;
@@ -796,7 +852,11 @@ export function createPageIntelligenceRuntime(
 
   function start(): void {
     observer = new MutationObserver((mutations) => {
-      mutationCount += mutations.length;
+      const relevant = mutations.filter(
+        (mutation) => !isAuraRuntimeMutation(mutation),
+      );
+      if (relevant.length === 0) return;
+      mutationCount += relevant.length;
       scheduleCapture('mutation');
     });
 
@@ -809,7 +869,9 @@ export function createPageIntelligenceRuntime(
         subtree: true,
       });
     };
-    window.addEventListener('hashchange', () => scheduleCapture('route-change'));
+    window.addEventListener('hashchange', () =>
+      scheduleCapture('route-change'),
+    );
     window.addEventListener('popstate', () => scheduleCapture('route-change'));
 
     const captureDomReady = (): void => {

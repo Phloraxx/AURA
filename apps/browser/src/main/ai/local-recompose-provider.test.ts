@@ -83,6 +83,7 @@ function parseRequestBody(body: BodyInit | null | undefined): Record<string, unk
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  delete process.env.AURA_LOCAL_CONTEXT;
   delete process.env.AURA_LOCAL_MODEL;
   delete process.env.AURA_OLLAMA_URL;
 });
@@ -136,11 +137,20 @@ describe('local Recompose provider', () => {
         think: false,
       }),
     );
-    expect(body.format).toEqual(
+    expect(body.format).toBe('json');
+    expect(body.options).toEqual(
       expect.objectContaining({
-        additionalProperties: false,
-        type: 'object',
+        num_ctx: 8_192,
+        num_predict: 320,
+        temperature: 0,
       }),
+    );
+    expect(body.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'system',
+        }),
+      ]),
     );
   });
 
@@ -173,12 +183,19 @@ describe('local Recompose provider', () => {
 
   it('warms the configured model without requiring generation output', async () => {
     process.env.AURA_LOCAL_MODEL = 'qwen3.5:4b-mlx';
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ models: [] }),
+        ok: true,
+        status: 200,
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200 });
     vi.stubGlobal('fetch', fetchMock);
     const provider = createLocalRecomposeProvider();
 
     await expect(provider.warm()).resolves.toBe(true);
-    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, options] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(url).toBe('http://127.0.0.1:11434/api/generate');
     const body = parseRequestBody(options.body);
     expect(body).toEqual(
@@ -189,5 +206,44 @@ describe('local Recompose provider', () => {
         stream: false,
       }),
     );
+    expect(body.options).toEqual({ num_ctx: 8_192 });
+  });
+
+  it('reallocates an indefinitely warm model when its context is stale', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: () =>
+          Promise.resolve({
+            models: [
+              {
+                context_length: 4_096,
+                model: 'qwen3.5:4b-mlx',
+                name: 'qwen3.5:4b-mlx',
+              },
+            ],
+          }),
+        ok: true,
+        status: 200,
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200 })
+      .mockResolvedValueOnce({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(createLocalRecomposeProvider().warm()).resolves.toBe(true);
+
+    const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+    expect(calls.map(([url]) => url)).toEqual([
+      'http://127.0.0.1:11434/api/ps',
+      'http://127.0.0.1:11434/api/generate',
+      'http://127.0.0.1:11434/api/generate',
+    ]);
+    const unload = parseRequestBody(
+      calls[1]?.[1].body,
+    );
+    expect(unload).toEqual({
+      keep_alive: 0,
+      model: 'qwen3.5:4b-mlx',
+    });
   });
 });

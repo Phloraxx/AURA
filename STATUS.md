@@ -2,7 +2,9 @@
 
 **Primary branch:** `main`
 
-**Integration:** PR #8 (`feature/recompose-voice` → `main`) merged after green GitHub CI. PR #9 is the final microphone-permission hardening pass.
+**Integration:** PRs #8–#10 are merged into `main`. The current local
+judge-hardening pass reconciles the local-first conversation, Recompose, voice,
+and design work before one focused integration commit.
 
 **Current milestone:** W7 — Judge-proofing / release freeze
 
@@ -99,9 +101,16 @@ Local:
 ```text
 AURA_LOCAL_MODEL=qwen3.5:4b-mlx
 AURA_OLLAMA_URL=http://127.0.0.1:11434
+AURA_LOCAL_CONTEXT=8192
+AURA_LOCAL_CONVERSATION=1
 ```
 
-The local model is used as a low-latency structural planner. It receives a compact ranked PageModel, returns only typed target/structure decisions, runs with deterministic settings, and is kept warm for the event session. If Ollama or the model is unavailable, deterministic Recompose remains active and cloud refinement can still continue.
+The local model is used as a low-latency structural planner and as the first
+Talk to AURA conversation provider. Both paths receive compact balanced page
+context, return only typed decisions, use an explicit 8192-token context, and
+keep the model warm. Conversation falls through to OpenAI and then deterministic
+guidance when local output is unavailable or invalid. Recompose retains its
+deterministic first plan and cloud refinement.
 
 GPT-5.6 Luna remains the deeper multimodal provider. Page analysis defaults to medium reasoning because earlier high-reasoning runs produced useful plans but materially higher latency. `high` remains an environment override for the final event comparison.
 
@@ -115,6 +124,10 @@ Event voice scope is intentionally small and reliable:
 - transcription through `gpt-4o-mini-transcribe` after the person stops recording;
 - transcript enters the same existing Talk to AURA pipeline as typed input;
 - optional short spoken replies use the browser/macOS speech-synthesis surface;
+- installed enhanced/premium voices are preferred, the person can choose a
+  voice, and that choice is remembered locally;
+- the existing AURA Halo reflects honest listening, transcribing, thinking,
+  speaking, remembering, idle, and error states;
 - starting a new dictation stops any currently spoken AURA reply.
 
 The packaged app includes `NSMicrophoneUsageDescription`. Electron session permission handling explicitly allows audio media only for AURA's trusted local shell and denies arbitrary remote-page media requests.
@@ -134,7 +147,24 @@ build all applications
 Electron Playwright E2E under Xvfb
 ```
 
-The current unit/integration suite contains **125 passing tests** across Browser, shared package, API, and legacy extension, with two live-provider browser tests skipped unless explicitly enabled. Electron E2E covers clean launch, Learn Me, judge Recompose presets, full-page Recompose presence, Step by Step progression, Talk to AURA, Remember, navigation/session intent, Original restoration, restart/persistent memory, and serious/critical Axe checks.
+The current unit/integration suite contains **139 passing tests** across Browser, shared package, API, and legacy extension, with two live-provider browser tests skipped unless explicitly enabled. Electron E2E covers clean launch, Learn Me, judge Recompose presets, full-page Recompose presence, Step by Step progression, Talk to AURA, Remember, navigation/session intent, Original restoration, restart/persistent memory, and serious/critical Axe checks.
+
+The latest event-Mac hardening pass additionally verified:
+
+- live Ollama `0.32.3` with `qwen3.5:4b-mlx`, including a real
+  schema-validated structural plan and an in-app
+  **On-device refinement ready** state;
+- Ollama JSON mode plus application-side schema validation for the MLX runner;
+- persistent `Show on original page` behavior synchronized with the shell's
+  `Original ↔ AURA` control;
+- a quieter Comet-like contextual sidecar and flatter Recompose hierarchy,
+  visually inspected in the running Electron app;
+- stale-response guards so an older local refinement cannot replace a newer
+  preset and conversation output cannot target an outdated PageModel revision;
+- 44px minimum voice controls and race-safe spoken-reply state;
+- a newly packaged and launched ad-hoc-signed `darwin-arm64` application;
+- lint, all typechecks, 139 unit/integration tests, all builds, and all three
+  Electron E2E journeys passing on the event Mac.
 
 PR #8's final CI run completed successfully before merge.
 

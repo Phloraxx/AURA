@@ -27,7 +27,7 @@ Everything else is supporting infrastructure or a small control.
 - **UI composition:** one local React `BrowserWindow` + one remote `WebContentsView`.
 - **Remote integration:** dedicated page preload in an isolated world.
 - **Page intelligence:** ranked runtime DOM model + geometry/styles + viewport screenshot, with selective CDP Accessibility/DOMSnapshot enrichment only when it proves useful.
-- **AI:** OpenAI Responses API called directly from Electron main for the event build.
+- **AI:** local Ollama for Recompose and Talk to AURA, with OpenAI Responses API refinement called directly from Electron main.
 - **Event AI:** `gpt-5.6-luna`; page analysis defaults to medium reasoning and remains configurable. Total event API use must stay within the approximately USD 50 budget.
 - **Persistence:** versioned local JSON.
 - **Build/dev:** `electron-vite`; Electron Forge only for final packaging.
@@ -59,7 +59,8 @@ Otherwise defer it.
 10. `09-DESIGN-SYSTEM.md`
 11. `10-MOTION-PERSONALITY.md`
 12. `11-VIDEO-IDENTITY.md`
-13. `DEFINITION-OF-DONE.md`
+13. `12-RECOMPOSE-VOICE.md`
+14. `DEFINITION-OF-DONE.md`
 
 `STATUS.md` at repository root records the active milestone and release evidence.
 

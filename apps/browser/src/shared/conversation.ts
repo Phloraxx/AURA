@@ -76,7 +76,7 @@ export const conversationModelOutputSchema = z.object({
 
 export const conversationTurnResponseSchema =
   conversationModelOutputSchema.extend({
-    source: z.enum(['ai', 'fallback']),
+    source: z.enum(['ai', 'fallback', 'local']),
     usage: pageAnalysisUsageSchema.nullable(),
   });
 

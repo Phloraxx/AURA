@@ -113,11 +113,22 @@ Environment overrides:
 ```text
 AURA_OLLAMA_URL
 AURA_LOCAL_MODEL
+AURA_LOCAL_CONTEXT
+AURA_LOCAL_CONVERSATION
 ```
+
+The event default context is 8192 tokens. The installed model supports a much
+larger theoretical context, but the live event process previously loaded at
+4096 because requests did not specify `num_ctx`. AURA now supplies `num_ctx`
+for warm-up, Recompose, and local conversation and records conversation prompt
+and output token counts for measurement.
 
 The provider must:
 
 - use structured JSON output;
+- request Ollama JSON mode and validate the result against AURA's stricter
+  application schema, because the event Mac's MLX runner does not consistently
+  enforce a full JSON Schema supplied through the `format` field;
 - use low/no thinking for latency;
 - use temperature `0`;
 - keep the model warm (`keep_alive: -1`);
@@ -140,7 +151,11 @@ The current Ollama library lists `qwen3.5:4b-mlx` as an MLX build for Apple Sili
 
 GPT-5.6 Luna remains the deep multimodal refinement provider for the event build. It can add validated page purpose, important facts, simplifications, primary targets, and goal guidance after the local interface is already usable.
 
-The local model is a latency layer, not a replacement for the existing cloud validation architecture.
+For Recompose, the local model is a latency layer rather than a replacement for
+deep cloud page analysis. For Talk to AURA, it is the first provider: a compact
+page/profile/conversation payload produces the same validated Adjust, Explain,
+Goal/Guide, Remember, or Answer contract used by the cloud provider. Invalid or
+unavailable local output falls through to cloud and then deterministic guidance.
 
 ## Voice
 
@@ -174,7 +189,17 @@ Primary OpenAI references:
 
 ### Output
 
-Spoken feedback uses the browser/macOS speech synthesis surface so no second cloud round trip is required. Spoken responses are intentionally short confirmations/guidance, while the visual page remains primary.
+Spoken feedback uses the browser/macOS speech synthesis surface so no second
+cloud round trip is required. AURA waits for the installed voice inventory,
+prefers enhanced/premium local voices when available, exposes a compact voice
+selector, and remembers the person's selection. Spoken responses are
+intentionally short confirmations/guidance, while the visual page remains
+primary.
+
+The AURA Halo is the voice/conversation companion. Its visual state comes only
+from real application state: idle, listening, transcribing, thinking, speaking,
+remembering, or error. It remains still while idle and all repeating motion is
+removed for system or profile reduced-motion preferences.
 
 Examples:
 
@@ -206,6 +231,9 @@ AURA is ready when all of the following are true:
 - local Qwen failure still leaves a convincing deterministic Recompose interface and is reported as a local fallback, not as a successful Qwen refinement;
 - cloud failure still leaves the local/deterministic interface usable;
 - `Original` restores the real website without reload and without losing form state;
+- an in-page `Show on original page` or real-field action switches the shared
+  browser state to `Original` and stays there until the person explicitly
+  selects `AURA` again;
 - every Recompose action maps to a real current-page target;
 - push-to-talk submits the finalized transcript through the existing Talk to AURA path and exposes that transcript in conversation history;
 - AURA can speak a short assistant reply and can be interrupted;
