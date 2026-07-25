@@ -74,6 +74,13 @@ function page(): PageModel {
   };
 }
 
+function parseRequestBody(body: BodyInit | null | undefined): Record<string, unknown> {
+  if (typeof body !== 'string') {
+    throw new TypeError('Expected the local provider request body to be JSON text.');
+  }
+  return JSON.parse(body) as Record<string, unknown>;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.AURA_LOCAL_MODEL;
@@ -83,19 +90,20 @@ afterEach(() => {
 describe('local Recompose provider', () => {
   it('uses the MLX Qwen default with a structured non-thinking request', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      json: async () => ({
-        message: {
-          content: JSON.stringify({
-            archetype: 'listing',
-            confidence: 0.94,
-            primaryTargetIds: ['search'],
-            resultTargetIds: [],
-            sectionOrder: ['actions', 'content'],
-            supportingTargetIds: [],
-            summary: 'Keep the real search control prominent.',
-          }),
-        },
-      }),
+      json: () =>
+        Promise.resolve({
+          message: {
+            content: JSON.stringify({
+              archetype: 'listing',
+              confidence: 0.94,
+              primaryTargetIds: ['search'],
+              resultTargetIds: [],
+              sectionOrder: ['actions', 'content'],
+              supportingTargetIds: [],
+              summary: 'Keep the real search control prominent.',
+            }),
+          },
+        }),
       ok: true,
       status: 200,
     });
@@ -119,7 +127,7 @@ describe('local Recompose provider', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('http://127.0.0.1:11434/api/chat');
-    const body = JSON.parse(String(options.body)) as Record<string, unknown>;
+    const body = parseRequestBody(options.body);
     expect(body).toEqual(
       expect.objectContaining({
         keep_alive: -1,
@@ -140,7 +148,8 @@ describe('local Recompose provider', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
-        json: async () => ({ message: { content: '{"archetype":"listing"}' } }),
+        json: () =>
+          Promise.resolve({ message: { content: '{"archetype":"listing"}' } }),
         ok: true,
         status: 200,
       }),
@@ -171,7 +180,7 @@ describe('local Recompose provider', () => {
     await expect(provider.warm()).resolves.toBe(true);
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('http://127.0.0.1:11434/api/generate');
-    const body = JSON.parse(String(options.body)) as Record<string, unknown>;
+    const body = parseRequestBody(options.body);
     expect(body).toEqual(
       expect.objectContaining({
         keep_alive: -1,
