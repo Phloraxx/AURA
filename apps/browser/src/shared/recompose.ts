@@ -122,13 +122,16 @@ export function profileForRecomposePreset(
   if (preset === 'personalized') return structuredClone(profile);
 
   const next = structuredClone(profile);
+  // Judge presets demonstrate layout/information differences. They deliberately
+  // preserve the person's existing motion preference instead of silently
+  // forcing reduced motion, so the progressive Recompose transition remains
+  // visible unless the person has actually asked AURA to reduce motion.
   if (preset === 'clear_calm') {
     next.capabilities.attention = 'important';
     next.preferences.explanationStyle = 'concise';
     next.preferences.informationDensity = 'calm';
     next.preferences.lineSpacing = Math.max(next.preferences.lineSpacing, 1.55);
     next.preferences.readingWidth = 'narrow';
-    next.preferences.reduceMotion = true;
     next.preferences.targetSizePx = Math.max(next.preferences.targetSizePx, 52);
     next.preferences.textScale = Math.max(next.preferences.textScale, 1.1);
     next.summary =
@@ -148,7 +151,6 @@ export function profileForRecomposePreset(
   if (preset === 'easy_to_control') {
     next.capabilities.motor = 'important';
     next.preferences.informationDensity = 'calm';
-    next.preferences.reduceMotion = true;
     next.preferences.strongFocus = true;
     next.preferences.targetSizePx = 60;
     next.preferences.textScale = Math.max(next.preferences.textScale, 1.08);
@@ -161,7 +163,6 @@ export function profileForRecomposePreset(
     next.preferences.explanationStyle = 'concise';
     next.preferences.informationDensity = 'step_by_step';
     next.preferences.readingWidth = 'narrow';
-    next.preferences.reduceMotion = true;
     next.preferences.strongFocus = true;
     next.preferences.targetSizePx = Math.max(next.preferences.targetSizePx, 52);
     next.preferences.textScale = Math.max(next.preferences.textScale, 1.1);

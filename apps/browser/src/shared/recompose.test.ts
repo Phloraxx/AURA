@@ -31,13 +31,44 @@ describe('Recompose judge profiles', () => {
     const steps = profileForRecomposePreset(original, 'step_by_step');
 
     expect(calm.preferences.informationDensity).toBe('calm');
-    expect(calm.preferences.reduceMotion).toBe(true);
     expect(visual.preferences.textScale).toBeGreaterThanOrEqual(1.35);
     expect(visual.preferences.targetSizePx).toBe(60);
     expect(motor.capabilities.motor).toBe('important');
     expect(motor.preferences.targetSizePx).toBe(60);
     expect(steps.preferences.informationDensity).toBe('step_by_step');
     expect(steps.capabilities.cognitive).toBe('important');
+  });
+
+  it('preserves the actual reduced-motion preference across demo presets', () => {
+    const motionAllowed = createDefaultBrowserProfile(
+      '2026-07-24T00:00:00.000Z',
+      'profile-motion',
+    );
+    motionAllowed.preferences.reduceMotion = false;
+
+    for (const preset of [
+      'clear_calm',
+      'easier_to_see',
+      'easy_to_control',
+      'step_by_step',
+    ] as const) {
+      expect(profileForRecomposePreset(motionAllowed, preset).preferences.reduceMotion).toBe(
+        false,
+      );
+    }
+
+    const reduced = structuredClone(motionAllowed);
+    reduced.preferences.reduceMotion = true;
+    for (const preset of [
+      'clear_calm',
+      'easier_to_see',
+      'easy_to_control',
+      'step_by_step',
+    ] as const) {
+      expect(profileForRecomposePreset(reduced, preset).preferences.reduceMotion).toBe(
+        true,
+      );
+    }
   });
 
   it('keeps the personalized option identical in behavior but cloned', () => {

@@ -165,8 +165,10 @@ ipcMain.handle(IPC_CHANNELS.applyLocalRecompose, async (_event, untrusted) => {
   if (result.output === null) {
     return localRecomposeResultSchema.parse({
       ...result,
-      // The deterministic interface is already active even when Qwen is not.
-      applied: true,
+      // `applied` describes the local-model refinement only. The deterministic
+      // Recompose surface remains active, but the UI must not claim Qwen
+      // successfully personalized the page when the local model failed.
+      applied: false,
     });
   }
 
