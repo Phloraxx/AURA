@@ -270,14 +270,17 @@ Keep the page functional and use the AURA panel for explanation/guidance rather 
 - keyboard-operable primary interactions;
 - meaningful VoiceOver semantics for the browser's own UI.
 
-## Stretch items
+## Post-core additions
 
-Only after W7 core gates are green:
+Push-to-talk transcription and optional native macOS spoken replies were added
+only after the W7 core gates were green. They remain input/output layers around
+the existing Talk to AURA path, not a fourth experience.
 
-- voice input;
+Still deferred:
+
 - basic multi-tab UI;
 - animated split-screen comparison;
 - Windows smoke build;
 - site-specific auto-memory/auto-adapt polish.
 
-Stretch items never delay random-site reliability or Make This Mine.
+Deferred items never delay random-site reliability or Make This Mine.

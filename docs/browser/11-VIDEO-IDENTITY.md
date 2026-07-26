@@ -1,12 +1,20 @@
-# 11 — Event Video Identity
+# 11 — Recompose and Event Media Identity
 
 ## Decision
 
-For the judged macOS build, the visual identity established in the AURA promo-film frames is the canonical event identity.
+The visual identity established in the AURA promo-film frames is canonical for
+the **AURA Recompose presentation and event media**.
 
-This document **supersedes the forest/ivory palette and letter-like adaptive-aperture mark described in `09-DESIGN-SYSTEM.md`**, while retaining that document's accessibility, target-size, focus, typography-scaling, and product-clarity rules.
+It does not replace the everyday common-comfort browser shell defined by
+`09-DESIGN-SYSTEM.md` and `13-INCLUSIVE-PERSONALIZATION.md`. The shell uses the
+original AURA Guide, warm low-glare surfaces, profile-responsive sizing, and
+progressive disclosure. Recompose uses the darker cinematic surface to make
+the personalized alternative clearly distinguishable from both the shell and
+the original website.
 
-The motion principles in `10-MOTION-PERSONALITY.md` remain valid, but the animated presence mark is now the **AURA Halo** described below.
+The motion principles in `10-MOTION-PERSONALITY.md` remain valid. The AURA Halo
+is the working/refinement mark inside Recompose and media; the AURA Guide is the
+human-facing companion in Learn Me and Talk to AURA.
 
 ## Source material
 
@@ -20,7 +28,8 @@ The decision is based on the generated AURA video frames used for the team's pro
 - premium Apple-product-film composition rather than a colorful accessibility toolbar;
 - no generic neon "AI" particles, robot/brain imagery, or rainbow effects.
 
-The product should feel like the same AURA shown in the film rather than a separate green application sharing only the name.
+The Recompose result and event film should feel like the same AURA, while the
+everyday shell remains optimized for the common-comfort baseline.
 
 ## Research basis
 
@@ -36,9 +45,9 @@ The implementation is also checked against current primary guidance:
 
 Comet is an interaction reference only: persistent contextual presence beside the current page. AURA does not copy Comet's brand or agentic product scope.
 
-## Brand mark — AURA Halo
+## Recompose mark — AURA Halo
 
-The event mark is **not a letter A**.
+The Recompose/media mark is **not a letter A**.
 
 It is a nearly complete luminous ring with a small opening and a cool-blue focus point.
 
@@ -49,7 +58,9 @@ Meaning:
 - the moving focus point = the person/current goal;
 - violet-to-blue light = the established promo-film identity.
 
-The mark should remain recognizable with no wordmark at favicon/Dock size.
+The Halo should remain recognizable with no wordmark at small Recompose/media
+sizes. The packaged application icon and common-comfort shell retain the
+implemented AURA application artwork defined by the design system.
 
 Canonical vector sources:
 
@@ -61,7 +72,7 @@ apps/browser/src/renderer/Brand.tsx
 
 The wide-tracked `AURA` wordmark accompanies the Halo only when horizontal space allows.
 
-## Event palette
+## Recompose and media palette
 
 ```text
 Canvas                #07060D
@@ -79,7 +90,10 @@ Keyboard focus blue    #78BAFF
 Danger                 #FF7780
 ```
 
-The purple/blue gradient is reserved for AURA state and significant product actions. Ordinary information surfaces stay almost neutral. This preserves hierarchy and prevents the interface from looking like a generic neon AI dashboard.
+The purple/blue gradient is reserved for active Recompose state and event-media
+emphasis. The common-comfort shell continues to use its warm neutral/forest
+tokens. This separation preserves hierarchy and prevents the browser from
+looking like a generic neon AI dashboard.
 
 ## Typography
 
@@ -87,13 +101,16 @@ Operational controls remain system sans.
 
 Major headings use SF Pro / system display with lighter optical weight and tighter display tracking. The AURA wordmark uses wide tracking and medium-light weight, echoing the promo-film title treatment.
 
-Do not use the previous editorial serif for event-browser headings; it conflicts with the film identity.
+Do not introduce a decorative media typeface into operational browser controls.
 
 ## Material language
 
-Use near-black translucent panels, very thin cool borders, shallow inner highlights, and restrained ambient violet/blue light.
+Within Recompose and media, use near-black panels, thin cool borders, shallow
+inner highlights, and restrained ambient violet/blue light.
 
-The website remains visually dominant. AURA's chrome and sidecar should feel like a precision layer floating beside the real page, not a dashboard placed over it.
+The trusted AURA presentation remains clearly separate from the real page.
+Outside Recompose, the browser shell follows the common-comfort material
+language rather than this dark media treatment.
 
 ## Motion
 
@@ -119,12 +136,16 @@ All spatial/repeating motion must disappear under either system `prefers-reduced
 
 ## Acceptance criteria
 
-The event UI is ready when:
+The identity is ready when:
 
-- a still frame of the browser is immediately recognizable as the same AURA from the promo film;
-- the primary mark is a luminous Halo, not a stylized letter A;
-- browser chrome, Learn Me, Talk to AURA, memory, and Make This Mine share the same near-black/violet/blue language;
-- the page remains the main visual content;
+- a still frame of Recompose is recognizable as the same AURA from the promo
+  film;
+- the Halo identifies active Recompose/refinement state while the AURA Guide
+  remains the single human-facing companion;
+- the common-comfort shell and dark Recompose surface look intentionally related
+  rather than accidentally inconsistent;
+- the original page remains available and the AURA alternative is visually
+  unmistakable;
 - animations feel brief and physical rather than decorative;
 - AURA is visually still when idle and subtly alive only while working;
 - reduced-motion users receive no looping/spatial animation;

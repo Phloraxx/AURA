@@ -1,6 +1,7 @@
 # 08 — Decisions
 
-This file records deliberate product and architecture decisions for the `aura-browser` branch.
+This file records deliberate product and architecture decisions for the AURA
+Browser product line in `main`.
 
 Do not silently reverse a decision. Add a replacement ADR and mark the old decision `Superseded`.
 
@@ -186,9 +187,11 @@ This is an internal reliability scope; natural phrasing remains open-ended.
 
 ## ADR-020 — Text conversation is required; voice is stretch
 
-**Status:** Accepted
+**Status:** Superseded by ADR-033
 
-Voice is attractive but cannot delay Make This Mine, page intelligence, or polish.
+Voice could not delay Make This Mine, page intelligence, or polish. It was
+implemented after the core W7 gates passed; ADR-033 records the final native
+macOS output and OpenAI transcription decision.
 
 ## ADR-021 — Keep the extension as reference, not the event client
 

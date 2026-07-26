@@ -34,7 +34,10 @@ Everything else is supporting infrastructure or a small control.
 - **Persistence:** versioned local JSON.
 - **Build/dev:** `electron-vite`; Electron Forge only for final packaging.
 - **Merge quality:** GitHub Actions must pass lint, typecheck, tests, build, and Electron E2E for PRs into `main`.
-- **Event visual identity:** the near-black violet/blue AURA promo-film language and AURA Halo defined by `11-VIDEO-IDENTITY.md`.
+- **Visual identity:** a common-comfort light browser shell and AURA Guide,
+  with the near-black violet/blue AURA Halo language reserved for Recompose and
+  media surfaces as defined by `09-DESIGN-SYSTEM.md`,
+  `11-VIDEO-IDENTITY.md`, and `13-INCLUSIVE-PERSONALIZATION.md`.
 
 ## Product-scope rule
 
@@ -67,11 +70,25 @@ Otherwise defer it.
 
 `STATUS.md` at repository root records the active milestone and release evidence.
 
-## Current stage
+## Implemented product snapshot
 
-The AURA Browser was promoted to `main` through PR #2 after green GitHub CI. W1 through W6 are implemented and W7 hardening/release work is effectively complete except for the final credentialed OpenAI smoke test on the actual event network/hotspot and any issue that test reveals.
+`main` is the current product source of truth. W1 through W8 are implemented:
 
-The feature scope is frozen. Only reliability, release, copy, measured latency, and interaction/design polish of the existing three first-class experiences belong before the event.
+- bounded AI-personalized Learn Me across six functional support areas;
+- automated WCAG 2.2 A/AA evidence plus a separate explainable AURA Fit;
+- runtime-first Page Intelligence with stable page targets and screenshots;
+- immediate trusted Recompose, local Qwen structural refinement, and cloud Luna
+  semantic refinement;
+- four non-diagnostic demonstration presets plus the learned profile;
+- Original/AURA restoration without reloading the underlying page;
+- Talk to AURA Adjust, Explain, Goal/Guide, and Remember behavior;
+- push-to-talk transcription and native macOS spoken replies;
+- common-comfort browser UI with the original AURA Guide.
+
+The feature scope is frozen. CI, unit/integration tests, Electron E2E, native
+packaging, and the 27-site matrix are recorded in `STATUS.md`. The remaining
+release work is the final rehearsal with the event key/network and fixes only
+for issues that rehearsal reveals.
 
 ## Research basis
 

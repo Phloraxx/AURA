@@ -2,6 +2,7 @@
   "name": "@aura/browser",
   "version": "0.1.0",
   "private": true,
+  "description": "The macOS Electron client for AURA's personalized, explainable, and reversible web adaptation experience.",
   "type": "module",
   "main": ".vite/main/index.js",
   "scripts": {

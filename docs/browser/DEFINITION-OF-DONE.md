@@ -6,9 +6,13 @@ AURA is event-ready only when every required item below is true on the primary m
 
 - First launch clearly explains what AURA does.
 - User completes onboarding without developer guidance.
-- Questions are experiential and non-diagnostic.
-- Reading, interaction, and attention/presentation calibration visibly change the onboarding UI.
-- A meaningful profile is created in roughly 60–90 seconds.
+- The bounded interview covers visual, auditory, motor, cognitive, attention,
+  and language support without diagnosing.
+- AI may personalize wording/order/follow-up, while trusted questions guarantee
+  complete deterministic coverage.
+- Reading, interaction, attention/presentation, and explanation preferences
+  visibly change the onboarding UI.
+- A meaningful profile is created in about two minutes.
 - Profile persists after restart.
 - User can reset/re-run onboarding.
 - AI failure still leaves a usable deterministic calibration path.
@@ -38,13 +42,17 @@ AURA is event-ready only when every required item below is true on the primary m
 
 ## Make This Mine
 
-- Clicking Make This Mine produces immediate deterministic visual change.
-- AI refinement materially improves hierarchy/focus/content presentation on ordinary pages.
+- Clicking Make This Mine produces an immediate trusted Recompose presentation.
+- Local Qwen may prioritize/reorder real targets without becoming a launch
+  dependency.
+- Cloud Luna may materially refine page meaning, facts, hierarchy, and goal
+  guidance without blocking the useful local result.
 - Same page adapts meaningfully differently for at least two profiles.
-- Tier 0–3 interventions work without requiring arbitrary DOM reconstruction.
-- Text simplification is targeted and reversible.
-- Secondary content can be de-emphasized/collapsed without losing primary actions on the required corpus.
-- Form/task guidance points to original controls.
+- Trusted archetypes support listing, article, form, detail, dashboard, and
+  general pages.
+- Every Recompose action points to a validated current real-page target.
+- Text simplification/explanation remains additive or reversible.
+- Form/task guidance points to original controls rather than duplicating them.
 - Model timeout/unavailability leaves useful local adaptation.
 - Required demo pages retain entered form values and ordinary control behavior.
 
@@ -64,6 +72,22 @@ The four action families work reliably with natural phrasing:
 - **Remember** — persist a confirmed preference.
 
 At least three different page categories demonstrate these actions.
+
+- Explicit Adjust and Goal/Guide requests regenerate the visible Recompose
+  presentation rather than changing only the hidden original page.
+- Push-to-talk submits its transcript through the same conversation path.
+- Optional spoken replies use an installed native macOS voice and can be
+  interrupted.
+
+## Scan and evidence
+
+- Scan reports factual automated WCAG 2.2 A/AA evidence, affected locations,
+  severity, manual-review boundaries, and no conformance percentage.
+- A separate explainable AURA Fit reports Interaction, Visual comfort, Focus,
+  Understanding, and Task simplicity for the active profile.
+- AURA automatically scans the adapted presentation and compares resolved,
+  remaining, introduced, and manual-review outcomes.
+- No standards or adaptation evidence is invented for demo effect.
 
 ## Memory
 

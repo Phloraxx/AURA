@@ -30,8 +30,9 @@ Before editing code, read in order:
 12. `docs/browser/10-MOTION-PERSONALITY.md`
 13. `docs/browser/11-VIDEO-IDENTITY.md`
 14. `docs/browser/12-RECOMPOSE-VOICE.md`
-15. `docs/browser/DEFINITION-OF-DONE.md`
-16. `STATUS.md`
+15. `docs/browser/13-INCLUSIVE-PERSONALIZATION.md`
+16. `docs/browser/DEFINITION-OF-DONE.md`
+17. `STATUS.md`
 
 Older extension-era documents are non-authoritative unless the browser source of truth explicitly references them.
 

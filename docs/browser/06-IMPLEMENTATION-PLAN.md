@@ -92,16 +92,18 @@ Goal: build reliable actionable understanding before AI UX.
 
 ## W3 — Learn Me
 
-Goal: create a useful persistent personalized profile in 60–90 seconds.
+Goal: create a useful persistent personalized profile in about two minutes.
 
 ### Implement
 
 - first-launch React onboarding;
-- deterministic four-area calibration backbone:
-  - reading comfort;
-  - interaction/target comfort;
+- deterministic six-area functional question bank:
+  - visual/reading comfort;
+  - auditory alternatives;
+  - motor/target precision;
+  - cognitive/multi-step recovery;
   - attention/motion/information density;
-  - explanation/detail style;
+  - language/comprehension;
 - text conversation with AI-personalized follow-ups;
 - live adaptation of onboarding UI;
 - capability/preference model;
@@ -115,7 +117,7 @@ Selectively port proven profile logic from extension work where useful, without 
 ### Acceptance
 
 - two intentionally different users/answers produce visibly different resolved preferences;
-- onboarding completes in ~60–90 seconds;
+- onboarding completes in about two minutes;
 - UI visibly changes during calibration;
 - profile survives restart;
 - no diagnosis labels or raw score dashboard;
@@ -254,6 +256,29 @@ Goal: breadth, failure recovery, rehearsal. **No new feature work.**
 - animated split-screen comparison;
 - Windows smoke build;
 - optional post-transform AI critique if it demonstrates measured benefit.
+
+## W8 — Inclusive personalization revision
+
+**Status: implemented and verified.**
+
+This bounded revision was accepted after the original freeze and does not add a
+fourth first-class experience.
+
+Implemented:
+
+- AI-personalized Learn Me across six functional support areas with
+  deterministic question coverage;
+- the original AURA Guide and common-comfort browser shell;
+- `Scan this page` with factual automated WCAG 2.2 A/AA evidence;
+- separate explainable personalized AURA Fit;
+- automatic adapted-presentation rescan and before/after evidence;
+- progressively disclosed local Qwen and cloud Luna contributions;
+- push-to-talk transcription and native macOS spoken replies;
+- one compact Talk to AURA companion surface.
+
+Acceptance evidence is maintained in `STATUS.md`. Feature scope returns to
+freeze after W8; only rehearsal findings, reliability fixes, copy, and
+documentation belong before the event.
 
 ## Work allocation for four people
 

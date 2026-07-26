@@ -2,17 +2,17 @@
 
 **Primary branch:** `main`
 
-**Integration:** PRs #8–#10 are merged into `main`. The current local
-judge-hardening pass reconciles the conversation, Recompose, voice,
-and design work before one focused integration commit.
+**Integration:** PRs #8–#11 and the contributor-attribution follow-up are
+merged into `main`. `main` is the canonical product and documentation branch.
 
-**Current milestone:** W8 — Inclusive personalization revision
+**Current milestone:** W8 complete — event rehearsal and release hardening
 
-**Product state:** the W7 browser remains the tested baseline. W8 is the
-accepted implementation of bounded AI-led Learn Me, six-area functional
-profiles, the original AURA Guide, factual automated WCAG evidence, explainable
-personalized AURA Fit, and the common-comfort shell baseline. Existing W7
-reliability gates remain required.
+**Product state:** W8 is implemented and verified on the event Mac. It adds
+bounded AI-led Learn Me, six-area functional profiles, the original AURA Guide,
+factual automated WCAG evidence, explainable personalized AURA Fit, and the
+common-comfort shell to the W7 Browser/Recompose baseline. Feature scope is
+frozen; only rehearsal findings, reliability fixes, copy, and documentation
+belong before the event.
 
 **W8 verification on the event Mac (2026-07-25):**
 
@@ -235,7 +235,11 @@ pnpm build
 pnpm browser:package:mac
 ```
 
-The final design/package pass successfully cross-packaged the `darwin-arm64` bundle and verified that the `.app` embeds the generated AURA icon. Execution, microphone permission, local Qwen latency, and live voice/API behavior on the actual Mac remain part of the manual event smoke test.
+The final design/package pass built, ad-hoc signed, launched, and visually
+exercised the `darwin-arm64` bundle on the event-development Mac and verified
+that the `.app` embeds the generated AURA icon. The same execution,
+microphone-permission, local-Qwen, voice, and live-API path must be repeated on
+the actual event network or planned hotspot.
 
 ## Event launcher
 
@@ -251,7 +255,13 @@ No OpenAI key is committed to the repository.
 
 ## Design identity
 
-The judged build uses the AURA promo-film identity: near-black indigo surfaces, restrained violet/blue light, the AURA Halo, system-display typography, short physical microinteractions, and a profile-aware reduced-motion path.
+The everyday browser shell uses a system-first, low-glare common-comfort
+baseline with the original AURA Guide, 16px body text, 48px primary targets,
+strong keyboard focus, restrained cards, and progressive disclosure. AURA's
+near-black indigo, violet/blue Halo language is reserved for Recompose and
+media surfaces where it provides clear separation from the original webpage.
+All spatial/repeating motion respects the system and learned reduced-motion
+preferences.
 
 The design contracts are documented in:
 

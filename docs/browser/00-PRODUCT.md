@@ -6,7 +6,13 @@ The web is usually built once and presented the same way to everyone. AURA chang
 
 **AURA learns the person first, then turns each webpage into the version of that page that is easiest for that person to use.**
 
-AURA is designed around capabilities and preferences rather than diagnosis labels. It may learn that someone benefits from larger controls, reduced motion, less simultaneous information, shorter explanations, stronger hierarchy, or preserved technical detail without requiring the person to identify with a medical category. The profile remains extensible to auditory/input-output support, but the event Learn Me flow does not present auditory calibration as an implemented feature.
+AURA is designed around capabilities and preferences rather than diagnosis
+labels. It may learn that someone benefits from larger controls, reduced
+motion, less simultaneous information, shorter explanations, stronger
+hierarchy, preserved technical detail, captions/transcripts, or an alternate
+input/output path without requiring the person to identify with a medical
+category. Learn Me covers visual, auditory, motor, cognitive, attention, and
+language support as overlapping functional areas.
 
 ## Primary users
 

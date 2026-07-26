@@ -2,7 +2,7 @@
   "name": "aura",
   "version": "0.1.0",
   "private": true,
-  "description": "Adaptive User-Responsive Accessibility",
+  "description": "A personalized accessibility browser that learns the person, understands the page, and reversibly reshapes the real web around their needs and goal.",
   "packageManager": "pnpm@11.9.0",
   "engines": {
     "node": ">=20.0.0"

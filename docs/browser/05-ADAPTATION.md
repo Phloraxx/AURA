@@ -2,23 +2,32 @@
 
 ## Purpose
 
-The adaptation engine turns resolved user preferences and validated AI semantic recommendations into visible, reversible changes on the **real webpage**.
+The adaptation engine turns resolved user preferences and validated local/cloud
+semantic recommendations into a visible, reversible AURA presentation connected
+to the **real webpage**.
 
 There is one primary product action: **Make This Mine**.
 
 No separate Adapt / Focus / Simplify / Reader / Reimagine modes in the judged UI.
 
+The implemented flagship is the trusted Recompose architecture defined by
+`12-RECOMPOSE-VOICE.md` and ADR-030. The lower-level Tier 0–3 primitives in this
+document remain the safety/action vocabulary underneath Recompose; they are no
+longer the complete visible product by themselves.
+
 ## Core philosophy
 
-**Use the least invasive transformation that produces a meaningful personalized improvement.**
+**Use the least invasive trusted presentation that produces a meaningful
+personalized improvement while preserving real meaning, actions, and state.**
 
 AURA wins only if the judge's arbitrary page still works.
 
-## Two-phase transformation
+## Progressive three-pass transformation
 
-### Phase A — immediate deterministic adaptation
+### Pass 1 — immediate trusted Recompose
 
-Apply known profile preferences immediately:
+Build a deterministic alternative presentation from the current PageModel and
+known profile preferences:
 
 - text scale;
 - line and paragraph spacing;
@@ -26,7 +35,9 @@ Apply known profile preferences immediately:
 - reduced motion;
 - larger interaction targets;
 - stronger focus visibility;
-- safe presentation/contrast adjustments.
+- safe presentation/contrast adjustments;
+- trusted page-archetype hierarchy;
+- action cards mapped to real current targets.
 
 This creates the instant response and remains useful if AI fails.
 
@@ -65,7 +76,13 @@ The presentation session is idempotent. Repeated `Make This Mine` and
 `Original ↔ AURA` operations must never add duplicate styles, wrappers, or
 listeners.
 
-### Phase B — semantic refinement
+### Pass 2 — local structural refinement
+
+When available, local `qwen3.5:4b-mlx` may prioritize/reorder validated real
+targets inside the trusted Recompose grammar. It cannot emit executable HTML,
+CSS, or JavaScript and is not a launch dependency.
+
+### Pass 3 — cloud semantic refinement
 
 After validated page analysis, AURA may:
 
@@ -78,6 +95,9 @@ After validated page analysis, AURA may:
 - add a compact AURA-owned summary/task strip;
 - highlight/scroll to relevant original controls;
 - preserve or restore detail based on explicit preference.
+
+The complete visible result remains one `RecomposePlan`; later valid plans
+replace/refine earlier ones without duplicating the surface.
 
 ## Intervention tiers
 

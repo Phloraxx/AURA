@@ -192,9 +192,11 @@ PageModel       Screenshot
     ├──── optional AX/CDP enrichment
     │
     ▼
-Local deterministic policy
+         Local deterministic policy
     │
-    ├──────────────► immediate adaptation
+    ├──────────────► immediate trusted Recompose
+    │
+    ├── compact PageModel + profile ──► local Qwen plan
     │
     └── profile + memory + current intent + screenshot
                        │
@@ -202,13 +204,13 @@ Local deterministic policy
                 OpenAI Responses API
                        │
                        ▼
-             validated semantic plan
+           validated Recompose refinements
                        │
                        ▼
                page-preload runtime
                        │
                        ▼
-                  real webpage
+        AURA presentation ↔ real webpage
 ```
 
 ## Immediate vs AI path
@@ -225,9 +227,13 @@ Apply known user preferences without network latency:
 - focus visibility;
 - other deterministic resolved preferences.
 
-### AI path
+### AI paths
 
-One rich analysis request considers:
+The optional local Ollama fast path receives a compact ranked PageModel and
+returns a validated structural Recompose plan. It never blocks the immediate
+trusted result.
+
+One rich cloud analysis request considers:
 
 - compact PageModel;
 - visible screenshot;
@@ -235,9 +241,10 @@ One rich analysis request considers:
 - relevant explicit memory;
 - current goal if present.
 
-It returns structured semantic recommendations only. Trusted AURA primitives perform the changes.
+It returns structured semantic recommendations only. Trusted AURA code merges
+validated local/cloud decisions and performs the changes.
 
-## OpenAI architecture for the event
+## Local and OpenAI architecture for the event
 
 The Browser calls OpenAI directly from the Electron **main process**.
 
@@ -259,6 +266,12 @@ Electron main
 The API key stays in local environment/config and is never placed in the remote page or shell renderer bundle.
 
 Keep provider code behind a small interface so moving it back to `apps/api` later remains straightforward.
+
+Local structural refinement uses Ollama at `AURA_OLLAMA_URL` with
+`qwen3.5:4b-mlx` by default and an explicit 8192-token requested context. Talk
+to AURA uses OpenAI first when configured, local Ollama as an offline fallback,
+and deterministic action handling last. Neither AI provider is permitted to
+emit executable page code.
 
 ### Event baseline model
 

@@ -27,44 +27,42 @@ The design pass is grounded in current primary guidance rather than trend imitat
 
 The event build does not claim conformance merely because these references informed the design. They are engineering/design inputs, not a certification statement.
 
-## Brand idea — the adaptive aperture
+## Brand system — Guide and Halo
 
-The AURA mark is an abstract **A / aperture / path**:
+AURA uses one identity with two clear roles.
 
-```text
-       •
-      / \
-     /---\
-    /     \
-```
+### AURA Guide
 
-It is intentionally not a disability symbol, eye, wheelchair, brain, magic wand, or generic chatbot sparkle.
+The original inline SVG tree-sprite is the human-facing companion in Learn Me
+and Talk to AURA. It makes the question/response flow easy to follow without
+replacing labels, instructions, or state text. Its visual states are
+welcoming, asking, listening, thinking, celebrating, guiding, and needs
+attention.
 
-The mark represents the product promise:
+The Guide is original AURA artwork. It is not a diagnosis symbol, licensed
+character, copied mascot, or remote third-party asset.
 
-> AURA keeps the same web underneath, but reframes the path through it around the person.
+### AURA Halo
 
-The apex dot is the person/current point of attention. The two rising strokes suggest an aperture or path. The crossbar keeps the mark recognizable as AURA at small sizes.
+The nearly complete violet-to-blue ring is the compact brand and working mark
+used by the application icon, browser wordmark, Recompose surface, and AI
+planning status. The opening represents an interface that can adapt; the focus
+point represents the person/current goal.
 
-### App icon
-
-The native icon uses:
-
-- a centered adaptive-aperture mark;
-- a deep forest gradient for calm identity and small-size contrast;
-- warm ivory strokes instead of harsh pure white;
-- one muted gold apex accent for recognition;
-- few broad shapes so the mark remains legible when reduced.
+It is intentionally not an eye, brain, wheelchair, medical symbol, or generic
+chatbot sparkle.
 
 Canonical sources:
 
 ```text
-apps/browser/resources/aura.svg   vector master
+apps/browser/resources/aura.svg   vector application-icon master
 apps/browser/resources/aura.png   1024px development/Dock asset
-apps/browser/resources/aura.icns  packaged macOS compatibility icon
+apps/browser/resources/aura.icns  packaged macOS icon
+apps/browser/src/renderer/Brand.tsx
 ```
 
-The same symbol is used in the renderer and favicon rather than inventing unrelated marks.
+The Guide and Halo never compete on the same surface: the Guide leads human
+conversation, while the Halo indicates compact brand/processing state.
 
 ## Color language
 
@@ -143,7 +141,11 @@ reduceMotion       -> shell animation/scroll behavior
 
 This prevents the contradiction where a person asks AURA for larger text or controls and the remote page changes while AURA's own interface stays small.
 
-The event profile still carries six capability-support fields for future extensibility, but the current Learn Me path directly calibrates reading/visual, motor interaction, attention/cognitive presentation, and language/understanding preferences. Auditory support is not presented as an independently calibrated event feature.
+The Learn Me path covers all six functional support areas. Visual, motor,
+attention/cognitive, and language answers directly resolve presentation
+preferences. Auditory answers inform captions/transcripts and optional
+input/output support without pretending that every website can be visually
+adapted to solve an audio-only barrier.
 
 ## Focus and target policy
 

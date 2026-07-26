@@ -83,32 +83,20 @@ Used sparingly for:
 
 Frequent controls must not force the person to wait for animation.
 
-## The AURA mark as presence
+## AURA presence
 
-### Logo review decision
+The implemented identity has two complementary roles:
 
-Keep the **adaptive aperture** mark introduced in `09-DESIGN-SYSTEM.md`.
+- the **AURA Guide** is the human-facing companion in Learn Me and Talk to
+  AURA;
+- the **AURA Halo** is the compact brand and working/refinement indicator.
 
-Do not replace it with a new logo merely to appear more "AI". The existing mark is already:
+The Guide may change pose/expression only when the underlying conversational
+state changes. The Halo may subtly breathe only while AURA is genuinely
+working. Both remain still when idle, and neither replaces clear state text.
 
-- distinctive at small size;
-- tied directly to the product promise;
-- non-medical;
-- non-diagnostic;
-- visually compatible with the premium video direction;
-- consistent across favicon, product UI, and native app icon.
-
-The improvement is **behavior**, not a new symbol.
-
-When AURA is genuinely working, the mark may subtly breathe:
-
-- the gold apex/focus point changes opacity/scale slightly;
-- aperture strokes shift by only a few percent;
-- the surrounding halo strengthens.
-
-The mark remains completely still when AURA is idle.
-
-This turns the logo into a quiet presence indicator without introducing a separate animated avatar.
+This preserves one recognizable AURA personality without adding an autonomous
+agent, copied character, or decorative second assistant.
 
 ## Assistant presence
 
@@ -202,7 +190,8 @@ The implementation intentionally uses existing semantic state/classes (`aria-exp
 The pass is ready when:
 
 - the browser still feels calm when nothing is happening;
-- the AURA mark only becomes animated during real work;
+- the AURA Guide and Halo animate only for meaningful state changes or real
+  work;
 - Talk to AURA feels visibly integrated with the current page rather than bolted on;
 - Make This Mine remains instant and reversible;
 - messages and onboarding steps enter smoothly without delaying interaction;
@@ -210,4 +199,5 @@ The pass is ready when:
 - system and profile reduced-motion preferences remove spatial/repeating motion;
 - keyboard focus remains more prominent than decorative motion;
 - the visual language still matches the premium, non-"AI-y" AURA video direction;
-- the logo remains recognizable at small size and does not need a second competing assistant avatar.
+- the Halo remains recognizable at small size and the Guide remains the only
+  human-facing companion.

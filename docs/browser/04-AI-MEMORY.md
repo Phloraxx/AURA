@@ -86,15 +86,19 @@ Only three operations are first-class.
 
 ### 1. `onboardingTurn`
 
-Purpose: turn one optional user-written note into at most one explicit,
-human-readable learned preference. The four required calibration areas remain
-deterministic and do not wait for OpenAI.
+Purpose: lead a bounded functional-needs interview across visual, auditory,
+motor, cognitive, attention, and language support. Trusted code owns the
+canonical question bank and guarantees that each unanswered area is covered.
+OpenAI may personalize question order, wording, acknowledgement, mascot mood,
+and bounded follow-up, and may turn an optional user-written note into at most
+one explicit human-readable learned preference.
 
 Input:
 
 ```ts
 interface OnboardingTurnInput {
-  deterministicChoices: CalibrationChoice[];
+  answers: FunctionalAnswer[];
+  deterministicChoices: CalibrationChoice[]; // retained compatibility input
   userResponse: string;
 }
 ```
@@ -104,13 +108,21 @@ Output:
 ```ts
 interface OnboardingTurnOutput {
   assistantMessage: string;
+  nextQuestion: {
+    area: FunctionalArea;
+    prompt: string;
+    helpText: string;
+  } | null;
+  complete: boolean;
+  mascotMood: AuraGuideMood;
   learnedPreference: string | null;
   confidence: number;
 }
 ```
 
-The model does not diagnose or invent needs. Failure, refusal, timeout, or a
-missing API key uses a deterministic path and never blocks profile completion.
+The model does not diagnose, skip unanswered areas, or invent needs. Failure,
+refusal, timeout, or a missing API key uses the same deterministic question
+bank and never blocks profile completion.
 
 ### 2. `analyzePage`
 
@@ -363,6 +375,7 @@ interface BrowserProfile {
   id: string;
   completedAt: string | null;
   capabilities: CapabilitySupportLevels;
+  functionalAnswers: FunctionalAnswer[];
   preferences: ResolvedComfortPreferences;
   learnedPreferences: string[];
   summary: string;
