@@ -14,6 +14,14 @@ For the AURA Browser product line, `docs/browser/` is authoritative. Older exten
 
 Current release state is tracked in **`STATUS.md`**.
 
+## Contributors
+
+AURA is an 80/20 collaboration between
+[Sourav P Bijoy (@Phloraxx)](https://github.com/Phloraxx) and
+[Aradhana Rose (@aradhana225746-a11y)](https://github.com/aradhana225746-a11y).
+See **[`CONTRIBUTORS.md`](CONTRIBUTORS.md)** for the verified contributor
+identities and attribution notes.
+
 ## Product scope
 
 AURA has exactly three first-class experiences.
