@@ -18,6 +18,7 @@ test-results/
 # human-editable narrative/source-of-truth files in Git.
 artifacts/demo-video/*
 !artifacts/demo-video/AURA-demo-complete-80s.mp4
+!artifacts/demo-video/AURA-feature-complete-demo.mp4
 !artifacts/demo-video/AURA-feature-complete-silent-master-1080p.mp4
 !artifacts/demo-video/AURA-FULL-DEMO-SCRIPT.md
 !artifacts/demo-video/AURA-FULL-DEMO-SHOT-LIST.md

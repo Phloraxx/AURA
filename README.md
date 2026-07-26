@@ -11,10 +11,10 @@
 
   [![CI](https://github.com/Phloraxx/AURA/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Phloraxx/AURA/actions/workflows/ci.yml) ![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon-17211B?logo=apple&logoColor=white) ![Electron 43](https://img.shields.io/badge/Electron-43-245F43?logo=electron&logoColor=white) ![React 19](https://img.shields.io/badge/React-19-245F43?logo=react&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-245F43?logo=typescript&logoColor=white)
 
-  [Watch the 80-second demo](artifacts/demo-video/AURA-demo-complete-80s.mp4) · [Watch the full silent product tour](artifacts/demo-video/AURA-feature-complete-silent-master-1080p.mp4) · [Read the full voiceover script](artifacts/demo-video/AURA-FULL-DEMO-SCRIPT.md) · [Read the product specification](docs/browser/README.md) · [See verified status](STATUS.md)
+  [▶ Watch the complete narrated demo](artifacts/demo-video/AURA-feature-complete-demo.mp4) · [Watch the 80-second pitch](artifacts/demo-video/AURA-demo-complete-80s.mp4) · [Silent edit master](artifacts/demo-video/AURA-feature-complete-silent-master-1080p.mp4) · [Read the voiceover script](artifacts/demo-video/AURA-FULL-DEMO-SCRIPT.md) · [Product specification](docs/browser/README.md) · [Verified status](STATUS.md)
 </div>
 
-![AURA Learn Me onboarding with the AURA Guide](docs/assets/readme/learn-me.jpg)
+[![Watch the complete AURA Browser demo](docs/assets/readme/learn-me.jpg)](artifacts/demo-video/AURA-feature-complete-demo.mp4)
 
 ## The web should adapt to the person
 

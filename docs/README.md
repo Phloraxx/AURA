@@ -46,6 +46,7 @@ README screenshots live in [`docs/assets/readme/`](assets/readme/).
 
 The repository also includes:
 
+- the [complete narrated product demo](../artifacts/demo-video/AURA-feature-complete-demo.mp4);
 - an [80-second narrated demo](../artifacts/demo-video/AURA-demo-complete-80s.mp4);
 - a [feature-complete silent product tour](../artifacts/demo-video/AURA-feature-complete-silent-master-1080p.mp4);
 - the [full narration script](../artifacts/demo-video/AURA-FULL-DEMO-SCRIPT.md)
