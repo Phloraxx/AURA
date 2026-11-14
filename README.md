@@ -184,7 +184,17 @@ reference clients. `apps/browser` is the canonical judged product.
 
 ## Run AURA on an Apple-Silicon Mac
 
-### Requirements
+### Download the packaged build
+
+The tagged build is attached to [the latest release](https://github.com/Phloraxx/AURA/releases/latest) as `AURA-vX.Y.Z-arm64.zip` with a `.sha256` sidecar. It is unsigned, so macOS blocks the first launch: right-click the app and choose **Open**, or clear the quarantine flag.
+
+```bash
+xattr -dr com.apple.quarantine /Applications/AURA.app
+```
+
+### Build from source
+
+#### Requirements
 
 - macOS on Apple Silicon;
 - Node.js 20 or newer;
