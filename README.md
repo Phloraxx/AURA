@@ -208,7 +208,7 @@ If `corepack` is unavailable, install the pinned pnpm version directly:
 npm install --global pnpm@11.9.0
 ```
 
-### Install and package
+#### Install and package
 
 ```bash
 git clone https://github.com/Phloraxx/AURA.git
@@ -233,14 +233,14 @@ The event launcher reads a local `.env` when present and otherwise prompts
 without echoing for a temporary OpenAI key. It never writes the key into the
 repository.
 
-### Development mode
+#### Development mode
 
 ```bash
 pnpm install
 pnpm browser:dev
 ```
 
-### Optional local Qwen path
+#### Optional local Qwen path
 
 Install and start [Ollama](https://ollama.com/), then:
 
@@ -251,7 +251,7 @@ ollama pull qwen3.5:4b-mlx
 AURA defaults to `http://127.0.0.1:11434` with an 8192-token requested context.
 If Ollama is absent, deterministic and cloud paths continue to work.
 
-### Environment
+#### Environment
 
 Copy the documented defaults and keep secrets local:
 
